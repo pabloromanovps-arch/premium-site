@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/pabloromanovps-arch/premium-site#readme",
   "devDependencies": {
-    "playwright": "^1.64.1"
+    "playwright": "^1.56.1"
   },
   "dependencies": {
     "opentype.js": "^2.0.0",
