@@ -11,6 +11,28 @@ export const CAPTIONS = {
   c1: ['10 СТРАН.', '15 ИНОСТРАННЫХ', 'КОМАНД'],
   c2: ['ТЕХНОЛОГИЧЕСКИЕ', 'РЕШЕНИЯ', 'МИРОВОГО УРОВНЯ'],
   c3: ['2,2 МЛН', 'ПРОСМОТРОВ'],
+  // ролик 2: театр в Перми — форум «Россия — спортивная держава»
+  rolik2_1: ['ПЕРВЫЙ В МИРЕ', 'БАСКЕТБОЛЬНЫЙ', 'СПЕКТАКЛЬ'],
+  rolik2_2: ['СУДЬИ — ДИРИЖЕРЫ.', 'ИГРОКИ — АРТИСТЫ'],
+  rolik2_3: ['ЭКСКЛЮЗИВНАЯ', 'АУДИТОРИЯ.', 'ПРЕМИУМ-ФОРМАТ'],
+  // ролик 3: театр в Питере — Буфф
+  rolik3_1: ['ПЕРВЫЙ В МИРЕ', 'ФОРМАТ НА', 'ТЕАТРАЛЬНОЙ СЦЕНЕ'],
+  rolik3_2: ['СПОРТ КАК', 'ИСКУССТВО'],
+  rolik3_3: ['SHOW MUST GO ON'],
+  // ролик 4: трансляция суперфинала — второй день
+  rolik4_1: ['8 КАМЕР.', 'КАМЕРА-ДРОН'],
+  rolik4_2: ['ТРАНСЛЯЦИЯ', 'МИРОВОГО УРОВНЯ'],
+  rolik4_3: ['МАТЧ ТВ. ВК.', 'YOUTUBE'],
+  // ролик 5: большой спортивный концерт
+  rolik5_1: ['СПОРТ КАК', 'БОЛЬШОЕ ШОУ'],
+  rolik5_2: ['СИНТЕЗ МУЗЫКИ', 'И СПОРТА'],
+  rolik5_3: ['МАСШТАБ, КОТОРЫЙ', 'СОБИРАЕТ ТЫСЯЧИ'],
+  // ролик 6: матч друзей суперфинала — production
+  // 7 words: split at its own full stop into two titles (brief: no more than 5-6 words per title)
+  rolik6_1a: ['МАТЧ ДРУЗЕЙ.'],
+  rolik6_1b: ['ЗВЕЗДЫ И ПАРТНЕРЫ', 'НА ПЛОЩАДКЕ'],
+  rolik6_2: ['ПРОДАКШЕН', 'МИРОВОГО УРОВНЯ'],
+  rolik6_3: ['СОБЫТИЕ, КОТОРОЕ', 'ОБЪЕДИНЯЕТ'],
 };
 
 const params = new URLSearchParams(location.search);
@@ -67,8 +89,9 @@ async function init() {
     DUR = LOGO.DURATION;
   } else {
     await G.initGL({ exposure: 1.05, font: 'fonts/display.ttf' });
-    // one type size for all three: the widest plaque fills 84 % of the width, the tallest <= 78 % of the height
-    const plates = Object.values(CAPTIONS).map(CAP.plateFor);
+    // one type size for every caption, fixed by the first three (already delivered): their widest
+    // plaque fills 84 % of the width, the tallest <= 78 % of the height; later lines stay within ~92 %
+    const plates = ['c1', 'c2', 'c3'].map((k) => CAP.plateFor(CAPTIONS[k]));
     SET = CAP.captionSet(CAPTIONS[CLIP], { w: Math.max(...plates.map((p) => p.w)), h: Math.max(...plates.map((p) => p.h)), fw: 0.84, fh: 0.78 });
     DUR = CAP.DURATION;
   }
