@@ -49,8 +49,14 @@ const ctx = canvas.getContext('2d', { alpha: true });
 const glowCv = document.createElement('canvas');
 glowCv.width = W / 4; glowCv.height = H / 4;
 
-// highlights only, shrunk, blurred, added back: a soft halo that also reads over footage
+const baseCv = document.createElement('canvas');
+baseCv.width = W; baseCv.height = H;
+// highlights only, shrunk, blurred, added back, then clipped to the subject's own alpha: a halo
+// spilling onto the transparent background is near-zero alpha with noisy colour, which shows up as
+// red/green blotches in players and edits that read the straight-alpha ProRes
 function glow(k = 0.32) {
+  const b = baseCv.getContext('2d');
+  b.clearRect(0, 0, W, H); b.drawImage(canvas, 0, 0);
   const g = glowCv.getContext('2d'), w = glowCv.width, h = glowCv.height;
   g.clearRect(0, 0, w, h);
   g.filter = 'brightness(0.55) contrast(3.2) saturate(1.3) blur(1.5px)';
@@ -61,6 +67,7 @@ function glow(k = 0.32) {
   ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.imageSmoothingQuality = 'high';
   ctx.globalAlpha = k; ctx.drawImage(glowCv, 0, 0, w / 2, h / 2, 0, 0, W, H);
   ctx.globalAlpha = k * 0.7; ctx.drawImage(glowCv, w / 2, 0, w / 2, h / 2, 0, 0, W, H);
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'destination-in'; ctx.drawImage(baseCv, 0, 0);
   ctx.restore();
 }
 // a thin warm anamorphic streak through the centre
