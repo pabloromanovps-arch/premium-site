@@ -29,6 +29,7 @@ export async function loadSymbols() {
   SYM = Object.fromEntries(Object.entries(j).map(([k, v]) => [k, { ...v, path: new Path2D(v.d) }]));
   return SYM;
 }
+export const SYM_COLOR = (name) => SYM[name].color;
 export const SYMBOLS = ['plane', 'leaf', 'drop', 'gear', 'mountains', 'rail', 'atom', 'ship'];
 // one industry symbol, centred on (x, y), fitting a size x size box; s scales it about its centre
 export function symbol(ctx, name, x, y, size, color, s = 1, rot = 0) {

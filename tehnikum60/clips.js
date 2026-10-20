@@ -426,7 +426,46 @@ const NAMES2 = {
   name_papa: ['Александр Иванович Богатыревич', 'транспортировщик в цехе полимерной продукции', C.sky],
 };
 
+// ---------------------------------------------------------------- full-frame backgrounds
+// A field in one colour, the industry symbols as a quiet repeating pattern (the business card's
+// back, p. 44) drifting at 15 deg, and the colour chord rising from the lower left corner (the cover,
+// p. 5). Seamless 10 s loop: the pattern moves exactly one tile per loop.
+function fonClip(bg, tint, chordAlpha = 1) {
+  const dur = 10, g = 150;
+  return {
+    dur,
+    samples: () => 1,
+    draw(ctx, t) {
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+      const p = (t % dur) / dur;
+      // the grid moves two tiles right and down per loop; symbol k = (3r + 5c) mod 8 is invariant
+      // under that shift (3*2 + 5*2 = 16), so the last frame meets the first
+      for (let r = -3; r < H / g + 1; r++) for (let c = -3; c < W / g + 1; c++) {
+        const name = B.SYMBOLS[(((r * 3 + c * 5) % 8) + 8) % 8];
+        const x = c * g + (r & 1 ? g / 2 : 0) + p * 2 * g, y = r * g + p * 2 * g;
+        B.symbol(ctx, name, x, y, 54, M.mix(B.SYM_COLOR(name), bg, tint));
+      }
+      // the chord rising from the lower left, as on the brandbook's section covers
+      ctx.save(); ctx.globalAlpha = chordAlpha;
+      ctx.translate(-80, H + 40); ctx.rotate(-B.SLANT);
+      const bw = 92;
+      CHORD.forEach((col, i) => {
+        const hh = 150 + 14 * Math.sin(M.TAU * (p + i / 8));
+        ctx.fillStyle = col;
+        ctx.beginPath();
+        ctx.moveTo(i * bw, 0); ctx.lineTo((i + 1) * bw + 1, 0);
+        ctx.lineTo((i + 1) * bw + 1 + Math.tan(B.SLANT) * hh, -hh); ctx.lineTo(i * bw + Math.tan(B.SLANT) * hh, -hh);
+        ctx.closePath(); ctx.fill();
+      });
+      ctx.restore();
+    },
+  };
+}
+
 export const CLIPS = {
+  fon_light: fonClip('#F2F4F6', 0.82),
+  fon_blue: fonClip(C.blue, 0.8),
+  fon_dark: fonClip(C.ink, 0.8),
   zastavka, final, chart, propusk, perehod,
   ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
