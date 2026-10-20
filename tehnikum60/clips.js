@@ -421,9 +421,9 @@ const perehod = {
 
 const NAMES2 = {
   name_vypusknoy: ['Выпускной в ВТТ', '30 июня 2026 г.', C.blue],
-  // the parents' names are not in the scenario: placeholders to be replaced
-  name_mama: ['Имя Фамилия', 'мама Миши', C.red],
-  name_papa: ['Имя Фамилия', 'папа Миши', C.sky],
+  // Misha's parents (supplied by the client)
+  name_mama: ['Ольга Александровна Богатыревич', 'инженер по транспорту железнодорожного цеха', C.red],
+  name_papa: ['Александр Иванович Богатыревич', 'транспортировщик в цехе полимерной продукции', C.sky],
 };
 
 export const CLIPS = {
