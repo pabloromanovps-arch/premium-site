@@ -120,7 +120,7 @@ const zastavka = {
 const DATA = [['2023', 60.7, C.green], ['2024', 62.8, C.cyan], ['2025', 68.4, C.sky]];
 // isometric axes: +X runs down-right, +Y down-left, Z up. The years step along -Y, i.e. up and to
 // the right across the frame, so the staircase itself reads as growth.
-const ISO = { s: 118, ox: 1010, oy: 830 };
+const ISO = { s: 112, ox: 1010, oy: 790 };
 const CS = Math.cos(Math.PI / 6), SN = Math.sin(Math.PI / 6);
 const iso = (X, Y, Z) => [ISO.ox + (X - Y) * CS * ISO.s, ISO.oy + (X + Y) * SN * ISO.s - Z * ISO.s];
 const STEP = 2.3;
@@ -258,33 +258,178 @@ function nameClip([name, role, col]) {
   };
 }
 
-// ---------------------------------------------------------------- 8 infographic (scene 8)
-// «В создание химического кластера и масштабную модернизацию техникума ПАО «Дорогобуж» вложило свыше 100 млн рублей»
-const invest = {
-  dur: 6,
-  samples: (t) => (t < 2.6 ? 4 : 1),
-  draw(ctx, t) {
-    const x = 150, y = 230;
-    textPlate(ctx, 'СВЫШЕ', x, y, font(40), C.ink, C.white, t, 0, { padX: 26, h: 72 });
-    // the number counts up in the chord
-    const k = ease(t, 0.3, 1.9, E.outCubic);
-    const m = chordText(ctx, String(Math.round(100 * k)), x - 10, y + 360, 330, ease(t, 0.3, 1.2, (q) => q));
-    const fx = x + Math.max(m.w, B.measure(ctx, '100', font(330)).w) + 40;
-    const pw = textW(ctx, 'РУБЛЕЙ', font(84), 36);
-    textPlate(ctx, 'МЛН', fx, y + 110, font(84), C.orange, C.white, t, 0.9, { padX: 36, h: 120, w: pw });
-    textPlate(ctx, 'РУБЛЕЙ', fx, y + 236, font(84), C.red, C.white, t, 1.05, { padX: 36, h: 120, w: pw });
-    // what it was for, word for word
-    const fs = font(36, MONT, 700);
-    const lines = ['вложило ПАО «Дорогобуж» в создание химического', 'кластера и масштабную модернизацию техникума'];
-    const w = Math.max(...lines.map((l) => B.measure(ctx, l, fs).w)) + 130;
-    B.plate(ctx, x, y + 420, w, 150, C.white, ease(t, 1.5, 2.0, (q) => q));
-    B.slash(ctx, x + 32, y + 452, 38, C.orange, ease(t, 1.7, 1.95), 5);
-    lines.forEach((l, i) => B.riseText(ctx, l, x + 92, y + 482 + i * 50, fs, C.ink, ease(t, 1.75 + i * 0.1, 2.15 + i * 0.1)));
+// ---------------------------------------------------------------- infographics (scenes 8, 10, 11)
+// a big number in the chord that counts up, a stack of colour plates beside it, a descriptor below
+function statClip({ prefix, value, fmt, plates, lines, accent, below = false }) {
+  return {
+    dur: 6,
+    samples: (t) => (t < 2.6 ? 4 : 1),
+    draw(ctx, t) {
+      const x = 150, y = 230, big = font(330);
+      if (prefix) textPlate(ctx, prefix, x, y, font(40), C.ink, C.white, t, 0, { padX: 26, h: 72 });
+      const k = ease(t, 0.3, 1.9, E.outCubic);
+      chordText(ctx, fmt(value * k), x - 10, y + 360, 330, ease(t, 0.3, 1.2, (q) => q));
+      // plates beside the number, or (for a wide number) one plate under it
+      const fx = below ? x : x + B.measure(ctx, fmt(value), big).w + 40;
+      const pw = Math.max(...plates.map(([str]) => textW(ctx, str, font(84), 36)));
+      const ph = plates.length > 1 ? 120 : 150, py = below ? y + 400 : y + 360 - plates.length * (ph + 6) + 6 - 4;
+      plates.forEach(([str, col], j) => textPlate(ctx, str, fx, py + j * (ph + 6), font(84), col, C.white, t, 0.9 + j * 0.15, { padX: 36, h: ph, w: pw }));
+      const fs = font(36, MONT, 700), dy = below ? y + 420 + ph + 16 : y + 420;
+      const w = Math.max(...lines.map((l) => B.measure(ctx, l, fs).w)) + 130;
+      B.plate(ctx, x, dy, w, 50 + lines.length * 50, C.white, ease(t, 1.5, 2.0, (q) => q));
+      B.slash(ctx, x + 32, dy + 32, 38, accent, ease(t, 1.7, 1.95), 5);
+      lines.forEach((l, i) => B.riseText(ctx, l, x + 92, dy + 62 + i * 50, fs, C.ink, ease(t, 1.75 + i * 0.1, 2.15 + i * 0.1)));
+    },
+  };
+}
+const thousands = (v) => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+// the number sits higher when its plate goes under it
+const STATS = {
+  // scene 8: «...ПАО «Дорогобуж» вложило свыше 100 млн рублей»
+  invest: { prefix: 'СВЫШЕ', value: 100, fmt: (v) => String(Math.round(v)), plates: [['МЛН', C.orange], ['РУБЛЕЙ', C.red]],
+    lines: ['вложило ПАО «Дорогобуж» в создание химического', 'кластера и масштабную модернизацию техникума'], accent: C.orange },
+  // scene 10 (voice-over): «подготовило более 18 тысяч специалистов разных профессий»
+  stat18000: { prefix: 'БОЛЕЕ', value: 18000, fmt: thousands, plates: [['СПЕЦИАЛИСТОВ', C.blue]], below: true,
+    lines: ['разных профессий подготовил техникум', 'за 60 лет своей деятельности'], accent: C.blue },
+  // scene 11: «85% от общего количества трудоустроенных находят работу на предприятиях Дорогобужского округа»
+  stat85: { prefix: null, value: 85, fmt: (v) => Math.round(v) + '%', plates: [['ДОРОГОБУЖСКИЙ ОКРУГ', C.green]], below: true,
+    lines: ['от общего количества трудоустроенных находят', 'работу на предприятиях Дорогобужского округа'], accent: C.green },
+};
+
+// ---------------------------------------------------------------- dates (voice-over, scenes 4, 6, 8)
+const DATES = {
+  date1965: ['1965', ['началось строительство профессионально-', 'технического училища в Верхнеднепровском'], C.grey],
+  date1966: ['1966', ['в сентябре ТУ-17 приняло', 'первых учащихся — их было триста'], C.slate],
+  date1967: ['1967', ['первый выпуск', 'квалифицированных рабочих'], C.blue],
+  date2008: ['2008', ['училище реорганизовано в Верхнеднепровский', 'технологический техникум'], C.cyan],
+  date2024: ['2024', ['17 июля — соглашение о создании кластера', '«Химические технологии»', 'программы «Профессионалитет»'], C.green],
+  date2025: ['2025', ['1 сентября кластер «Химические технологии»', 'начал подготовку специалистов'], C.orange],
+};
+function dateClip([year, lines, col]) {
+  return {
+    dur: 5,
+    samples: (t) => (t < 1.8 ? 4 : 1),
+    draw(ctx, t) {
+      const x = 110, y = 760;
+      const m = chordText(ctx, year, x, y + 160, 190, ease(t, 0, 0.8, (q) => q));
+      const px = x + m.w + 30, fs = font(34, MONT, 700);
+      const w = Math.max(...lines.map((l) => B.measure(ctx, l, fs).w)) + 120;
+      const ph = 44 + lines.length * 48, py = y + 166 - ph;
+      B.plate(ctx, px, py, w, ph, C.white, ease(t, 0.35, 0.85, (q) => q));
+      ctx.save(); B.clipPlate(ctx, px, py, w, ph, ease(t, 0.35, 0.85, (q) => q));
+      ctx.fillStyle = col; ctx.fillRect(px, py, 12, ph);
+      ctx.restore();
+      B.slash(ctx, px + 36, py + 30, 34, col, ease(t, 0.55, 0.8), 5);
+      lines.forEach((l, i) => B.riseText(ctx, l, px + 90, py + 60 + i * 48, fs, C.ink, ease(t, 0.6 + i * 0.1, 1.0 + i * 0.1)));
+    },
+  };
+}
+
+// ---------------------------------------------------------------- 15 closing title (scene 15)
+// «Верхнеднепровскому технологическому техникуму — 60 лет. История продолжается!»
+const final = {
+  dur: 7,
+  samples: (t) => (t < 2.8 ? 4 : 1),
+  draw(ctx, t, IMG) {
+    const cx = 470, cy = 540;
+    symbolRing(ctx, cx, cy, 372, t, 0.25);
+    logoDisc(ctx, IMG, cx, cy, 300, t, 0.0);
+    const x = 900, f = font(56);
+    [['ВЕРХНЕДНЕПРОВСКОМУ', C.blue], ['ТЕХНОЛОГИЧЕСКОМУ', C.red], ['ТЕХНИКУМУ', C.ink]].forEach(([str, col], i) =>
+      textPlate(ctx, str, x, 140 + i * 98, f, col, C.white, t, 0.4 + i * 0.13, { padX: 30, h: 90 }));
+    const m60 = chordText(ctx, '60', x - 8, 740, 300, ease(t, 0.95, 1.8, (q) => q));
+    textPlate(ctx, 'ЛЕТ', x + m60.w + 30, 556, font(96), C.ink, C.white, t, 1.4, { h: 140 });
+    const fs = font(44, MONT, 700), str = 'История продолжается!';
+    const mw = B.measure(ctx, str, fs).w;
+    B.plate(ctx, x, 788, mw + 130, 100, C.white, ease(t, 1.8, 2.3, (q) => q));
+    B.slash(ctx, x + 32, 816, 44, C.red, ease(t, 2.0, 2.25), 5);
+    B.riseText(ctx, str, x + 100, 856, fs, C.ink, ease(t, 2.05, 2.5));
   },
 };
 
+// ---------------------------------------------------------------- 12 the pass (scene 12)
+// «Михаил Николаевич, технолог цеха слабой азотной кислоты ПАО «Дорогобуж»» as a badge in the
+// brandbook's corporate-badge layout (p. 53): it swings in on its lanyard and settles
+const propusk = {
+  dur: 6,
+  samples: (t) => (t < 3 ? 4 : 1),
+  draw(ctx, t) {
+    const bw = 560, bh = 800, px = W / 2, py = 120;     // pivot: the lanyard clip
+    const kin = spring(t, { stiffness: 60, damping: 7 });
+    const ang = (1 - kin) * 0.5 * Math.cos(t * 2.2) * Math.exp(-0.2 * t) + 0.012 * Math.sin(t * 1.3);
+    const drop = (1 - Math.min(1, kin)) * -900;
+    ctx.save();
+    ctx.translate(px, py + drop); ctx.rotate(ang);
+    // lanyard
+    ctx.fillStyle = C.red;
+    ctx.beginPath(); ctx.moveTo(-40, -800); ctx.lineTo(40, -800); ctx.lineTo(18, 0); ctx.lineTo(-18, 0); ctx.fill();
+    ctx.fillStyle = C.grey; B.rrect(ctx, -30, -10, 60, 40, 8); ctx.fill();
+    // the card
+    const x = -bw / 2, y = 24;
+    ctx.fillStyle = '#E9ECEF'; B.rrect(ctx, x - 14, y - 14, bw + 28, bh + 28, 22); ctx.fill();
+    ctx.fillStyle = '#C9CED4'; B.rrect(ctx, -70, y + 6, 140, 26, 13); ctx.fill();
+    ctx.save();
+    B.rrect(ctx, x, y + 48, bw, bh - 48, 6); ctx.clip();
+    ctx.fillStyle = C.white; ctx.fillRect(x, y + 48, bw, bh - 48);
+    // the chord falling in from the top right corner, as on the brandbook badge
+    ctx.save(); ctx.translate(x + bw - 30, y + 60); ctx.rotate(SLANT_RIBBON);
+    B.chord(ctx, -360, -40, 520, 110, ease(t, 0.5, 1.4, (q) => q));
+    ctx.restore();
+    // photo place: a circle in the industry colour with the chemistry icon
+    const s = pop(t, 0.9, { stiffness: 200, damping: 14 });
+    ctx.save(); ctx.translate(x + 200, y + 330); ctx.scale(s, s);
+    ctx.fillStyle = C.green; ctx.beginPath(); ctx.arc(0, 0, 150, 0, M.TAU); ctx.fill();
+    icon(ctx, 'flask', 0, 0, 150, C.white);
+    ctx.restore();
+    // symbols column with hairlines (p. 53)
+    B.SYMBOLS.forEach((nm, i) => {
+      const yy = y + 230 + i * 50, k = pop(t, 1.1 + i * 0.05, { stiffness: 300, damping: 15 });
+      B.symbol(ctx, nm, x + bw - 52, yy, 30, null, k);
+      if (i < 7 && k > 0.5) { ctx.fillStyle = C.ink; ctx.fillRect(x + bw - 70, yy + 24, 36, 2); }
+    });
+    // role, name, place
+    B.riseText(ctx, 'Технолог', x + 36, y + 600, font(84, MONT, 700), C.ink, ease(t, 1.3, 1.7));
+    B.slash(ctx, x + 40, y + 628, 34, C.green, ease(t, 1.5, 1.7), 4);
+    B.riseText(ctx, 'Михаил', x + 96, y + 650, font(32, MONT, 700), C.ink, ease(t, 1.55, 1.9));
+    B.riseText(ctx, 'Николаевич', x + 96, y + 688, font(32, MONT, 700), C.ink, ease(t, 1.6, 1.95));
+    B.riseText(ctx, 'цех слабой азотной кислоты', x + 36, y + 740, font(24, MONT, 400), C.ink, ease(t, 1.7, 2.05));
+    B.riseText(ctx, 'ПАО «ДОРОГОБУЖ»', x + 36, y + 778, font(28), C.ink, ease(t, 1.8, 2.15));
+    ctx.restore();
+    ctx.restore();
+  },
+};
+const SLANT_RIBBON = (15 * Math.PI) / 180;
+
+// ---------------------------------------------------------------- transition: the chord sweeps across
+const perehod = {
+  dur: 1.6,
+  samples: () => 6,
+  draw(ctx, t) {
+    const n = CHORD.length, bw = (W * 1.5) / n, sk = Math.tan(B.SLANT) * H;
+    CHORD.forEach((c, i) => {
+      // each band runs in from the left, holds over the frame at mid-time, runs out to the right
+      const kin = ease(t, i * 0.035, 0.55 + i * 0.035, E.inOutCubic);
+      const kout = ease(t, 0.85 + i * 0.035, 1.4 + i * 0.035, E.inOutCubic);
+      const x0 = -W * 0.4 - sk + i * bw * 0.95 + lerp(-W * 1.6, 0, kin) + lerp(0, W * 1.9, kout);
+      ctx.fillStyle = c;
+      ctx.beginPath();
+      ctx.moveTo(x0 + sk, 0); ctx.lineTo(x0 + sk + bw + 2, 0); ctx.lineTo(x0 + bw + 2, H); ctx.lineTo(x0, H);
+      ctx.closePath(); ctx.fill();
+    });
+  },
+};
+
+const NAMES2 = {
+  name_vypusknoy: ['Выпускной в ВТТ', '30 июня 2026 г.', C.blue],
+  // the parents' names are not in the scenario: placeholders to be replaced
+  name_mama: ['Имя Фамилия', 'мама Миши', C.red],
+  name_papa: ['Имя Фамилия', 'папа Миши', C.sky],
+};
+
 export const CLIPS = {
-  zastavka, chart, invest,
+  zastavka, final, chart, propusk, perehod,
+  ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
-  ...Object.fromEntries(Object.entries(NAMES).map(([k, v]) => [k, nameClip(v)])),
+  ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),
+  ...Object.fromEntries(Object.entries(DATES).map(([k, v]) => [k, dateClip(v)])),
 };
