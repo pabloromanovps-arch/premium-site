@@ -86,11 +86,29 @@
       </article>`;
   }
 
+  // Эффект автоматизации — только из настоящих данных CRM.
+  const hourMsk = (iso) => Number(new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Europe/Moscow" }).format(new Date(iso)));
+  function renderAuto(all) {
+    const bots = all.filter((r) => r.source !== "site" && r.source !== "crm").length;
+    $("a-bot").textContent = all.length ? `${bots} из ${all.length}` : "0";
+    $("a-night").textContent = all.filter((r) => { const h = hourMsk(r.createdAt); return h < 9 || h >= 21; }).length;
+    const waits = all.map((r) => {
+      const first = r.history.find((h) => h.type === "status" && (h.status === "confirmed" || h.status === "called"));
+      return first ? (new Date(first.at) - new Date(r.createdAt)) / 60000 : null;
+    }).filter((x) => x != null).sort((a, b) => a - b);
+    $("a-speed").textContent = waits.length ? `${Math.max(1, Math.round(waits[Math.floor(waits.length / 2)]))} мин` : "—";
+    $("a-paid").textContent = cart.formatRub(all.filter((r) => r.kind === "order" && r.payment === "paid").reduce((s, r) => s + r.totals.total, 0));
+    const counts = Object.keys(S.SOURCE).filter((k) => k !== "crm").map((k) => [k, all.filter((r) => r.source === k).length]).sort((a, b) => b[1] - a[1]);
+    const max = Math.max(1, ...counts.map((c) => c[1]));
+    $("a-bars").innerHTML = counts.map(([k, n]) => `<li title="${S.SOURCE[k]}: ${n} заявок"><span>${S.SOURCE[k]}</span><span class="track"><span class="fill" style="width:${(n / max) * 100}%"></span></span><span class="val">${n}</span></li>`).join("");
+  }
+
   function render() {
     const f = Object.fromEntries(new FormData(filters));
     if (view === "board") delete f.status;
     const all = store.list();
     const rows = store.list(f);
+    renderAuto(all);
 
     $("stat-new").textContent = all.filter((r) => r.status === "new").length;
     $("stat-work").textContent = all.filter((r) => ["confirmed", "assembling", "delivering", "ready"].includes(r.status)).length;
@@ -104,7 +122,7 @@
     $("empty").hidden = rows.length > 0;
     $("empty-text").textContent = all.length
       ? "По этим фильтрам заявок нет. Измените поиск или фильтры."
-      : "Заявок пока нет. Оформите заказ на сайте или напишите боту в любом мессенджере — заявка появится здесь. Или добавьте демо-данные.";
+      : "Заявок пока нет. Оформите заказ на сайте или напишите боту в любом мессенджере — заявка появится здесь. Или нажмите «Заполнить примерами».";
 
     if (view === "board") {
       $("board").innerHTML = COLUMNS.filter((c) => c.id !== "cancelled" || rows.some((r) => r.status === "cancelled")).map((c) => {
@@ -248,7 +266,10 @@
     try { localStorage.setItem("stebel.crm.howto", "hidden"); } catch (e) { /* не запомнится */ }
   });
 
-  $("seed").addEventListener("click", () => { store.seedDemo(); render(); });
+  $("seed").addEventListener("click", () => {
+    Flora.demo.fill({ storage: S.safeStorage(), sim: Flora.simInstance, realNow: () => now().getTime() });
+    render();
+  });
   $("clear").addEventListener("click", () => {
     if (!confirm("Удалить все заявки из демо-CRM? Это нельзя отменить.")) return;
     store.reset();

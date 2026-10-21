@@ -232,3 +232,19 @@ test("ответы не повторяются слово в слово", () => 
   c.press("Подобрать букет");
   assert.notEqual(c.last().text, first);
 });
+
+test("большой заказ: бот предлагает позвать флориста, а не только готовые букеты", () => {
+  const c = session();
+  c.say("нужно 30 букетов для сотрудниц на корпоратив");
+  assert.match(c.all(), /Большой заказ флорист посчитает индивидуально/);
+  c.press("Позвать флориста");
+  assert.equal(c.state.step, "cb_name");
+  assert.equal(bot.understand("3 букета", NOW).occasion, undefined, "три букета — не опт");
+});
+
+test("имя с инициалом сохраняется как написано", () => {
+  const c = session();
+  c.say("полевой завтра утром, заберу сам");
+  c.say("Ольга Н.");
+  assert.equal(c.state.draft.name, "Ольга Н.");
+});

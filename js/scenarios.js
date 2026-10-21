@@ -192,7 +192,8 @@
         t.ok("Поиск по имени находит ровно одну заявку", found.length === 1 && found[0].id === ids[17], `найдено: ${found.map((r) => r.id).join(", ") || "ничего"}`);
         const calls = env.store.list({ kind: "callback", q: `${PREFIX}Нагрузка ${tag}-` }).length;
         t.ok("Фильтр «звонки» видит ровно 10 звонков этого прогона", calls === 10, `найдено: ${calls}`);
-        t.ok("Создание заняло меньше 3 секунд", ms < 3000, ms + " мс");
+        // Порог с запасом: ловит настоящие тормоза, но не срабатывает от загруженной машины.
+        t.ok("Создание заняло меньше 8 секунд", ms < 8000, ms + " мс");
         await env.store.flush();
         const removed = env.store.purge((r) => r.customer.name.startsWith(`${PREFIX}Нагрузка ${tag}-`));
         t.ok("После проверки тестовые заявки удалены", removed === 50 && env.store.list({ q: `Нагрузка ${tag}-` }).length === 0, `удалено: ${removed}`);

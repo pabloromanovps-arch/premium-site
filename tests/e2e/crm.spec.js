@@ -61,31 +61,41 @@ test("отмена заказа спрашивает подтверждение 
   await expect(page.locator(`.column[data-column="cancelled"] .deal[data-id="${id}"]`)).toBeVisible();
 });
 
-test("пустая CRM, демо-данные, поиск, фильтры, список, CSV, очистка", async ({ page }) => {
+test("пустая CRM, живые примеры, эффект автоматизации, поиск, фильтры, список, CSV, очистка", async ({ page }) => {
   await page.goto("/crm.html");
   await expect(page.locator("#empty")).toContainText("Заявок пока нет");
   await noHorizontalScroll(page);
 
-  await page.getByRole("button", { name: "Добавить демо-данные" }).click();
-  await expect(page.locator(".deal")).toHaveCount(4);
-  await expect(page.locator("#stat-new")).toHaveText("2");
-  await expect(page.locator("#stat-work")).toHaveText("2");
-  await expect(page.locator("#stat-unpaid")).toHaveText("2");
+  await page.getByRole("button", { name: "Заполнить примерами" }).click();
+  await expect(page.locator(".deal")).toHaveCount(17);
+  await expect(page.locator("#stat-new")).toHaveText("4");
+  await expect(page.locator("#a-bot")).toHaveText("11 из 17");
+  await expect(page.locator("#a-paid")).not.toHaveText("0 ₽");
+  await expect(page.locator("#a-bars li").first()).toContainText("Сайт");
+  await noHorizontalScroll(page);
+
+  // в карточке — переписка с ботом, просьба клиента и комментарий менеджера
+  await page.locator(".deal", { hasText: "Ксения Орлова" }).click();
+  await expect(page.locator("#d-history")).toContainText("не говорите, от кого");
+  await expect(page.locator("#d-history")).toContainText("Вручили лично");
+  await page.locator("#d-dialog-wrap summary").click();
+  await expect(page.locator("#d-dialog .client").first()).toHaveText("пионы маме на завтра вечером до 5000");
+  await page.getByRole("button", { name: "Закрыть карточку" }).click();
 
   const search = page.getByPlaceholder("Номер, имя или телефон");
-  await search.fill("Соколова");
+  await search.fill("Ксения");
   await expect(page.locator(".deal")).toHaveCount(1);
   await search.fill("нет такого");
   await expect(page.locator("#empty")).toContainText("По этим фильтрам заявок нет");
   await search.fill("");
-  await page.locator("#filters select[name=source]").selectOption("chat");
-  await expect(page.locator(".deal")).toHaveCount(2);
+  await page.locator("#filters select[name=source]").selectOption("telegram");
+  await expect(page.locator(".deal")).toHaveCount(3);
   await page.locator("#filters select[name=source]").selectOption("");
 
   await page.getByRole("button", { name: "Список" }).click();
-  await expect(page.locator("#rows tr")).toHaveCount(4);
+  await expect(page.locator("#rows tr")).toHaveCount(17);
   await page.locator("#filters select[name=status]").selectOption("assembling");
-  await expect(page.locator("#rows tr")).toHaveCount(1);
+  await expect(page.locator("#rows tr")).toHaveCount(2);
   await page.locator("#filters select[name=status]").selectOption("");
   await page.getByRole("button", { name: "Воронка" }).click();
 

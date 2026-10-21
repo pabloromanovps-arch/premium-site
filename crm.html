@@ -31,6 +31,22 @@
       <button class="icon-btn" type="button" id="howto-close" aria-label="Скрыть подсказку">✕</button>
     </section>
 
+    <details class="auto" id="auto" open>
+      <summary>Что берёт на себя автоматизация</summary>
+      <div class="auto-body">
+        <div class="auto-tiles">
+          <div><p class="num" id="a-bot">0</p><p id="a-bot-l">заявок приняли боты, без менеджера</p></div>
+          <div><p class="num" id="a-night">0</p><p>пришли в нерабочее время — бот ответил сразу, менеджер увидел утром</p></div>
+          <div><p class="num" id="a-speed">—</p><p>типичное время от заявки до звонка флориста</p></div>
+          <div><p class="num" id="a-paid">0 ₽</p><p>оплачено онлайн по ссылке из SMS</p></div>
+        </div>
+        <figure class="channels">
+          <figcaption>Откуда приходят заявки</figcaption>
+          <ul class="bars" id="a-bars"></ul>
+        </figure>
+      </div>
+    </details>
+
     <section class="stats" aria-label="Сводка">
       <div><p class="num" id="stat-new">0</p><p>Ждут звонка флориста</p></div>
       <div><p class="num" id="stat-work">0</p><p>В работе</p></div>
@@ -56,7 +72,7 @@
         <select name="status"><option value="">Все статусы</option></select>
       </label>
       <div class="tools">
-        <button class="btn btn-quiet btn-small" type="button" id="seed">Добавить демо-данные</button>
+        <button class="btn btn-quiet btn-small" type="button" id="seed">Заполнить примерами</button>
         <button class="btn btn-quiet btn-small" type="button" id="export">Скачать CSV</button>
         <button class="btn btn-quiet btn-small" type="button" id="clear">Удалить все заявки</button>
       </div>
@@ -123,6 +139,9 @@
   <script src="js/validate.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/store.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/demo.js"></script>
   <script src="js/crm.js"></script>
 </body>
 </html>

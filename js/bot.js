@@ -30,6 +30,7 @@
 
   const FLOWERS = ["роз", "тюльпан", "пион", "ромаш", "сирен", "гортенз", "ранункул", "калл", "гвоздик", "василь", "эвкалипт", "дельфиниум"];
   const OCCASIONS = [
+    { id: "bulk", re: /корпоратив|оптом|(?:^|[^\d])(?:[2-9]\d|\d{3,})\s*букет/, line: "Большой заказ флорист посчитает индивидуально — цену, сроки и доставку. Нажмите «Позвать флориста», он перезвонит. А пока вот готовые варианты." },
     { id: "wedding", re: /свадьб|невест/, line: "Свадебный букет флорист соберёт индивидуально — могу попросить его позвонить. А пока вот готовые варианты." },
     { id: "birthday", re: /день\s*рожд|днюх|(?:^|[^а-я])др(?![а-я])|юбиле/, line: "На день рождения хорошо смотрятся яркие пышные букеты." },
     { id: "mom", re: /мам|бабушк|8\s*марта/, line: "Для мамы — нежные и тёплые варианты." },
@@ -216,7 +217,9 @@
           break;
         }
         lines.push(lines.length ? "" : pick(state, "v2", ["Вот что могу предложить:", "Посмотрите эти:", "Есть такие варианты:"]));
-        push(m(lines.filter(Boolean).join(" "), list.map((p) => ({ label: `${p.name}, ${rub(p.price)}`, value: "p:" + p.id })).concat({ label: "Другие варианты", value: "all" }), { cards: list.map(card) }));
+        const extra = [{ label: "Другие варианты", value: "all" }];
+        if (occ && (occ.id === "bulk" || occ.id === "wedding")) extra.push({ label: "Позвать флориста", value: "callback" });
+        push(m(lines.filter(Boolean).join(" "), list.map((p) => ({ label: `${p.name}, ${rub(p.price)}`, value: "p:" + p.id })).concat(extra), { cards: list.map(card) }));
         break;
       }
       case "date":
@@ -410,7 +413,7 @@
         else d.address = text.slice(0, 200);
         break;
       case "name": {
-        const name = text.replace(/^(меня зовут|я|это)\s+/i, "").replace(/[.!]+$/, "").trim();
+        const name = text.replace(/^(меня зовут|я|это)\s+/i, "").replace(/!+$/, "").trim();
         if (!name || /\d{3,}/.test(name) || /^(да|нет|ок|ага|угу|хорошо)$/i.test(name)) pre.push("Напишите, пожалуйста, как к вам обращаться.");
         else d.name = name.slice(0, 60);
         break;
