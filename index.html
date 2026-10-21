@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ход — мастерская механических часов</title>
+  <meta name="description" content="Обслуживание, ремонт и реставрация механических часов. Диагностика бесплатно, гарантия на работы 2 года.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Forum&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Перейти к содержанию</a>
+
+  <header class="top">
+    <a class="logo" href="#" aria-label="Ход, на главную">Ход</a>
+    <nav aria-label="Основное меню">
+      <ul>
+        <li><a href="#services">Услуги и цены</a></li>
+        <li><a href="#process">Как мы работаем</a></li>
+        <li><a href="#contacts">Контакты</a></li>
+      </ul>
+    </nav>
+    <a class="btn btn-small" href="#request">Записаться</a>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <div class="hero-text">
+        <h1>Возвращаем часам ход</h1>
+        <p class="lead">Обслуживаем, ремонтируем и реставрируем механические часы — от советской «Победы» до Patek Philippe. Каждый механизм ведёт один мастер, от разборки до выдачи.</p>
+        <div class="hero-actions">
+          <a class="btn" href="#request">Записаться на диагностику</a>
+          <a class="link" href="#services">Посмотреть цены</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Диагностика</dt><dd>бесплатно, 30 минут</dd></div>
+          <div><dt>Гарантия</dt><dd>2 года на работы</dd></div>
+          <div><dt>С 2009 года</dt><dd>более 11 000 механизмов</dd></div>
+        </dl>
+      </div>
+
+      <figure class="dial-wrap" aria-label="Циферблат, показывающий текущее время">
+        <svg class="dial" viewBox="0 0 400 400" role="img" aria-hidden="true">
+          <defs>
+            <radialGradient id="face" cx="50%" cy="42%" r="60%">
+              <stop offset="0%" stop-color="var(--dial-hi)"/>
+              <stop offset="100%" stop-color="var(--dial)"/>
+            </radialGradient>
+          </defs>
+          <circle cx="200" cy="200" r="196" fill="none" stroke="var(--brass)" stroke-width="4"/>
+          <circle cx="200" cy="200" r="186" fill="url(#face)"/>
+          <g id="ticks"></g>
+          <g id="numerals" font-family="Forum, serif" font-size="30" fill="var(--on-dial)" text-anchor="middle"></g>
+          <text x="200" y="140" text-anchor="middle" font-family="Forum, serif" font-size="22" letter-spacing="2" fill="var(--brass)">ХОД</text>
+          <!-- малая секундная стрелка -->
+          <circle cx="200" cy="275" r="34" fill="none" stroke="var(--on-dial)" stroke-opacity=".35"/>
+          <g id="sub-ticks"></g>
+          <line id="sec" x1="200" y1="281" x2="200" y2="246" stroke="var(--brass)" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="200" cy="275" r="2.5" fill="var(--brass)"/>
+          <path id="hour" d="M196 214 L200 98 L204 214 Z" fill="var(--on-dial)"/>
+          <path id="min" d="M197.5 220 L200 52 L202.5 220 Z" fill="var(--on-dial)"/>
+          <circle cx="200" cy="200" r="7" fill="var(--brass)"/>
+        </svg>
+        <figcaption>Москва, сейчас <time id="now"></time></figcaption>
+      </figure>
+    </section>
+
+    <section id="services" class="section">
+      <div class="section-head">
+        <h2>Услуги и цены</h2>
+        <p>Цена зависит от калибра и состояния. Точную сумму называем после диагностики и до начала работ — без неё мы ничего не делаем.</p>
+      </div>
+      <table class="prices">
+        <thead>
+          <tr><th scope="col">Работа</th><th scope="col">Срок</th><th scope="col">Стоимость</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Полное обслуживание механизма<span>Разборка, мойка, замена масел, регулировка хода</span></th>
+            <td>10–14 дней</td><td>от 14 000 ₽</td>
+          </tr>
+          <tr>
+            <th scope="row">Обслуживание хронографа<span>Включая модуль хронографа и проверку сброса</span></th>
+            <td>14–21 день</td><td>от 24 000 ₽</td>
+          </tr>
+          <tr>
+            <th scope="row">Восстановление водозащиты<span>Замена прокладок и тест давлением до 10 атм</span></th>
+            <td>1 день</td><td>от 3 500 ₽</td>
+          </tr>
+          <tr>
+            <th scope="row">Полировка корпуса и браслета<span>С сохранением заводских граней и сатинирования</span></th>
+            <td>3–5 дней</td><td>от 9 000 ₽</td>
+          </tr>
+          <tr>
+            <th scope="row">Реставрация винтажных часов<span>Поиск и изготовление деталей, работа с циферблатом</span></th>
+            <td>от 1 месяца</td><td>по оценке</td>
+          </tr>
+          <tr>
+            <th scope="row">Замена стекла<span>Минеральное или сапфировое, в том числе выпуклое</span></th>
+            <td>1–3 дня</td><td>от 2 500 ₽</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="brands">Работаем с Rolex, Omega, Jaeger-LeCoultre, IWC, Longines, Tudor, Grand Seiko, «Полётом», «Ракетой» и другими марками.</p>
+    </section>
+
+    <section id="process" class="section process">
+      <div class="section-head">
+        <h2>Как мы работаем</h2>
+        <p>От приёмки до выдачи — шесть шагов. О каждом мы сообщаем в мессенджере.</p>
+      </div>
+      <ol class="steps">
+        <li><h3>Приёмка</h3><p>Фотографируем часы при вас и составляем акт с описанием состояния.</p></li>
+        <li><h3>Диагностика</h3><p>Снимаем показания на хронокомпараторе, вскрываем корпус, ищем причину.</p></li>
+        <li><h3>Согласование</h3><p>Присылаем смету и фото механизма. Работы начинаются только после вашего согласия.</p></li>
+        <li><h3>Работы</h3><p>Один мастер ведёт механизм целиком. Заменённые детали возвращаем вам.</p></li>
+        <li><h3>Проверка хода</h3><p>Семь дней часы проходят испытания в разных положениях и на заводе.</p></li>
+        <li><h3>Выдача</h3><p>Отдаём часы с протоколом точности и гарантийным талоном на два года.</p></li>
+      </ol>
+    </section>
+
+    <section class="section quote">
+      <blockquote>
+        <p>«Отец носил эти часы сорок лет, и я думал, что их уже не спасти. Через полтора месяца они идут с точностью +3 секунды в сутки».</p>
+        <footer>Андрей К., Omega Seamaster 1962 года</footer>
+      </blockquote>
+    </section>
+
+    <section id="request" class="section request">
+      <div class="section-head">
+        <h2>Записаться на диагностику</h2>
+        <p>Оставьте заявку — перезвоним в течение часа в рабочее время и подберём удобное время визита.</p>
+      </div>
+      <form class="form" id="request-form" novalidate>
+        <label>Имя
+          <input name="name" autocomplete="name" required>
+        </label>
+        <label>Телефон
+          <input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+7 900 000-00-00" required>
+        </label>
+        <label class="wide">Марка и модель часов
+          <input name="watch" placeholder="Например, Longines Conquest">
+        </label>
+        <label class="wide">Что случилось
+          <textarea name="issue" rows="4" placeholder="Отстают, остановились, запотело стекло…"></textarea>
+        </label>
+        <p class="form-error wide" id="form-error" role="alert" hidden></p>
+        <button class="btn wide" type="submit">Отправить заявку</button>
+        <p class="form-note wide">Отправляя заявку, вы соглашаетесь на обработку персональных данных.</p>
+      </form>
+      <div class="form-done" id="form-done" hidden tabindex="-1">
+        <h3>Заявка отправлена</h3>
+        <p>Перезвоним вам в течение часа. Если удобнее, напишите нам в Telegram.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer id="contacts" class="foot">
+    <div>
+      <p class="logo">Ход</p>
+      <p>Мастерская механических часов</p>
+    </div>
+    <address>
+      Москва, Малая Бронная, 15, офис 4<br>
+      Пн–Сб, 11:00–20:00<br>
+      <a href="tel:+74950000000">+7 495 000-00-00</a><br>
+      <a href="https://t.me/">Telegram</a>
+    </address>
+    <p class="copy">© 2009–<span id="year">2026</span> Мастерская «Ход»</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
