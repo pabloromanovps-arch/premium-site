@@ -131,3 +131,29 @@ def test_gigachat_moves_late_system_messages():
     ])
     assert out[0] == {"role": "system", "content": "s"}
     assert out[2]["role"] == "user" and out[2]["content"].endswith("исправь")
+
+
+def test_provider_retries_429_then_succeeds():
+    statuses = [429, 503]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if statuses:
+            return httpx.Response(statuses.pop(0))
+        return httpx.Response(200, json={"result": {"alternatives": [{"message": {"text": "Ок"}}]}})
+
+    llm = YandexLLM("K", "F", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    assert llm.chat([{"role": "user", "content": "x"}]) == "Ок"
+
+
+def test_provider_does_not_retry_401():
+    calls = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        return httpx.Response(401)
+
+    llm = GigaChatLLM("SECRETKEY", client=httpx.Client(transport=httpx.MockTransport(handler)))
+    with pytest.raises(LLMError) as e:
+        llm.chat([{"role": "user", "content": "x"}])
+    assert "401" in str(e.value) and "SECRETKEY" not in str(e.value)
+    assert len(calls) == 1

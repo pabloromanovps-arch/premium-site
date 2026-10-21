@@ -9,6 +9,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SHOP = ROOT / "companies" / "flower_shop"
 
 
+@pytest.fixture(autouse=True)
+def no_retry_delays(monkeypatch):
+    monkeypatch.setattr("salesai.llm._http.RETRY_DELAYS", (0.0, 0.0, 0.0))
+
+
 @pytest.fixture
 def shop():
     return load_company(SHOP)
