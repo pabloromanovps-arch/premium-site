@@ -172,23 +172,30 @@
     {
       id: "load",
       title: "Нагрузка: 50 заявок подряд",
-      about: "Создаёт 50 заказов и звонков, проверяет нумерацию, поиск и скорость CRM.",
+      about: "Создаёт 50 заказов и звонков, проверяет нумерацию, поиск и скорость CRM, затем удаляет их. Можно запускать сколько угодно раз и вдвоём.",
       async run(env, t) {
+        // У каждого прогона своя метка: повторные запуски и запуски других участников не мешают друг другу.
+        const tag = Math.random().toString(36).slice(2, 7).toUpperCase();
+        const name = (i) => `${PREFIX}Нагрузка ${tag}-${i}`;
         const started = Date.now();
         const ids = [];
         for (let i = 0; i < 50; i++) {
           const phone = "+7916" + String(1000000 + i).slice(-7);
           const rec = i % 5 === 4
-            ? env.store.create({ kind: "callback", source: "chat", name: `${PREFIX}Звонок ${i}`, phone, topic: "Нагрузка" })
-            : env.store.create(orderInput(env, { name: `${PREFIX}Нагрузка ${i}`, phone, source: i % 2 ? "chat" : "site" }));
+            ? env.store.create({ kind: "callback", source: "chat", name: name(i), phone, topic: "Нагрузка" })
+            : env.store.create(orderInput(env, { name: name(i), phone, source: i % 2 ? "chat" : "site" }));
           ids.push(rec.id);
         }
         const ms = Date.now() - started;
-        t.ok("Все 50 номеров уникальны", new Set(ids).size === 50);
-        t.ok("Поиск по имени находит ровно одну заявку", env.store.list({ q: PREFIX + "Нагрузка 17" }).length === 1);
-        t.ok("Фильтр «звонки» видит 10 новых", env.store.list({ kind: "callback", q: PREFIX + "Звонок" }).length >= 10);
+        t.ok("Все 50 номеров уникальны", new Set(ids).size === 50, `уникальных: ${new Set(ids).size}`);
+        const found = env.store.list({ q: name(17) });
+        t.ok("Поиск по имени находит ровно одну заявку", found.length === 1 && found[0].id === ids[17], `найдено: ${found.map((r) => r.id).join(", ") || "ничего"}`);
+        const calls = env.store.list({ kind: "callback", q: `${PREFIX}Нагрузка ${tag}-` }).length;
+        t.ok("Фильтр «звонки» видит ровно 10 звонков этого прогона", calls === 10, `найдено: ${calls}`);
         t.ok("Создание заняло меньше 3 секунд", ms < 3000, ms + " мс");
         await env.store.flush();
+        const removed = env.store.purge((r) => r.customer.name.startsWith(`${PREFIX}Нагрузка ${tag}-`));
+        t.ok("После проверки тестовые заявки удалены", removed === 50 && env.store.list({ q: `Нагрузка ${tag}-` }).length === 0, `удалено: ${removed}`);
       },
     },
   ];

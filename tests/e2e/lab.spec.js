@@ -7,9 +7,12 @@ watchErrors(test);
 test("автопрогон: все сценарии проходят в браузере", async ({ page }) => {
   await page.goto("/lab.html");
   await noHorizontalScroll(page);
-  await page.getByRole("button", { name: "Запустить все сценарии" }).click();
-  await expect(page.locator("#run-status")).toHaveText(/Все \d+ сценариев пройдены/, { timeout: 40000 });
-  await expect(page.locator(".checks .bad")).toHaveCount(0);
+  // дважды подряд: повторный прогон не должен спотыкаться о заявки первого
+  for (let round = 0; round < 2; round++) {
+    await page.getByRole("button", { name: "Запустить все сценарии" }).click();
+    await expect(page.locator("#run-status")).toHaveText(/Все \d+ сценариев пройдены/, { timeout: 40000 });
+    await expect(page.locator(".checks .bad")).toHaveCount(0);
+  }
   await page.getByRole("button", { name: "Удалить тестовые заявки из CRM" }).click();
   await expect(page.locator("#run-status")).toContainText("Удалено тестовых заявок");
 });

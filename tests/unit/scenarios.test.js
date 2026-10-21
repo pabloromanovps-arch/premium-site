@@ -39,3 +39,14 @@ test("сломанная проверка показывается как про
   assert.equal(res.ok, false);
   assert.equal(res.checks.at(-1).detail, "упало");
 });
+
+test("все сценарии можно прогнать несколько раз подряд — как на пульте и вдвоём", async () => {
+  const e = env();
+  for (let round = 1; round <= 3; round++) {
+    for (const sc of SCENARIOS) {
+      const res = await run(sc, e);
+      assert.deepEqual(res.checks.filter((c) => !c.ok).map((c) => `${round}: ${c.name}: ${c.detail}`), [], sc.title);
+    }
+  }
+  assert.equal(e.store.list({ q: "Нагрузка" }).length, 0, "нагрузочные заявки убраны за собой");
+});
