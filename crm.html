@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Стебель CRM</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/crm.css">
+</head>
+<body>
+  <header class="crm-top">
+    <p class="logo">Стебель <span>CRM</span></p>
+    <a href="index.html">Открыть магазин</a>
+  </header>
+
+  <main class="crm">
+    <section class="stats" aria-label="Сводка">
+      <div><p class="num" id="stat-new">0</p><p>Новые</p></div>
+      <div><p class="num" id="stat-work">0</p><p>В работе</p></div>
+      <div><p class="num" id="stat-done">0</p><p>Выполнено</p></div>
+      <div><p class="num" id="stat-sum">0 ₽</p><p>Сумма заказов в работе</p></div>
+    </section>
+
+    <form class="toolbar" id="filters" role="search">
+      <label class="search"><span class="sr-only">Поиск</span>
+        <input type="search" name="q" placeholder="Номер, имя или телефон">
+      </label>
+      <label><span class="sr-only">Статус</span>
+        <select name="status"><option value="">Все статусы</option></select>
+      </label>
+      <label><span class="sr-only">Источник</span>
+        <select name="source"><option value="">Все источники</option></select>
+      </label>
+      <label><span class="sr-only">Тип</span>
+        <select name="kind"><option value="">Заказы и звонки</option></select>
+      </label>
+      <div class="tools">
+        <button class="btn btn-quiet btn-small" type="button" id="seed">Добавить демо-данные</button>
+        <button class="btn btn-quiet btn-small" type="button" id="export">Скачать CSV</button>
+        <button class="btn btn-quiet btn-small" type="button" id="clear">Удалить все заявки</button>
+      </div>
+    </form>
+
+    <div class="layout">
+      <div class="table-wrap">
+        <table class="records" id="records">
+          <thead>
+            <tr>
+              <th scope="col">Номер</th>
+              <th scope="col">Клиент</th>
+              <th scope="col">Что</th>
+              <th scope="col">Когда</th>
+              <th scope="col">Сумма</th>
+              <th scope="col">Статус</th>
+              <th scope="col">Источник</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="empty" hidden>
+          <p id="empty-text"></p>
+          <p class="empty-actions"><a class="btn btn-small" href="index.html">Открыть магазин</a></p>
+        </div>
+      </div>
+
+      <aside class="detail" id="detail" hidden aria-labelledby="d-title">
+        <div class="detail-head">
+          <h2 id="d-title"></h2>
+          <button class="icon-btn" type="button" id="d-close" aria-label="Закрыть карточку">✕</button>
+        </div>
+        <p class="status-line"><span class="chip" id="d-status"></span> <span id="d-meta"></span></p>
+        <dl class="facts" id="d-facts"></dl>
+        <div class="moves" id="d-moves"></div>
+        <p class="field-error" id="d-error" role="alert" hidden></p>
+        <form id="d-comment" class="comment">
+          <label for="d-text">Комментарий</label>
+          <textarea id="d-text" rows="2" placeholder="Например: клиент просит позвонить за час"></textarea>
+          <button class="btn btn-small" type="submit">Добавить комментарий</button>
+        </form>
+        <h3>История</h3>
+        <ol class="history" id="d-history"></ol>
+      </aside>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/crm.js"></script>
+</body>
+</html>

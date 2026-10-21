@@ -1,0 +1,14 @@
+{
+  "name": "stebel-site",
+  "private": true,
+  "description": "Цветочный магазин «Стебель»: сайт, чат-бот и демо-CRM",
+  "scripts": {
+    "start": "node tests/serve.mjs",
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "node --test \"tests/unit/*.test.*\"",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
