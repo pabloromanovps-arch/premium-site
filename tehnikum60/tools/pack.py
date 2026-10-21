@@ -6,7 +6,8 @@ import shutil, zipfile
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
-src = root / "out/tehnikum60"
+src = root / "out/tehnikum60/pm"   # the premultiplied versions
+prev = root / "out/tehnikum60"
 dst = root / "VTT60_GRAFIKA"
 GROUPS = {
     "01_ZASTAVKA_I_FINAL": {"zastavka": "01_ZASTAVKA_Tekhnologii_i_traditsii", "final": "02_FINAL_Istoriya_prodolzhaetsya"},
@@ -25,7 +26,9 @@ GROUPS = {
 }
 README = """VTT 60 — grafika v stile «Professionalitet» / графика в стиле «Профессионалитет»
 
-Все .mov — ProRes 4444 с альфа-каналом (прозрачный фон), 1920x1080, 50 fps.
+Все .mov — ProRes 4444 XQ с альфа-каналом (прозрачный фон), 1920x1080, 50 fps.
+Альфа PREMULTIPLIED: если программа спрашивает, ставьте «Premultiplied» (Premiere: Interpret
+Footage -> Alpha Channel -> Premultiplied; DaVinci: Clip Attributes -> Alpha Mode -> Premultiplied).
 Кладите поверх любого видео. Фоны (02_FONY) — непрозрачные подложки на весь экран,
 10 секунд, бесшовный цикл: растягивайте повтором на нужную длину.
 Последний кадр каждого титра держится — можно продлить стоп-кадром.
@@ -40,7 +43,7 @@ for g, items in GROUPS.items():
         num = list(items).index(clip) + 1
         n = name if name[:2].isdigit() else f"{num:02d}_{name}"
         shutil.copy2(src / f"{clip}.mov", dst / g / f"{n}.mov")
-        shutil.copy2(src / f"{clip}_preview.mp4", dst / g / "PREVYU" / f"{n}.mp4")
+        shutil.copy2(prev / f"{clip}_preview.mp4", dst / g / "PREVYU" / f"{n}.mp4")
     # zips stay under the 400 MB upload limit: a big group is split into parts
     files = sorted(f for f in (dst / g).rglob("*") if f.is_file())
     parts, cur, size = [], [], 0
