@@ -56,3 +56,10 @@ def test_lead_is_complete():
 
     assert Lead(phone="+79161112233", product_ids=["b01"]).is_complete()
     assert not Lead(phone="+79161112233").is_complete()
+
+
+def test_seller_tolerates_numeric_phone_and_null_lists(shop):
+    raw = '{"reply": "Записала", "product_ids": null, "lead": {"phone": 79161112233, "product_ids": null}, "wants_human": false}'
+    out = seller_reply(ScriptedLLM([raw]), shop, HISTORY)
+    assert out.reply == "Записала" and out.product_ids == []
+    assert out.lead.phone == "79161112233" and out.lead.product_ids == []

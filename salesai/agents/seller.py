@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
 from salesai.company import Company
 from salesai.llm.base import LLM, Message, parse_json
@@ -17,13 +17,21 @@ FORMAT_HINT = (
 )
 
 
+def _none_to_list(value):
+    return [] if value is None else value
+
+
 class Lead(BaseModel):
+    model_config = ConfigDict(coerce_numbers_to_str=True)
+
     name: str | None = None
     phone: str | None = None
     product_ids: list[str] = []
     delivery_date: str | None = None
     address: str | None = None
     comment: str | None = None
+
+    _ids = field_validator("product_ids", mode="before")(_none_to_list)
 
     def is_complete(self) -> bool:
         return bool(self.phone) and bool(self.product_ids)
@@ -37,6 +45,8 @@ class SellerOutput(BaseModel):
     product_ids: list[str] = []
     lead: Lead | None = None
     wants_human: bool = False
+
+    _ids = field_validator("product_ids", mode="before")(_none_to_list)
 
 
 def build_system_prompt(company: Company) -> str:
