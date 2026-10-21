@@ -119,3 +119,15 @@ def test_get_llm_role_override(monkeypatch):
     monkeypatch.setenv("YANDEX_FOLDER_ID", "f")
     assert isinstance(get_llm("assistant"), GigaChatLLM)
     assert isinstance(get_llm("judge"), YandexLLM)
+
+
+def test_gigachat_moves_late_system_messages():
+    from salesai.llm.gigachat import _normalize
+
+    out = _normalize([
+        {"role": "system", "content": "s"},
+        {"role": "user", "content": "u"},
+        {"role": "system", "content": "исправь"},
+    ])
+    assert out[0] == {"role": "system", "content": "s"}
+    assert out[2]["role"] == "user" and out[2]["content"].endswith("исправь")

@@ -15,6 +15,17 @@ OAUTH_URL = "https://ngw.devices.sberbank.ru:9443/api/v2/oauth"
 CHAT_URL = "https://gigachat.devices.sberbank.ru/api/v1/chat/completions"
 
 
+def _normalize(messages: list[Message]) -> list[dict]:
+    """GigaChat принимает system только первым сообщением: остальные служебные указания идут как user."""
+    out = []
+    for i, m in enumerate(messages):
+        if m["role"] == "system" and i > 0:
+            out.append({"role": "user", "content": "[Служебное указание, не от покупателя] " + m["content"]})
+        else:
+            out.append({"role": m["role"], "content": m["content"]})
+    return out
+
+
 class GigaChatLLM:
     def __init__(
         self,
@@ -72,7 +83,7 @@ class GigaChatLLM:
             headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
             json={
                 "model": self.model,
-                "messages": [{"role": m["role"], "content": m["content"]} for m in messages],
+                "messages": _normalize(messages),
                 "temperature": temperature,
             },
         )
