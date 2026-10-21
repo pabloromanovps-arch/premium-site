@@ -20,6 +20,7 @@ GROUPS = {
         "Remont_avtotransporta", "Svarshchik"], 1)},
     "06_PLASHKI_LYUDI": {"name_misha": "Misha", "name_mama": "Mama_Bogatyrevich_Olga", "name_papa": "Papa_Bogatyrevich_Aleksandr",
                          "name_polina": "Polina_Chukaeva", "name_svetlana": "Svetlana_Prokhvataeva",
+                         "name_lyudmila": "Lyudmila_Khitretsova", "name_ivan": "Ivan_Timoshkin",
                          "name_vypusknoy": "Vypusknoy_30_iyunya_2026", "propusk": "Propusk_Mikhail_Nikolaevich"},
 }
 README = """VTT 60 — grafika v stile «Professionalitet» / графика в стиле «Профессионалитет»
@@ -40,7 +41,16 @@ for g, items in GROUPS.items():
         n = name if name[:2].isdigit() else f"{num:02d}_{name}"
         shutil.copy2(src / f"{clip}.mov", dst / g / f"{n}.mov")
         shutil.copy2(src / f"{clip}_preview.mp4", dst / g / "PREVYU" / f"{n}.mp4")
-    with zipfile.ZipFile(zips / f"{g}.zip", "w", zipfile.ZIP_STORED) as z:
-        for f in sorted((dst / g).rglob("*")):
-            if f.is_file(): z.write(f, f.relative_to(dst).as_posix())
-    print(g, round((zips / f"{g}.zip").stat().st_size / 2**20), "MB")
+    # zips stay under the 400 MB upload limit: a big group is split into parts
+    files = sorted(f for f in (dst / g).rglob("*") if f.is_file())
+    parts, cur, size = [], [], 0
+    for f in files:
+        n = f.stat().st_size
+        if cur and size + n > 380 * 2**20: parts.append(cur); cur, size = [], 0
+        cur.append(f); size += n
+    parts.append(cur)
+    for k, part in enumerate(parts, 1):
+        zp = zips / (f"{g}.zip" if len(parts) == 1 else f"{g}_chast{k}.zip")
+        with zipfile.ZipFile(zp, "w", zipfile.ZIP_STORED) as z:
+            for f in part: z.write(f, f.relative_to(dst).as_posix())
+        print(zp.name, round(zp.stat().st_size / 2**20), "MB")
