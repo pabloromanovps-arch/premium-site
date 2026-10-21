@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Песочница «{{COMPANY}}»</title>
+<style>
+  :root { --bg:#f6f4f1; --card:#fff; --ink:#222; --muted:#777; --accent:#c2416b; --line:#e6e1da; --warn:#fff3cd; --warn-ink:#7a5a00; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--ink); }
+  header { padding:14px 20px; background:var(--card); border-bottom:1px solid var(--line); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  header .model { color:var(--muted); font-size:13px; }
+  #banner { display:none; background:var(--warn); color:var(--warn-ink); padding:10px 20px; border-bottom:1px solid #f0d98a; }
+  main { display:grid; grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.2fr); gap:16px; padding:16px; height:calc(100vh - 60px); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; display:flex; flex-direction:column; min-height:0; }
+  .card-head { padding:10px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  #messages { flex:1; overflow:auto; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .msg { max-width:80%; padding:8px 12px; border-radius:12px; white-space:pre-wrap; }
+  .msg.user { align-self:flex-end; background:#e9f2ff; }
+  .msg.assistant { align-self:flex-start; background:#f3eef0; }
+  .msg .meta { font-size:12px; color:var(--muted); margin-top:4px; }
+  .msg.error { align-self:center; background:var(--warn); color:var(--warn-ink); }
+  form.send { display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); }
+  input, select, textarea { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; }
+  form.send input { flex:1; }
+  button { font:inherit; padding:8px 14px; border:0; border-radius:8px; background:var(--accent); color:#fff; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); border:1px solid var(--accent); }
+  button:disabled { opacity:.5; cursor:default; }
+  .tabs { display:flex; gap:6px; }
+  .tabs button { background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .tabs button.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .pane { flex:1; overflow:auto; padding:14px; display:none; }
+  .pane.active { display:block; }
+  table { border-collapse:collapse; width:100%; font-size:14px; }
+  th, td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  .badge { display:inline-block; padding:1px 8px; border-radius:10px; font-size:12px; background:#fde2e8; color:var(--accent); }
+  .summary { font-size:13px; color:var(--muted); white-space:pre-wrap; }
+  .sim-form { display:flex; gap:10px; flex-wrap:wrap; align-items:end; margin-bottom:12px; }
+  .sim-form label { display:flex; flex-direction:column; font-size:13px; color:var(--muted); gap:4px; }
+  progress { width:100%; height:12px; }
+  #report h1 { font-size:20px; } #report h2 { font-size:17px; margin-top:22px; } #report h3 { font-size:15px; }
+  #report blockquote { margin:6px 0; padding:4px 10px; border-left:3px solid var(--line); color:var(--muted); }
+  @media (max-width: 800px) { main { grid-template-columns:1fr; height:auto; } .card { min-height:420px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>💐 Песочница «{{COMPANY}}»</h1>
+  <span class="model" id="model">проверяю модель…</span>
+</header>
+<div id="banner"></div>
+<main>
+  <section class="card">
+    <div class="card-head">
+      <strong>Чат с ассистентом</strong>
+      <button class="ghost" id="new-dialog">Новый диалог</button>
+    </div>
+    <div id="messages"></div>
+    <form class="send" id="send-form">
+      <input id="text" maxlength="5000" placeholder="Напишите как покупатель: «Нужен букет маме до 4000 ₽»" autocomplete="off">
+      <button id="send-btn">Отправить</button>
+    </form>
+  </section>
+  <section class="card">
+    <div class="card-head">
+      <div class="tabs">
+        <button data-tab="leads" class="active">Заявки</button>
+        <button data-tab="sim">Симуляция</button>
+      </div>
+      <button class="ghost" id="refresh-leads">Обновить</button>
+    </div>
+    <div class="pane active" id="pane-leads">
+      <table>
+        <thead><tr><th>Клиент</th><th>Товары</th><th>Доставка</th><th>Статус</th></tr></thead>
+        <tbody id="leads"><tr><td colspan="4">Заявок пока нет.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="pane" id="pane-sim">
+      <form class="sim-form" id="sim-form">
+        <label>Персон <input type="number" id="sim-personas" value="30" min="1" max="100" style="width:90px"></label>
+        <label>Ходов на диалог <input type="number" id="sim-turns" value="8" min="1" max="20" style="width:90px"></label>
+        <label>A/B-вариант <select id="sim-variant"><option value="">— без сравнения —</option></select></label>
+        <button id="sim-btn">Запустить</button>
+      </form>
+      <div id="sim-progress" style="display:none"><progress id="sim-bar" value="0" max="1"></progress> <span id="sim-text"></span></div>
+      <div id="report"></div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (s) => document.querySelector(s);
+let dialogId = null;
+
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || `Ошибка ${r.status}`);
+  return data;
+}
+
+function addMessage(role, text, meta) {
+  const div = document.createElement("div");
+  div.className = "msg " + role;
+  div.textContent = text;
+  if (meta) { const m = document.createElement("div"); m.className = "meta"; m.textContent = meta; div.appendChild(m); }
+  $("#messages").appendChild(div);
+  $("#messages").scrollTop = 1e9;
+}
+
+async function newDialog() {
+  $("#messages").innerHTML = "";
+  dialogId = (await api("/api/dialogs", { method: "POST" })).dialog_id;
+  addMessage("assistant", "Здравствуйте! Я ассистент магазина «{{COMPANY}}». Подскажу с букетом и оформлю заказ.");
+}
+
+$("#send-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const text = $("#text").value.trim();
+  if (!text) return;
+  $("#text").value = "";
+  addMessage("user", text);
+  $("#send-btn").disabled = true;
+  try {
+    const t = await api(`/api/dialogs/${dialogId}/messages`, { method: "POST", body: JSON.stringify({ text }) });
+    const meta = [];
+    if (t.attempts > 1) meta.push(`Контролёр исправил черновик (${t.attempts - 1})`);
+    if (t.escalated) meta.push("Передано менеджеру" + (t.reasons.length ? ": " + t.reasons.join("; ") : ""));
+    if (t.lead_id) meta.push(`Заявка №${t.lead_id} обновлена`);
+    addMessage("assistant", t.reply, meta.join(" · "));
+    loadLeads();
+  } catch (err) {
+    addMessage("error", err.message);
+  } finally {
+    $("#send-btn").disabled = false;
+    $("#text").focus();
+  }
+});
+
+async function loadLeads() {
+  const leads = await api("/api/leads");
+  $("#leads").innerHTML = leads.length ? leads.map(l => `
+    <tr>
+      <td>${esc(l.name || "—")}<br>${esc(l.phone || "")}</td>
+      <td>${esc(l.product_names.join(", ") || "—")}</td>
+      <td>${esc(l.delivery_date || "")}<br>${esc(l.address || "")}</td>
+      <td>${l.complete ? "полная" : "черновик"} ${l.escalated ? '<span class="badge">менеджер</span>' : ""}
+        ${l.summary ? `<div class="summary">${esc(l.summary)}</div>` : ""}</td>
+    </tr>`).join("") : '<tr><td colspan="4">Заявок пока нет.</td></tr>';
+}
+
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("active", x === b));
+  document.querySelectorAll(".pane").forEach(p => p.classList.toggle("active", p.id === "pane-" + b.dataset.tab));
+}));
+
+function inline(s) {
+  return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/(^|\s)_(.+?)_(?=\s|$)/g, "$1<em>$2</em>")
+    .replace(/`(.+?)`/g, "<code>$1</code>").replace(/\[(.+?)\]\((#[\w-]+)\)/g, '<a href="$2">$1</a>');
+}
+
+function markdown(md) {
+  const out = []; let table = null; let list = false;
+  const flush = () => {
+    if (table) { out.push("<table>" + table.map((r, i) => "<tr>" + r.map(c => i ? `<td>${inline(c)}</td>` : `<th>${inline(c)}</th>`).join("") + "</tr>").join("") + "</table>"); table = null; }
+    if (list) { out.push("</ul>"); list = false; }
+  };
+  for (const line of md.split("\n")) {
+    if (/^\|/.test(line)) { if (/^\|[-| ]+\|$/.test(line)) continue; (table ||= []).push(line.slice(1, -1).split("|").map(c => c.trim())); continue; }
+    if (/^\s*- /.test(line) || /^\d+\. /.test(line)) { if (table) flush(); if (!list) { out.push("<ul>"); list = true; } out.push(`<li>${inline(line.replace(/^\s*(- |\d+\. )/, ""))}</li>`); continue; }
+    flush();
+    let m;
+    if ((m = line.match(/^<a id="([\w-]+)"><\/a>$/))) out.push(`<a id="${m[1]}"></a>`);
+    else if ((m = line.match(/^(#{1,3}) (.*)/))) out.push(`<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`);
+    else if (line.startsWith("> ")) out.push(`<blockquote>${inline(line.slice(2))}</blockquote>`);
+    else if (line.trim()) out.push(`<p>${inline(line)}</p>`);
+  }
+  flush();
+  return out.join("\n");
+}
+
+$("#sim-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("#sim-btn").disabled = true;
+  $("#report").innerHTML = "";
+  try {
+    const body = { personas: +$("#sim-personas").value, max_turns: +$("#sim-turns").value, variant: $("#sim-variant").value || null };
+    const { run_id } = await api("/api/simulations", { method: "POST", body: JSON.stringify(body) });
+    $("#sim-progress").style.display = "block";
+    while (true) {
+      const s = await api(`/api/simulations/${run_id}`);
+      $("#sim-bar").max = s.progress[1]; $("#sim-bar").value = s.progress[0];
+      $("#sim-text").textContent = `Диалогов: ${s.progress[0]} из ${s.progress[1]}`;
+      if (s.status === "done") { $("#sim-text").textContent += ` · отчёт сохранён: ${s.path}`; $("#report").innerHTML = markdown(s.markdown); break; }
+      if (s.status === "error") { $("#report").innerHTML = `<p class="msg error">Симуляция упала: ${esc(s.error)}</p>`; break; }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  } catch (err) {
+    $("#report").innerHTML = `<p class="msg error">${esc(err.message)}</p>`;
+  } finally {
+    $("#sim-btn").disabled = false;
+  }
+});
+
+$("#new-dialog").addEventListener("click", newDialog);
+$("#refresh-leads").addEventListener("click", loadLeads);
+
+(async () => {
+  const s = await api("/api/status");
+  $("#model").textContent = s.llm ? `модель: ${s.llm}` : "модель не подключена";
+  if (!s.llm) { $("#banner").style.display = "block"; $("#banner").textContent = "⚠️ " + s.llm_error + ". Чат и симуляция заработают после подключения модели."; }
+  for (const v of s.variants) $("#sim-variant").insertAdjacentHTML("beforeend", `<option value="${esc(v.file)}">${esc(v.name)}</option>`);
+  await newDialog();
+  loadLeads();
+})();
+</script>
+</body>
+</html>

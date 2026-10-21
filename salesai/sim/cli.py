@@ -11,10 +11,12 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from salesai.company import apply_variant, load_company, load_variant
-from salesai.llm.base import LLMError
+from typing import Callable
+
+from salesai.company import Company, apply_variant, load_company, load_variant
+from salesai.llm.base import LLM, LLMError
 from salesai.llm.factory import get_llm
-from salesai.sim.personas import load_personas
+from salesai.sim.personas import Persona, load_personas
 from salesai.sim.report import SimReport, analyze, render_markdown
 from salesai.sim.runner import run_simulation
 
@@ -28,6 +30,35 @@ def save_report(out_dir: str | Path, company_id: str, markdown: str, reports: li
     raw = "[\n" + ",\n".join(r.model_dump_json(indent=1) for r in reports) + "\n]\n"
     (out / f"{stem}.json").write_text(raw, encoding="utf-8")
     return path
+
+
+def simulate(
+    company: Company,
+    personas: list[Persona],
+    llms: dict[str, LLM],
+    *,
+    max_turns: int = 8,
+    workers: int = 4,
+    variant: tuple[str, dict] | None = None,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> tuple[str, list[SimReport]]:
+    """Один прогон или A/B (A — текущая версия, B — с вариантом). Возвращает Markdown и сырые отчёты."""
+    total = len(personas) * (2 if variant else 1)
+
+    def run(c: Company, offset: int, name: str | None) -> SimReport:
+        report_progress = (lambda done, _: on_progress(offset + done, total)) if on_progress else None
+        return run_simulation(
+            c, personas, llms["assistant"], llms["customer"], llms["judge"],
+            max_turns=max_turns, workers=workers, variant_name=name, on_progress=report_progress,
+        )
+
+    base = run(company, 0, None)
+    if variant is None:
+        return render_markdown(base, analyze(llms["judge"], base)), [base]
+    name, patch = variant
+    other = run(apply_variant(company, patch), len(personas), name)
+    insights = [f"A: {x}" for x in analyze(llms["judge"], base)] + [f"B: {x}" for x in analyze(llms["judge"], other)]
+    return render_markdown(other, insights, baseline=base), [base, other]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -49,27 +80,12 @@ def main(argv: list[str] | None = None) -> int:
 
     company = load_company(args.company)
     personas = load_personas(Path(args.company) / "personas.json")[: args.personas]
+    variant = load_variant(args.variant) if args.variant else None
 
-    def progress(label: str):
-        return lambda done, total: print(f"[{label}] {done}/{total}", file=sys.stderr, flush=True)
+    def progress(done: int, total: int) -> None:
+        print(f"[симуляция] {done}/{total}", file=sys.stderr, flush=True)
 
-    def run(c, label, variant_name=None) -> SimReport:
-        return run_simulation(
-            c, personas, llms["assistant"], llms["customer"], llms["judge"],
-            max_turns=args.max_turns, workers=args.workers, variant_name=variant_name, on_progress=progress(label),
-        )
-
-    base = run(company, "A" if args.variant else "прогон")
-    reports = [base]
-    if args.variant:
-        name, patch = load_variant(args.variant)
-        variant = run(apply_variant(company, patch), "B", name)
-        reports.append(variant)
-        insights = [f"A: {x}" for x in analyze(llms["judge"], base)] + [f"B: {x}" for x in analyze(llms["judge"], variant)]
-        markdown = render_markdown(variant, insights, baseline=base)
-    else:
-        markdown = render_markdown(base, analyze(llms["judge"], base))
-
+    markdown, reports = simulate(company, personas, llms, max_turns=args.max_turns, workers=args.workers, variant=variant, on_progress=progress)
     path = save_report(args.out, company.id, markdown, reports)
     print(path)
     return 0
