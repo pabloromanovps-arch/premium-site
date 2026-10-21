@@ -64,8 +64,8 @@ if (AT) {
   const mov = path.join(ROOT, 'out', 'tehnikum60', `${CLIP}.mov`);
   const prev = path.join(ROOT, 'out', 'tehnikum60', `${CLIP}_preview.mp4`);
   const run = (a) => { const r = spawnSync('ffmpeg', ['-v', 'error', '-y', ...a], { stdio: 'inherit' }); if (r.status) process.exit(r.status); };
-  run(['-framerate', String(FPS), '-i', seq, '-c:v', 'prores_ks', '-profile:v', '4444', '-pix_fmt', 'yuva444p10le',
-    '-alpha_bits', '8', '-qscale:v', '6', '-vendor', 'apl0', mov]);   // ~half the size of the default, still visually lossless
+  run(['-framerate', String(FPS), '-i', seq, '-c:v', 'prores_ks', '-profile:v', '4444xq', '-pix_fmt', 'yuva444p10le',
+    '-alpha_bits', '16', '-vendor', 'apl0', mov]);   // ProRes 4444 XQ, 16-bit alpha: clean edges in the edit
   run(['-f', 'lavfi', '-i', `color=c=0x2b2b30:s=1920x1080:r=${FPS}`, '-framerate', String(FPS), '-i', seq,
     '-filter_complex', '[0][1]overlay=shortest=1,format=yuv420p', '-c:v', 'libx264', '-crf', '16', '-movflags', '+faststart', prev]);
   console.log(`-> ${mov}\n-> ${prev}`);

@@ -48,14 +48,15 @@ function chordText(ctx, str, x, y, size, p, { align = 'left' } = {}) {
   // mask: the glyphs; fill: the chord sliding in under them
   ctx.beginPath(); ctx.rect(x0 - 40, y - m.asc - 40, m.w + 80, m.asc + m.desc + 80); ctx.clip();
   const tmp = chordText.cv || (chordText.cv = document.createElement('canvas'));
-  tmp.width = W; tmp.height = H;
+  tmp.width = W * B.SS; tmp.height = H * B.SS;
   const c = tmp.getContext('2d');
+  c.setTransform(B.SS, 0, 0, B.SS, 0, 0);
   c.clearRect(0, 0, W, H);
   B.chord(c, x0 - 20, y - m.asc - 10, m.w + 40, m.asc + m.desc + 20, p);
   c.globalCompositeOperation = 'destination-in';
   c.font = f; c.fillStyle = '#000'; c.fillText(str, x0, y);
   c.globalCompositeOperation = 'source-over';
-  ctx.drawImage(tmp, 0, 0);
+  ctx.drawImage(tmp, 0, 0, W, H);
   ctx.restore();
   return m;
 }
@@ -141,7 +142,7 @@ function isoBox(ctx, X, Y, Z0, w, d, h, top, left, right) {
 function floorText(ctx, str, X, Y, f, color) {
   const [x, y] = iso(X, Y, 0);
   ctx.save();
-  ctx.setTransform(CS, -SN, CS, SN, x, y);
+  ctx.transform(CS, -SN, CS, SN, x, y);   // relative to the current (supersampled) transform
   ctx.font = f; ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(str, 0, 0);
   ctx.restore();
@@ -238,6 +239,8 @@ function profClip([l1, l2, col, ic]) {
 const NAMES = {
   name_polina: ['Полина Чукаева', 'выпускница ВТТ', C.green],
   name_svetlana: ['Светлана Прохватаева', 'выпускница ВТТ', C.cyan],
+  name_lyudmila: ['Людмила Хитрецова', 'выпускница ВТТ', C.orange],
+  name_ivan: ['Иван Тимошкин', 'выпускник ВТТ', C.blue],
   name_misha: ['Миша', 'ученик 9 класса', C.orange],
 };
 function nameClip([name, role, col]) {

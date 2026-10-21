@@ -19,6 +19,9 @@ export const LIGHT = { [C.cyan]: '#4DC0E3', [C.green]: '#77D1B5', [C.orange]: '#
   [C.grey]: '#C9CED4', [C.red]: '#F47B64', [C.blue]: '#4A8CC4', [C.sky]: '#6FA8EC' };
 
 export const DELA = 'Dela', MONT = 'Mont';
+// supersampling factor: frames are drawn at SS x the output size and filtered down (film.js)
+export let SS = 1;
+export const setSS = (k) => { SS = k; };
 export const font = (size, family = DELA, weight = 400) => `${weight} ${Math.round(size)}px ${family}`;
 export const SLANT = (15 * Math.PI) / 180;   // the house angle
 
