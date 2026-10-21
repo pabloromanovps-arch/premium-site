@@ -128,7 +128,7 @@ export function rrect(ctx, x, y, w, h, r) {
 }
 // a plate that wipes open from its left edge (p 0..1); returns the visible width
 export function plate(ctx, x, y, w, h, color, p = 1, r = 0) {
-  const k = E.outExpo(clamp(p));
+  const k = E.outCubic(clamp(p));   // a calm deceleration: an expo start reads as a jump
   if (k <= 0) return 0;
   ctx.fillStyle = color;
   rrect(ctx, x, y, w * k, h, r); ctx.fill();
@@ -136,7 +136,7 @@ export function plate(ctx, x, y, w, h, color, p = 1, r = 0) {
 }
 // clip subsequent drawing to the open part of a plate
 export function clipPlate(ctx, x, y, w, h, p = 1, r = 0) {
-  rrect(ctx, x, y, w * E.outExpo(clamp(p)), h, r); ctx.clip();
+  rrect(ctx, x, y, w * E.outCubic(clamp(p)), h, r); ctx.clip();
 }
 
 // a pop: spring scale 0 -> 1 with overshoot, starting at t0 (seconds)

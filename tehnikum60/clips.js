@@ -89,7 +89,7 @@ const textW = (ctx, str, f, padX = 34) => B.measure(ctx, str, f).w + padX * 2;
 // «Технологии и традиции: 60 лет мастерства и профессионализма»
 const zastavka = {
   dur: 6,
-  samples: (t) => (t < 2.4 ? 4 : 1),
+  samples: (t) => (t < 3.2 ? 8 : 1),
   draw(ctx, t, IMG) {
     const cx = 470, cy = 540;
     symbolRing(ctx, cx, cy, 372, t, 0.25);
@@ -149,7 +149,7 @@ function floorText(ctx, str, X, Y, f, color) {
 }
 const chart = {
   dur: 8,
-  samples: (t) => (t < 3.6 ? 4 : 1),
+  samples: (t) => (t < 4.4 ? 8 : 1),
   draw(ctx, t) {
     headPlate(ctx, 110, 110, t, 0.1, 'ТРУДОУСТРОЙСТВО', ['выпускников техникума', 'по специальности'], { size: 62, subSize: 34, accent: C.green });
     // the slab under the staircase
@@ -211,7 +211,7 @@ const PROFS = {
 function profClip([l1, l2, col, ic]) {
   return {
     dur: 5,
-    samples: (t) => (t < 1.6 ? 4 : 1),
+    samples: (t) => (t < 2.4 ? 8 : 1),
     draw(ctx, t) {
       const x = 110, y = 770, h = 200;
       // the colour tile with the speciality's icon
@@ -246,7 +246,7 @@ const NAMES = {
 function nameClip([name, role, col]) {
   return {
     dur: 5,
-    samples: (t) => (t < 1.5 ? 4 : 1),
+    samples: (t) => (t < 2.3 ? 8 : 1),
     draw(ctx, t) {
       const x = 110, y = 800, h = 170;
       // a vertical slice of the chord as the plate's spine
@@ -266,7 +266,7 @@ function nameClip([name, role, col]) {
 function statClip({ prefix, value, fmt, plates, lines, accent, below = false }) {
   return {
     dur: 6,
-    samples: (t) => (t < 2.6 ? 4 : 1),
+    samples: (t) => (t < 3.4 ? 8 : 1),
     draw(ctx, t) {
       const x = 150, y = 230, big = font(330);
       if (prefix) textPlate(ctx, prefix, x, y, font(40), C.ink, C.white, t, 0, { padX: 26, h: 72 });
@@ -311,7 +311,7 @@ const DATES = {
 function dateClip([year, lines, col]) {
   return {
     dur: 5,
-    samples: (t) => (t < 1.8 ? 4 : 1),
+    samples: (t) => (t < 2.6 ? 8 : 1),
     draw(ctx, t) {
       const x = 110, y = 760;
       const m = chordText(ctx, year, x, y + 160, 190, ease(t, 0, 0.8, (q) => q));
@@ -332,7 +332,7 @@ function dateClip([year, lines, col]) {
 // «Верхнеднепровскому технологическому техникуму — 60 лет. История продолжается!»
 const final = {
   dur: 7,
-  samples: (t) => (t < 2.8 ? 4 : 1),
+  samples: (t) => (t < 3.6 ? 8 : 1),
   draw(ctx, t, IMG) {
     const cx = 470, cy = 540;
     symbolRing(ctx, cx, cy, 372, t, 0.25);
@@ -355,7 +355,7 @@ const final = {
 // brandbook's corporate-badge layout (p. 53): it swings in on its lanyard and settles
 const propusk = {
   dur: 6,
-  samples: (t) => (t < 3 ? 4 : 1),
+  samples: (t) => (t < 3.8 ? 8 : 1),
   draw(ctx, t) {
     const bw = 560, bh = 800, px = W / 2, py = 120;     // pivot: the lanyard clip
     const kin = spring(t, { stiffness: 60, damping: 7 });
@@ -405,15 +405,18 @@ const SLANT_RIBBON = (15 * Math.PI) / 180;
 
 // ---------------------------------------------------------------- transition: the chord sweeps across
 const perehod = {
-  dur: 1.6,
-  samples: () => 6,
+  dur: 2.0,
+  samples: () => 12,
   draw(ctx, t) {
-    const n = CHORD.length, bw = (W * 1.5) / n, sk = Math.tan(B.SLANT) * H;
+    // the eight bands sweep across as one wipe: in from the left (covering the frame at 0.9-1.1 s,
+    // where the cut goes), then out to the right. One smooth curve for all bands, heavy
+    // motion blur: nothing jumps.
+    const n = CHORD.length, bw = (W * 1.6) / n, sk = Math.tan(B.SLANT) * H;
+    const span = W * 1.6 + sk + 200;
     CHORD.forEach((c, i) => {
-      // each band runs in from the left, holds over the frame at mid-time, runs out to the right
-      const kin = ease(t, i * 0.035, 0.55 + i * 0.035, E.inOutCubic);
-      const kout = ease(t, 0.85 + i * 0.035, 1.4 + i * 0.035, E.inOutCubic);
-      const x0 = -W * 0.4 - sk + i * bw * 0.95 + lerp(-W * 1.6, 0, kin) + lerp(0, W * 1.9, kout);
+      // a rigid wipe: all bands share one curve, so their widths never change mid-move
+      const kin = ease(t, 0, 0.9, E.inOutSine), kout = ease(t, 1.1, 2.0, E.inOutSine);
+      const x0 = -sk - 100 + i * bw - span * (1 - kin) + span * kout;
       ctx.fillStyle = c;
       ctx.beginPath();
       ctx.moveTo(x0 + sk, 0); ctx.lineTo(x0 + sk + bw + 2, 0); ctx.lineTo(x0 + bw + 2, H); ctx.lineTo(x0, H);
