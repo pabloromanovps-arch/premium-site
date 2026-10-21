@@ -55,3 +55,12 @@ def test_guard_flags_long_reply_and_foreign_contacts(shop):
 
 def test_guard_escalates_empty_reply(shop):
     assert guard_check(shop, SellerOutput(reply="   ")).action == "escalate"
+
+
+def test_guard_allows_discount_on_one_item(shop):
+    from salesai.company import apply_variant
+
+    v = apply_variant(shop, {"promos": [{"id": "s", "title": "−15% на второй букет", "description": "", "discount_percent": 15}]})
+    # 3 490 + 2 790 − 15% от 2 790 (419) = 5 861
+    out = SellerOutput(reply="Два букета со скидкой на второй — 5 861 ₽.", product_ids=["b01", "b10"])
+    assert guard_check(v, out).action == "send"

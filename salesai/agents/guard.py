@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from itertools import combinations
 from typing import Literal
@@ -55,6 +56,12 @@ def _delivery_options(company: Company) -> set[int]:
     return options
 
 
+def _cuts(amount: int, pct: int) -> set[int]:
+    """Размер скидки с округлением в обе стороны: модели округляют по-разному."""
+    exact = amount * pct / 100
+    return {math.floor(exact), math.ceil(exact)}
+
+
 def _allowed_totals(company: Company, product_ids: list[str]) -> set[int]:
     """Суммы, которые можно получить из рекомендованных товаров: наборы, количества, доставка, акции."""
     prices = [p.price for i in product_ids if (p := company.product(i))]
@@ -65,7 +72,9 @@ def _allowed_totals(company: Company, product_ids: list[str]) -> set[int]:
     for price in prices:
         subtotals |= {price * q for q in range(2, MAX_QUANTITY + 1)}
     percents = [p.discount_percent for p in company.promos if p.discount_percent]
-    discounted = {round(s * (100 - pct) / 100) for s in subtotals for pct in percents}
+    discounted = {s - cut for s in subtotals for pct in percents for cut in _cuts(s, pct)}
+    # скидка только на одну позицию заказа («−15% на второй букет»)
+    discounted |= {s - cut for s in subtotals for price in prices for pct in percents if s > price for cut in _cuts(price, pct)}
     totals = set()
     for base in subtotals | discounted:
         totals |= {base + d for d in _delivery_options(company)}

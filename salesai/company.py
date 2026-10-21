@@ -101,6 +101,12 @@ def load_company(path: str | Path) -> Company:
     return Company.model_validate(json.loads(path.read_text(encoding="utf-8")))
 
 
+def load_variant(path: str | Path) -> tuple[str, dict]:
+    """Файл варианта: {"name": "...", "description": "...", "patch": {...}}."""
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return data.get("name") or Path(path).stem, data["patch"]
+
+
 def _merge(base, patch):
     if isinstance(base, dict) and isinstance(patch, dict):
         out = dict(base)
