@@ -82,7 +82,7 @@
         const db = JSON.parse(storage.getItem(key));
         if (db && Array.isArray(db.items)) return db;
       } catch (e) { /* повреждённые данные — начинаем заново */ }
-      return { seq: 1000, items: [] };
+      return { seq: 1000, items: [], deleted: [] };
     }
     const save = (db) => storage.setItem(key, JSON.stringify(db));
 
@@ -117,6 +117,10 @@
         });
       } else {
         rec.topic = input.topic || "";
+      }
+      // Переписка с ботом, если заявка пришла из чата: менеджер увидит её в карточке.
+      if (Array.isArray(input.dialog) && input.dialog.length) {
+        rec.dialog = input.dialog.slice(-20).map((d) => ({ from: d.from === "client" ? "client" : "bot", text: String(d.text || "").slice(0, 300) }));
       }
       db.items.push(rec);
       save(db);
@@ -194,17 +198,22 @@
       return mutate(id, (r) => r.history.push({ at: now().toISOString(), type: "comment", text: t, by }));
     }
 
+    // Удалённые номера запоминаются, чтобы при синхронизации с другими участниками заявки не вернулись.
     function reset() {
-      storage.removeItem(key);
+      const db = load();
+      db.deleted = (db.deleted || []).concat(db.items.map((r) => r.id)).slice(-5000);
+      db.items = [];
+      save(db);
     }
 
     // Удаляет заявки по условию (например, тестовые). Возвращает число удалённых.
     function purge(pred) {
       const db = load();
-      const before = db.items.length;
-      db.items = db.items.filter((r) => !pred(clone(r)));
+      const removed = db.items.filter((r) => pred(clone(r)));
+      db.items = db.items.filter((r) => !removed.includes(r));
+      db.deleted = (db.deleted || []).concat(removed.map((r) => r.id)).slice(-5000);
       save(db);
-      return before - db.items.length;
+      return removed.length;
     }
 
     function seedDemo(today) {

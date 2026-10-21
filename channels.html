@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
   <title>Мессенджеры — Стебель</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,7 +17,7 @@
   <header class="tool-top">
     <p class="logo">Стебель <span>стенд</span></p>
     <nav aria-label="Разделы стенда">
-      <a href="index.html">Магазин</a>
+      <a href="shop.html">Магазин</a>
       <a href="channels.html" aria-current="page">Мессенджеры</a>
       <a href="crm.html">CRM</a>
       <a href="lab.html">Пульт тестирования</a>
@@ -25,7 +26,8 @@
 
   <main class="tool">
     <h1>Бот в мессенджерах</h1>
-    <p class="intro">Один и тот же бот в четырёх каналах. Каждое окно работает через настоящий адаптер платформы: сообщение превращается в событие в формате Telegram, ВКонтакте, MAX или Алисы, а ответ бота — в вызов их API, с их ограничениями на кнопки и длину текста. Заказы попадают в CRM с пометкой канала. Чат на сайте — в <a href="index.html">магазине</a>.</p>
+    <p class="intro">Один и тот же бот в четырёх каналах, а в двух последних окнах — что в это время получают менеджер и клиент. Каждое окно работает через настоящий адаптер платформы: сообщение превращается в событие в формате Telegram, ВКонтакте, MAX или Алисы, а ответ бота — в вызов их API, с их ограничениями на кнопки и длину текста. Заказы попадают в CRM с пометкой канала. Чат на сайте — в <a href="shop.html">магазине</a>.</p>
+    <div class="phone-tabs" id="phone-tabs" role="group" aria-label="Какое окно показать"></div>
     <div class="phones" id="phones"></div>
   </main>
 

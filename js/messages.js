@@ -7,8 +7,13 @@
   const rub = (n) => new Intl.NumberFormat("ru-RU").format(n) + " ₽";
   const STATUS = { new: "Новый", confirmed: "Подтверждён", assembling: "Собирается", delivering: "В доставке", ready: "Готов к выдаче", done: "Выполнен", called: "Перезвонили", cancelled: "Отменён" };
 
+  const SOURCE = { site: "сайт", chat: "чат на сайте", telegram: "Telegram", vk: "ВКонтакте", max: "MAX", alice: "Алиса" };
+  const MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
+  const day = (iso) => { const [, mo, d] = String(iso).split("-").map(Number); return mo ? `${d} ${MONTHS[mo - 1]}` : String(iso); };
+  const slot = (id) => String(id).replace(/^(\d+)-(\d+)$/, "$1:00–$2:00");
+
   function formatTelegram(o) {
-    const src = o.source === "chat" ? "чат-бот" : "сайт";
+    const src = SOURCE[o.source] || o.source;
     if (o.kind === "callback") {
       return `Заявка на звонок ${o.id} (${src})\n${o.customer.name}, ${o.customer.phone}\nТема: ${o.topic || "—"}`;
     }
@@ -17,7 +22,7 @@
     return [
       `Новый заказ ${o.id} (${src}), статус: ${STATUS[o.status] || o.status}`,
       items,
-      `${o.date}, интервал ${o.slot}`,
+      `${day(o.date)}, ${slot(o.slot)}`,
       where,
       `${o.customer.name}, ${o.customer.phone}`,
       o.note ? `Открытка: ${o.note}` : "",
@@ -39,7 +44,7 @@
     if (event.type !== "status") return null;
     switch (event.status) {
       case "confirmed": return `«Стебель»: заказ ${o.id} подтверждён, к оплате ${total}. Оплатить: ${paymentLink(o.id)}`;
-      case "delivering": return `«Стебель»: курьер везёт заказ ${o.id}, интервал ${o.slot.replace("-", ":00–")}:00.`;
+      case "delivering": return `«Стебель»: курьер везёт заказ ${o.id}, интервал ${slot(o.slot)}.`;
       case "ready": return `«Стебель»: заказ ${o.id} готов, забрать можно на Покровке, 12 до 21:00.`;
       case "done": return `«Стебель»: заказ ${o.id} выполнен. Будем рады видеть вас снова!`;
       case "cancelled": return `«Стебель»: заказ ${o.id} отменён. Если это ошибка, позвоните +7 495 000-00-00.`;

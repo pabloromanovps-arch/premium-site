@@ -3,168 +3,55 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Стебель — цветы с доставкой по Москве</title>
-  <meta name="description" content="Букеты из свежих цветов с доставкой по Москве за 2 часа. Доставка бесплатно от 5 000 ₽.">
+  <title>Стебель — тестовый стенд</title>
+  <meta name="description" content="Тестовый стенд цветочного магазина: сайт, бот в мессенджерах, CRM и пульт тестирования.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/shop.css">
+  <style>
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; background: var(--paper); }
+    .stand-top {
+      display: flex; align-items: center; gap: 8px 20px; flex-wrap: wrap;
+      padding: 10px var(--gutter); background: var(--ink); color: var(--white);
+    }
+    .stand-top .logo { font-family: var(--display); font-size: 1.5rem; line-height: 1; }
+    .stand-top .logo span { font-family: var(--text); font-size: .85rem; font-weight: 600; color: #cdbfd6; margin-left: 6px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+    .tabs a { color: #eadff0; text-decoration: none; font-weight: 600; padding: 8px 12px; border-radius: 8px; }
+    .tabs a:hover { background: rgba(255, 255, 255, .1); color: var(--white); }
+    .tabs a[aria-current="page"] { background: var(--white); color: var(--ink); }
+    .sync { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: .85rem; color: #eadff0; max-width: 46ch; }
+    .sync::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: #9a8ca3; }
+    .sync[data-state="shared"]::before { background: #6fd08c; }
+    .sync[data-state="readonly"]::before, .sync[data-state="full"]::before { background: #f0b44c; }
+    .frame { flex: 1; width: 100%; border: 0; display: block; background: var(--paper); }
+    @media (max-width: 760px) {
+      .stand-top { padding: 8px 12px; }
+      .tabs { order: 3; width: 100%; overflow-x: auto; flex-wrap: nowrap; }
+      .tabs a { white-space: nowrap; padding: 7px 10px; }
+      .sync { margin-left: auto; font-size: .78rem; }
+    }
+  </style>
 </head>
 <body>
-  <a class="skip" href="#main">Перейти к содержанию</a>
-  <nav class="demo-bar" aria-label="Тестовый стенд">
-    <span>Тестовый стенд: заказы видны в</span>
-    <a href="crm.html">CRM</a>
-    <a href="channels.html">Мессенджеры</a>
-    <a href="lab.html">Пульт тестирования</a>
-  </nav>
-
-  <header class="top">
-    <a class="logo" href="#" aria-label="Стебель, на главную">Стебель</a>
-    <nav aria-label="Основное меню">
-      <ul>
-        <li><a href="#catalog">Букеты</a></li>
-        <li><a href="#delivery">Доставка</a></li>
-      </ul>
+  <header class="stand-top">
+    <p class="logo">Стебель <span>тестовый стенд</span></p>
+    <nav class="tabs" aria-label="Разделы стенда" id="tabs">
+      <a href="#start" data-page="start.html">С чего начать</a>
+      <a href="#shop" data-page="shop.html">Сайт</a>
+      <a href="#channels" data-page="channels.html">Мессенджеры</a>
+      <a href="#crm" data-page="crm.html">CRM</a>
+      <a href="#lab" data-page="lab.html">Пульт</a>
     </nav>
-    <button class="cart-btn" id="cart-open" type="button" aria-haspopup="dialog">
-      Корзина <span class="badge" id="cart-count" aria-label="товаров в корзине">0</span>
-    </button>
+    <p class="sync" id="sync" data-state="local" role="status">Подключаем общий режим…</p>
   </header>
+  <iframe class="frame" id="frame" title="Раздел стенда"></iframe>
 
-  <main id="main">
-    <section class="hero">
-      <div class="hero-text">
-        <h1>Букеты, собранные сегодня утром</h1>
-        <p class="lead">Цветы приходят к нам каждое утро с оптовой базы. Соберём букет и привезём по Москве в удобный двухчасовой интервал.</p>
-        <div class="actions">
-          <a class="btn" href="#catalog">Выбрать букет</a>
-          <button class="btn btn-ghost" type="button" data-open-chat>Спросить в чате</button>
-        </div>
-      </div>
-      <div class="hero-art" id="hero-art" aria-hidden="true"></div>
-    </section>
-
-    <section id="catalog" class="section">
-      <h2>Букеты</h2>
-      <div class="grid" id="catalog-grid"></div>
-    </section>
-
-    <section id="delivery" class="section delivery">
-      <h2>Доставка и самовывоз</h2>
-      <dl class="terms">
-        <div><dt>Интервалы</dt><dd>9–12, 12–15, 15–18, 18–21. Заказ на сегодня — минимум за 2 часа до начала интервала.</dd></div>
-        <div><dt>Стоимость</dt><dd>490 ₽ по Москве в пределах МКАД, бесплатно для заказов от 5 000 ₽.</dd></div>
-        <div><dt>Самовывоз</dt><dd>Покровка, 12, ежедневно 9:00–21:00.</dd></div>
-        <div><dt>Оплата</dt><dd>Флорист звонит, подтверждает заказ и присылает ссылку на оплату картой.</dd></div>
-      </dl>
-    </section>
-  </main>
-
-  <footer class="foot">
-    <p class="logo">Стебель</p>
-    <p>Москва, Покровка, 12</p>
-    <p><a href="tel:+74950000000">+7 495 000-00-00</a></p>
-    <p><a href="crm.html">CRM для менеджеров (демо)</a></p>
-  </footer>
-
-  <dialog class="drawer" id="cart" aria-labelledby="cart-title">
-    <div class="drawer-head">
-      <h2 id="cart-title">Корзина</h2>
-      <button class="icon-btn" type="button" id="cart-close" aria-label="Закрыть корзину">✕</button>
-    </div>
-
-    <div id="cart-empty" class="empty">
-      <p>Корзина пуста. Выберите букет в каталоге.</p>
-      <button class="btn" type="button" id="cart-to-catalog">Перейти к букетам</button>
-    </div>
-
-    <div id="cart-full" hidden>
-      <ul class="lines" id="cart-lines"></ul>
-      <p class="hint" id="free-hint"></p>
-
-      <form id="checkout" novalidate>
-        <fieldset>
-          <legend>Как получить</legend>
-          <label class="radio"><input type="radio" name="fulfillment" value="delivery" checked> Доставка</label>
-          <label class="radio"><input type="radio" name="fulfillment" value="pickup"> Самовывоз с Покровки, 12</label>
-        </fieldset>
-        <p class="field-error" id="err-fulfillment" hidden></p>
-
-        <label>Имя
-          <input name="name" autocomplete="name" aria-describedby="err-name">
-        </label>
-        <p class="field-error" id="err-name" hidden></p>
-
-        <label>Телефон
-          <input name="phone" type="tel" autocomplete="tel" inputmode="tel" placeholder="+7 916 123-45-67" aria-describedby="err-phone">
-        </label>
-        <p class="field-error" id="err-phone" hidden></p>
-
-        <label id="address-field">Адрес доставки
-          <input name="address" autocomplete="street-address" placeholder="Улица, дом, квартира" aria-describedby="err-address">
-        </label>
-        <p class="field-error" id="err-address" hidden></p>
-
-        <div class="row">
-          <label>Дата
-            <input name="date" type="date" aria-describedby="err-date">
-          </label>
-          <label>Интервал
-            <select name="slot" aria-describedby="err-slot"></select>
-          </label>
-        </div>
-        <p class="field-error" id="err-date" hidden></p>
-        <p class="field-error" id="err-slot" hidden></p>
-
-        <label>Текст открытки
-          <textarea name="note" rows="2" maxlength="300" placeholder="Необязательно"></textarea>
-        </label>
-
-        <dl class="sum" id="cart-sum"></dl>
-        <p class="field-error" id="err-items" hidden></p>
-        <button class="btn btn-wide" type="submit" id="checkout-submit">Оформить заказ</button>
-      </form>
-    </div>
-
-    <div id="cart-done" class="done" hidden tabindex="-1">
-      <h3>Заказ <span id="done-id"></span> оформлен</h3>
-      <p>Флорист позвонит в течение 15 минут, чтобы подтвердить заказ и прислать ссылку на оплату.</p>
-      <p><a href="crm.html" id="done-crm">Посмотреть заказ в CRM</a></p>
-      <button class="btn" type="button" id="done-close">Вернуться в магазин</button>
-    </div>
-  </dialog>
-
-  <div class="chat" id="chat">
-    <button class="chat-launch" type="button" id="chat-open" aria-expanded="false" aria-controls="chat-panel">Чат с флористом</button>
-    <section class="chat-panel" id="chat-panel" hidden aria-label="Чат с магазином">
-      <div class="chat-head">
-        <p>Чат «Стебля»</p>
-        <button class="icon-btn" type="button" id="chat-close" aria-label="Закрыть чат">✕</button>
-      </div>
-      <ol class="chat-log" id="chat-log" aria-live="polite"></ol>
-      <div class="chat-options" id="chat-options"></div>
-      <form class="chat-input" id="chat-form">
-        <label class="sr-only" for="chat-text">Сообщение</label>
-        <input id="chat-text" autocomplete="off" placeholder="Напишите сообщение">
-        <button class="btn btn-small" type="submit">Отправить</button>
-      </form>
-    </section>
-  </div>
-
-  <script src="js/config.js"></script>
-  <script src="js/messages.js"></script>
-  <script src="js/sim.js"></script>
-  <script src="js/metrika.js"></script>
-  <script src="js/validate.js"></script>
-  <script src="js/cart.js"></script>
-  <script src="js/catalog.js"></script>
-  <script src="js/store.js"></script>
-  <script src="js/bot.js"></script>
-  <script src="js/flowers.js"></script>
-  <script src="js/shop.js"></script>
-  <script src="js/chat.js"></script>
+  <script>window.STEBEL_STAND = true;</script>
+  <script src="js/sync.js"></script>
+  <script src="js/stand.js"></script>
 </body>
 </html>

@@ -109,7 +109,7 @@ test("CRM обновляется сама, когда заявка приход�
   await page.goto("/crm.html");
   await expect(page.locator(".deal")).toHaveCount(0);
   const shop = await context.newPage();
-  await shop.goto("/");
+  await shop.goto("/shop.html");
   await shop.getByRole("button", { name: "Чат с флористом" }).click();
   const input = shop.getByLabel("Сообщение");
   await input.fill("позовите флориста");

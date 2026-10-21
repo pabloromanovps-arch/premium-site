@@ -20,7 +20,7 @@ test("машина времени: в 20:30 на сегодня нельзя в�
   await expect(page.locator("#now")).toContainText("20:30");
   await expect(page.locator("#now")).toContainText("часы переведены");
 
-  await page.goto("/");
+  await page.goto("/shop.html");
   await page.locator('[data-add="pole"]').click();
   await page.locator("#cart-open").click();
   const today = await page.getByLabel("Дата").getAttribute("min");

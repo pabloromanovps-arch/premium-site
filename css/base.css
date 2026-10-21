@@ -60,3 +60,6 @@ input, select, textarea {
 }
 input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--error); }
 .field-error { color: var(--error); font-size: .9rem; margin-top: -6px; }
+
+/* страница внутри оболочки стенда */
+.in-stand .demo-bar, .in-stand .tool-top, .in-stand .crm-top { display: none; }

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
+  <title>С чего начать — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <style>
+    .start { max-width: 980px; }
+    .start h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); max-width: 18ch; }
+    .start .intro { font-size: 1.1rem; }
+    .route { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 12px; }
+    .route li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr auto; gap: 4px 16px; align-items: center; background: var(--white); border-radius: 14px; padding: 16px 18px; }
+    .route li::before { content: counter(s); grid-row: span 2; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--white); font-weight: 700; }
+    .route h2 { font-family: var(--text); font-weight: 700; font-size: 1.05rem; }
+    .route p { color: var(--ink-soft); grid-column: 2; }
+    .route .btn { grid-row: 1 / span 2; grid-column: 3; white-space: nowrap; }
+    .say { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .say li { background: var(--white); border: 1px solid var(--line); border-radius: 99px; padding: 8px 14px; }
+    .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 28px; }
+    .start h3 { font-family: var(--text); font-weight: 700; font-size: 1.1rem; margin: 32px 0 12px; }
+    .two h3 { margin-top: 0; }
+    .two ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-soft); display: grid; gap: 6px; }
+    @media (max-width: 700px) {
+      .route li { grid-template-columns: 40px 1fr; }
+      .route .btn { grid-column: 2; grid-row: auto; justify-self: start; margin-top: 8px; }
+      .two { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="tool start">
+    <h1>Цветочный магазин, который можно потрогать</h1>
+    <p class="intro">Здесь работают сайт, бот в Telegram, ВКонтакте, MAX и Алисе, CRM для менеджеров, SMS клиенту и оплата. Попробуйте побыть и клиентом, и менеджером — это займёт минут десять.</p>
+
+    <ol class="route">
+      <li><h2>Закажите букет на сайте</h2><p>Положите букет в корзину и оформите доставку — или спросите что-нибудь в чате в углу.</p><a class="btn" href="shop.html">Открыть сайт</a></li>
+      <li><h2>Напишите боту в мессенджере</h2><p>Пишите как живому человеку, своими словами. Бот поймёт и сам предложит букеты.</p><a class="btn" href="channels.html">Открыть мессенджеры</a></li>
+      <li><h2>Посмотрите, куда пришли заявки</h2><p>В CRM новые заказы появляются в колонке «Новые», а менеджеру приходит сообщение в Telegram — его видно на странице мессенджеров.</p><a class="btn" href="crm.html">Открыть CRM</a></li>
+      <li><h2>Проведите заказ как менеджер</h2><p>Откройте заказ и нажмите «Подтвердить заказ». Клиенту уйдёт SMS со ссылкой на оплату — её видно в окне «Телефон клиента».</p><a class="btn" href="channels.html#sms">Телефон клиента</a></li>
+      <li><h2>Оплатите и доведите до конца</h2><p>Оплатите по ссылке из SMS (можно сначала «получить отказ банка»), затем в CRM соберите и доставьте заказ.</p><a class="btn" href="crm.html">Вернуться в CRM</a></li>
+      <li><h2>Попробуйте сломать</h2><p>На пульте переведите часы на вечер, отключите Telegram, запустите все проверки разом.</p><a class="btn" href="lab.html">Открыть пульт</a></li>
+    </ol>
+
+    <h3>Что можно написать боту</h3>
+    <ul class="say">
+      <li>пионы маме на завтра вечером до 5000</li>
+      <li>розы к 18, заберу сам</li>
+      <li>что-нибудь недорогое в субботу утром</li>
+      <li>шикарный букет на юбилей</li>
+      <li>сколько стоит доставка?</li>
+      <li>где мой заказ СТ-1001</li>
+      <li>позовите человека</li>
+    </ul>
+
+    <div class="two">
+      <section class="panel">
+        <h3>Если тестируете вдвоём</h3>
+        <p>В общем режиме (зелёная точка вверху) заказы и сообщения видят все участники: оформите заказ у себя — он появится в CRM у партнёра.</p>
+        <ul>
+          <li>Переписки в мессенджерах у каждого свои, как у настоящих клиентов.</li>
+          <li>Время и сбои на пульте тоже у каждого свои.</li>
+          <li>Тестовые заявки с пульта помечены «Тест:» — их можно удалить одной кнопкой.</li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h3>Что здесь ненастоящее</h3>
+        <ul>
+          <li>SMS, сообщения менеджеру и оплата — симуляции, деньги не списываются.</li>
+          <li>Окна мессенджеров — копии: бот работает по-настоящему, но Telegram, ВКонтакте, MAX и Алиса пока не подключены.</li>
+          <li>Цены, адрес и телефон магазина придуманы.</li>
+        </ul>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

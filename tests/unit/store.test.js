@@ -149,3 +149,12 @@ test("purge удаляет только подходящие заявки", () =
   assert.equal(s.purge((r) => r.customer.name.startsWith("Тест:")), 1);
   assert.deepEqual(s.list().map((r) => r.customer.name), ["Мария"]);
 });
+
+test("переписка с ботом сохраняется в заявке, с ограничением размера", () => {
+  const s = fresh();
+  const dialog = Array.from({ length: 30 }, (_, i) => ({ from: i % 2 ? "bot" : "client", text: "x".repeat(400) }));
+  const rec = s.create({ ...order, dialog });
+  assert.equal(rec.dialog.length, 20);
+  assert.equal(rec.dialog[0].text.length, 300);
+  assert.equal(s.create(order).dialog, undefined);
+});

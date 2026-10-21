@@ -26,7 +26,7 @@ function watchErrors(test) {
 
 // Оформляет заказ через корзину на сайте и возвращает его номер.
 async function orderOnSite(page, { product = "dacha", name = "Мария Тест", pickup = false } = {}) {
-  await page.goto("/");
+  await page.goto("/shop.html");
   await page.locator(`[data-add="${product}"]`).click();
   await page.locator("#cart-open").click();
   if (pickup) await page.getByLabel("Самовывоз с Покровки, 12").check();

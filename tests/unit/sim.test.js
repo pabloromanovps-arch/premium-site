@@ -58,3 +58,11 @@ test("SMS клиенту по событиям заказа", () => {
   assert.equal(messages.customerSms(o, { type: "status", status: "assembling" }), null);
   assert.equal(messages.customerSms({ ...o, kind: "callback" }, { type: "created" }), null);
 });
+
+test("уведомление менеджеру: канал по-русски, дата и интервал по-человечески", () => {
+  const o = { id: "СТ-1001", kind: "order", source: "vk", status: "new", date: "2026-10-23", slot: "9-12", fulfillment: "pickup",
+    customer: { name: "Игорь", phone: "+79037654321" }, items: [{ name: "Бордо", price: 6800, qty: 1 }], totals: { total: 6800 } };
+  const text = messages.formatTelegram(o);
+  assert.match(text, /^Новый заказ СТ-1001 \(ВКонтакте\)/);
+  assert.match(text, /23 октября, 9:00–12:00/);
+});

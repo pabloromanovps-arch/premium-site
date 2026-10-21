@@ -5,7 +5,7 @@ const { noHorizontalScroll, watchErrors, orderOnSite } = require("./helpers");
 watchErrors(test);
 
 test("каталог: 8 букетов, корзина считает сумму и бесплатную доставку", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/shop.html");
   await expect(page.locator(".product")).toHaveCount(8);
   await noHorizontalScroll(page);
   await page.locator('[data-add="kompliment"]').click();
@@ -26,14 +26,14 @@ test("каталог: 8 букетов, корзина считает сумму
 });
 
 test("корзина сохраняется после перезагрузки", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/shop.html");
   await page.locator('[data-add="bordo"]').click();
   await page.reload();
   await expect(page.locator("#cart-count")).toHaveText("1");
 });
 
 test("оформление: пустая форма показывает ошибки у полей", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/shop.html");
   await page.locator('[data-add="pole"]').click();
   await page.locator("#cart-open").click();
   await page.locator("#checkout-submit").click();
@@ -55,7 +55,7 @@ test("заказ с сайта появляется в CRM в колонке «�
 });
 
 test("чат на сайте понимает фразу целиком и оформляет заказ", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/shop.html");
   await page.getByRole("button", { name: "Чат с флористом" }).click();
   const input = page.getByLabel("Сообщение");
   await input.fill("бордо на завтра вечером, заберу сам");
@@ -80,7 +80,7 @@ test("чат на сайте понимает фразу целиком и оф�
 });
 
 test("чат показывает букеты карточками с картинками", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/shop.html");
   await page.getByRole("button", { name: "Чат с флористом" }).click();
   await page.locator("#chat-options").getByRole("button", { name: "Подобрать букет" }).click();
   await page.locator("#chat-options").getByRole("button", { name: "3 000–6 000 ₽" }).click();
@@ -91,7 +91,7 @@ test("чат показывает букеты карточками с карт�
 test.describe("с анимацией «печатает…»", () => {
   test.use({ reducedMotion: "no-preference" });
   test("сообщение, отправленное во время приветствия, не путает порядок ответов", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/shop.html");
     await page.getByRole("button", { name: "Чат с флористом" }).click();
     const input = page.getByLabel("Сообщение");
     await input.fill("хочу тюльпаны на завтра");

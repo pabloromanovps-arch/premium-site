@@ -170,6 +170,9 @@
     }
     $("d-facts").innerHTML = facts.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
 
+    $("d-dialog-wrap").hidden = !(r.dialog && r.dialog.length);
+    $("d-dialog").innerHTML = (r.dialog || []).map((d) => `<li class="${d.from}">${esc(d.text)}</li>`).join("");
+
     $("d-history").innerHTML = r.history.slice().reverse().map((h) => {
       const body = h.type === "status" ? `Этап: ${S.STATUS[h.status]}`
         : h.type === "sync" || h.type === "payment" ? `<span class="${h.ok ? "" : "bad"}">${esc(h.text)}</span>` : esc(h.text);

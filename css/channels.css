@@ -1,4 +1,7 @@
-.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.phones { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.phone-tabs { display: none; gap: 6px; overflow-x: auto; margin-bottom: 12px; padding-bottom: 4px; }
+.phone-tabs button { flex: none; border: 1px solid var(--line); background: var(--white); border-radius: 99px; padding: 8px 12px; font: 600 .9rem/1 var(--text); color: var(--ink); cursor: pointer; }
+.phone-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--white); border-color: var(--ink); }
 
 .phone { --accent: #555; --bg: #f3f3f3; --mine: #dcf8c6; --btn: #fff; display: flex; flex-direction: column; height: 640px; border-radius: 22px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
 .phone[data-ch="telegram"] { --accent: #2a8bd1; --bg: #dfe9ef; --mine: #e1f7d0; }
@@ -34,3 +37,20 @@
 .raw pre { margin: 0; padding: 0 12px 12px; max-height: 220px; overflow: auto; font-size: .76rem; white-space: pre-wrap; word-break: break-word; }
 .limits { padding: 0 12px 10px; color: var(--ink-soft); }
 .limits .bad { color: var(--error); font-weight: 600; }
+
+.phone[data-ch="manager"] { --accent: #229ed9; --bg: #e6eef4; }
+.phone[data-ch="sms"] { --accent: #3a3a3c; --bg: #f2f2f7; }
+.phone.side .bubble { max-width: 94%; }
+.bubble .time { display: block; text-align: right; font-size: .72rem; color: #8a8a8a; margin-top: 4px; }
+.bubble .to { display: block; font-size: .75rem; color: #8a8a8a; margin-bottom: 2px; }
+.bubble a { color: var(--accent); font-weight: 600; word-break: break-all; }
+.open-crm { display: block; margin-top: 6px; text-decoration: none; }
+.side-note { padding: 10px 12px; font-size: .82rem; color: var(--ink-soft); background: #fff; border-top: 1px solid var(--line); }
+.side-empty { color: var(--ink-soft); font-size: .9rem; text-align: center; margin: auto 8px; }
+
+@media (max-width: 760px) {
+  .tool > .intro { display: none; }
+  .phone-tabs { display: flex; }
+  .phone { display: none; height: calc(100vh - 150px); min-height: 460px; }
+  .phone.active { display: flex; }
+}

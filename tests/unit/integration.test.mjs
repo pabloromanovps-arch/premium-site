@@ -78,7 +78,7 @@ test("сервер отклоняет мусор и не ходит в сеть"
 test("checkPayload и текст для Telegram по звонку", () => {
   const cb = S.createStore({ storage: S.memoryStorage() }).create({ kind: "callback", source: "chat", name: "Анна", phone: "+79261112233", topic: "Свадьба" });
   assert.equal(checkPayload(cb), null);
-  assert.equal(formatTelegram(cb), "Заявка на звонок ЗВ-1001 (чат-бот)\nАнна, +79261112233\nТема: Свадьба");
+  assert.equal(formatTelegram(cb), "Заявка на звонок ЗВ-1001 (чат на сайте)\nАнна, +79261112233\nТема: Свадьба");
 });
 
 // ---------- вебхуки мессенджеров на сервере ----------
@@ -135,6 +135,6 @@ test("сервер: заказ в Telegram-боте уходит менедже�
   for (const t of ["бордо на завтра утром, заберу сам", "Игорь", "9037654321", "да"]) await say(t);
   const toManager = net.calls.filter((c) => c.body.chat_id === "100");
   assert.equal(toManager.length, 1);
-  assert.match(toManager[0].body.text, /Новый заказ СТ-\d+ \(telegram\)|Новый заказ СТ-\d+/);
+  assert.match(toManager[0].body.text, /Новый заказ СТ-\d+ \(Telegram\)/);
   assert.ok(net.calls.some((c) => c.url === "https://crm.example/hook" && c.body.source === "telegram"));
 });

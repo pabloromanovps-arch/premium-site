@@ -13,6 +13,7 @@
 })(typeof self !== "undefined" ? self : this, function (root, messages) {
   const SETTINGS_KEY = "stebel.sim.v1";
   const OUTBOX_KEY = "stebel.outbox.v1";
+  const CLEARED_KEY = "stebel.outbox.cleared";
   const OUTBOX_LIMIT = 300;
   const DEFAULTS = { offsetMs: 0, tgDown: false, crmDown: false, latencyMs: 300 };
   const CHANNELS = { telegram: "Telegram менеджеру", crm: "Внешняя CRM", sms: "SMS клиенту", metrika: "Яндекс.Метрика" };
@@ -55,7 +56,11 @@
         storage.setItem(OUTBOX_KEY, JSON.stringify(all.slice(0, OUTBOX_LIMIT)));
         return e;
       },
-      clear: () => storage.removeItem(OUTBOX_KEY),
+      // Момент очистки запоминается, чтобы при синхронизации старые записи не вернулись от других участников.
+      clear: () => {
+        storage.setItem(CLEARED_KEY, String(Date.now()));
+        storage.removeItem(OUTBOX_KEY);
+      },
     };
 
     // Ведёт себя как store.createWebhook, но вместо сети пишет в журнал и умеет «падать».
@@ -86,5 +91,5 @@
     return { now, settings, setSettings, setTime, resetTime, outbox, webhook, notify, resetAll };
   }
 
-  return { CHANNELS, DEFAULTS, SETTINGS_KEY, OUTBOX_KEY, createSim, memoryStorage, browserStorage };
+  return { CHANNELS, DEFAULTS, SETTINGS_KEY, OUTBOX_KEY, CLEARED_KEY, createSim, memoryStorage, browserStorage };
 });

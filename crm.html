@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
   <title>Стебель CRM</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,7 +16,7 @@
   <header class="crm-top">
     <p class="logo">Стебель <span>CRM</span></p>
     <nav aria-label="Разделы стенда">
-      <a href="index.html">Магазин</a>
+      <a href="shop.html">Магазин</a>
       <a href="channels.html">Мессенджеры</a>
       <a href="lab.html">Пульт тестирования</a>
     </nav>
@@ -85,7 +86,7 @@
         <div class="empty" id="empty" hidden>
           <p id="empty-text"></p>
           <p class="empty-actions">
-            <a class="btn btn-small" href="index.html">Открыть магазин</a>
+            <a class="btn btn-small" href="shop.html">Открыть магазин</a>
             <a class="btn btn-small btn-ghost" href="channels.html">Написать в мессенджер</a>
           </p>
         </div>
@@ -101,6 +102,10 @@
         <div class="moves" id="d-moves"></div>
         <p class="field-error" id="d-error" role="alert" hidden></p>
         <dl class="facts" id="d-facts"></dl>
+        <details class="dialog-wrap" id="d-dialog-wrap" hidden>
+          <summary>Переписка клиента с ботом</summary>
+          <ol class="dialog" id="d-dialog"></ol>
+        </details>
         <form id="d-comment" class="comment">
           <label for="d-text">Комментарий для команды</label>
           <textarea id="d-text" rows="2" placeholder="Например: клиент просит позвонить за час"></textarea>

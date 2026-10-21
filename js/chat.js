@@ -6,12 +6,13 @@
   const ctx = {
     now: () => (Flora.clock ? Flora.clock() : new Date()),
     create(input) {
-      const rec = store.create(input);
+      const rec = store.create({ ...input, dialog: transcript.slice(-20) });
       goal(rec.kind === "order" ? "chat_order" : "callback_request", { order_id: rec.id });
       return rec;
     },
     lookup: (id) => store.get(id),
   };
+  const transcript = [];
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const panel = $("chat-panel");
@@ -30,6 +31,7 @@
     log.scrollTop = log.scrollHeight;
   }
   function say(who, text) {
+    transcript.push({ from: who === "me" ? "client" : "bot", text });
     const li = document.createElement("li");
     li.className = who;
     li.textContent = text;

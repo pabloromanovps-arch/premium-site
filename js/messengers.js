@@ -11,7 +11,7 @@
   const readSess = () => { try { return JSON.parse(localStorage.getItem(SESS_KEY)) || {}; } catch (e) { return {}; } };
   const writeSess = (all) => { try { localStorage.setItem(SESS_KEY, JSON.stringify(all)); } catch (e) { /* без сохранения */ } };
   const sessions = { get: (k) => readSess()[k], set: (k, v) => { const all = readSess(); all[k] = v; writeSess(all); } };
-  const ctx = { now, create: (i) => store.create(i), lookup: (id) => store.get(id) };
+  const sim = Flora.simInstance;
 
   const PHONES = [
     { ch: "telegram", title: "Стебель — цветы", sub: "бот в Telegram", ava: "С", chatId: 555001 },
@@ -19,6 +19,14 @@
     { ch: "max", title: "Стебель", sub: "бот в MAX", ava: "С", chatId: 9001 },
     { ch: "alice", title: "Навык «Стебель»", sub: "Алиса, Яндекс", ava: "А", chatId: "alice-session-1" },
   ];
+
+  // Вторая сторона переписки: что получают менеджер и клиент.
+  const SIDES = [
+    { ch: "manager", title: "Стебель: заявки", sub: "Telegram менеджера", ava: "М", note: "Сюда приходит каждая новая заявка с сайта и из мессенджеров." },
+    { ch: "sms", title: "Сообщения", sub: "телефон клиента", ava: "✉", note: "SMS, которые получает клиент: заказ принят, ссылка на оплату, курьер в пути." },
+  ];
+  const ALL = [...PHONES.map((p) => ({ ch: p.ch, label: CH.NAMES[p.ch] })), { ch: "manager", label: "Менеджер" }, { ch: "sms", label: "Клиент: SMS" }];
+  $("phone-tabs").innerHTML = ALL.map((x) => `<button type="button" data-show="${x.ch}">${x.label}</button>`).join("");
 
   $("phones").innerHTML = PHONES.map((p) => `
     <section class="phone" data-ch="${p.ch}" aria-label="${CH.NAMES[p.ch]}">
@@ -30,6 +38,11 @@
         <input id="in-${p.ch}" autocomplete="off" placeholder="${p.ch === "alice" ? "Скажите или напишите Алисе" : "Сообщение"}">
         <button type="submit">Отправить</button></form>
       <details class="raw"><summary>Что ушло в API платформы</summary><p class="limits"></p><pre></pre></details>
+    </section>`).join("") + SIDES.map((p) => `
+    <section class="phone side" data-ch="${p.ch}" aria-label="${p.sub}">
+      <div class="phone-head"><span class="ava" aria-hidden="true">${p.ava}</span><div><h2>${p.title}</h2><p>${p.sub}</p></div></div>
+      <div class="feed" aria-live="polite"></div>
+      <p class="side-note">${p.note}</p>
     </section>`).join("");
 
   // Сборка входящих событий в формате каждой платформы
@@ -72,6 +85,23 @@
     const suggest = el.querySelector(".suggest");
     const histKey = "hist:" + p.ch;
     let alice = sessions.get("alice-state:" + p.chatId);
+    // Заявка из чата уносит с собой переписку — менеджер увидит её в CRM.
+    const paneCtx = {
+      now,
+      lookup: (id) => store.get(id),
+      create: (i) => store.create({ ...i, dialog: transcript() }),
+    };
+    function transcript() {
+      const out = [];
+      for (const e of sessions.get(histKey) || []) {
+        if (e.me) out.push({ from: "client", text: e.me });
+        else for (const c of e.calls || []) {
+          if (/answer/i.test(c.method)) continue;
+          out.push({ from: "bot", text: p.ch === "alice" ? c.body.response.text : textOf(p.ch, c) });
+        }
+      }
+      return out.slice(-20);
+    }
     // Сообщения уходят строго по очереди: следующее событие собирается, когда пришёл ответ на предыдущее.
     let queue = Promise.resolve();
 
@@ -140,7 +170,7 @@
       return queue;
     }
     async function deliver(update) {
-      const res = await CH.handle(p.ch, update, { sessions, ctx });
+      const res = await CH.handle(p.ch, update, { sessions, ctx: paneCtx });
       if (res.kind !== "message") return;
       // Яндекс возвращает в state.session ровно то, что навык отдал в session_state.
       if (p.ch === "alice") { alice = res.calls[0].body.session_state; sessions.set("alice-state:" + p.chatId, alice); }
@@ -174,4 +204,42 @@
 
     restore();
   });
+
+  // ---------- менеджер и клиент ----------
+  const fmt = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Moscow" });
+  let lastSides = "";
+  function renderSides() {
+    if (!sim) return;
+    const tg = sim.outbox.list("telegram").slice(0, 60).reverse();
+    const sms = sim.outbox.list("sms").slice(0, 60).reverse();
+    const sig = tg.map((e) => e.n).join() + "|" + sms.map((e) => e.n).join();
+    if (sig === lastSides) return;
+    lastSides = sig;
+    const mgr = document.querySelector('.phone[data-ch="manager"] .feed');
+    mgr.innerHTML = tg.length
+      ? tg.map((e) => `<div class="bubble">${esc(e.text)}<span class="time">${fmt.format(new Date(e.at))}</span>${e.ref ? `<a class="open-crm" href="crm.html#${encodeURIComponent(e.ref)}">Открыть ${esc(e.ref)} в CRM</a>` : ""}</div>`).join("")
+      : `<p class="side-empty">Заявок пока нет. Оформите заказ в любом окне слева или на сайте.</p>`;
+    mgr.scrollTop = mgr.scrollHeight;
+    const box = document.querySelector('.phone[data-ch="sms"] .feed');
+    box.innerHTML = sms.length
+      ? sms.map((e) => `<div class="bubble"><span class="to">на ${esc(Flora.validate.formatPhone(e.to))}</span>${esc(e.text).replace(/pay\.html#[^\s]+/g, (m) => `<a href="${m}">${decodeURIComponent(m)}</a>`)}<span class="time">${fmt.format(new Date(e.at))}</span></div>`).join("")
+      : `<p class="side-empty">SMS появятся, когда клиент оформит заказ, а менеджер подтвердит его в CRM.</p>`;
+    box.scrollTop = box.scrollHeight;
+  }
+  renderSides();
+  setInterval(renderSides, 1000);
+
+  // ---------- на телефоне: одно окно на весь экран ----------
+  function show(ch) {
+    if (!ALL.some((x) => x.ch === ch)) ch = "telegram";
+    document.querySelectorAll(".phone").forEach((el) => el.classList.toggle("active", el.dataset.ch === ch));
+    document.querySelectorAll("#phone-tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === ch)));
+  }
+  $("phone-tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-show]");
+    if (!b) return;
+    show(b.dataset.show);
+    history.replaceState(null, "", "#" + b.dataset.show);
+  });
+  show(decodeURIComponent(location.hash.slice(1)));
 })();
