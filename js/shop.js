@@ -1,6 +1,7 @@
 (function () {
   const { catalog, cart, validate, store: storeMod, flowers } = Flora;
   const store = storeMod.appStore();
+  const goal = (g, params) => Flora.metrika && Flora.metrika.reachGoal(g, params);
   const CART_KEY = "stebel.cart.v1";
   const $ = (id) => document.getElementById(id);
 
@@ -35,6 +36,7 @@
     const btn = e.target.closest("[data-add]");
     if (!btn) return;
     items = cart.add(items, catalog.byId(btn.dataset.add));
+    goal("cart_add", { product: btn.dataset.add });
     saveCart();
     renderCart();
     btn.textContent = "Добавлено";
@@ -112,6 +114,7 @@
     initDates();
     renderCart();
     dialog.showModal();
+    goal("cart_open");
   }
 
   $("cart-open").addEventListener("click", openCart);
@@ -144,12 +147,14 @@
     const check = validate.validateOrder({ ...data, items });
     showErrors(check.errors);
     if (!check.ok) {
+      goal("checkout_error", { fields: Object.keys(check.errors).join(",") });
       const first = FIELDS.find((f) => check.errors[f]);
       const input = form.elements[first];
       if (input && input.focus) input.focus();
       return;
     }
     const rec = store.create({ ...check.value, kind: "order", source: "site" });
+    goal("order_sent", { order_id: rec.id, sum: rec.totals.total });
     items = [];
     saveCart();
     form.reset();

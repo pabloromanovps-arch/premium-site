@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Оплата заказа — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <style>
+    .pay-box { max-width: 460px; margin: 40px auto; display: grid; gap: 16px; }
+    .pay-box h1 { font-size: 2.2rem; }
+    .pay-box .sum { font-size: 2rem; font-weight: 700; }
+    .pay-box .note { background: #fff1d6; color: #6b4700; padding: 10px 12px; border-radius: 10px; font-size: .92rem; }
+    .pay-box .actions { display: grid; gap: 10px; }
+    .pay-box .result { padding: 14px; border-radius: 12px; font-weight: 600; }
+    .pay-box .result.ok { background: #e2f0e1; color: var(--stem); }
+    .pay-box .result.bad { background: #fde2e0; color: var(--error); }
+  </style>
+</head>
+<body>
+  <main class="tool">
+    <div class="pay-box panel">
+      <p class="logo" style="font-family: var(--display); font-size: 1.6rem;">Стебель</p>
+      <h1 id="title">Оплата заказа</h1>
+      <p id="what"></p>
+      <p class="sum" id="sum"></p>
+      <p class="note">Это симуляция платёжной страницы банка: деньги не списываются. Выберите, чем закончится оплата.</p>
+      <div class="actions" id="actions">
+        <button class="btn" type="button" id="pay-ok">Оплатить картой</button>
+        <button class="btn btn-ghost" type="button" id="pay-fail">Симулировать отказ банка</button>
+      </div>
+      <p class="result" id="result" role="status" hidden></p>
+      <p><a href="index.html">Вернуться в магазин</a></p>
+    </div>
+  </main>
+  <script src="js/config.js"></script>
+  <script src="js/messages.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/metrika.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/store.js"></script>
+  <script>
+    (function () {
+      const { store: S, cart, validate } = Flora;
+      const store = S.appStore();
+      const $ = (id) => document.getElementById(id);
+      const id = decodeURIComponent(location.hash.slice(1));
+
+      function show(kind, text) {
+        $("result").hidden = false;
+        $("result").className = "result " + kind;
+        $("result").textContent = text;
+      }
+
+      function render() {
+        const r = id && store.get(id);
+        if (!r || r.kind !== "order") {
+          $("title").textContent = "Заказ не найден";
+          $("what").textContent = "Проверьте ссылку из SMS.";
+          $("actions").hidden = true;
+          return;
+        }
+        $("title").textContent = `Оплата заказа ${r.id}`;
+        $("what").textContent = `${r.items.map((i) => i.name).join(", ")}, ${validate.formatDate(r.date)}, ${validate.slotLabel(r.slot)}`;
+        $("sum").textContent = cart.formatRub(r.totals.total);
+        if (r.payment === "paid") {
+          $("actions").hidden = true;
+          show("ok", "Заказ оплачен. Спасибо!");
+        }
+      }
+
+      function pay(outcome) {
+        try {
+          const r = store.pay(id, outcome);
+          if (r.payment === "paid") {
+            Flora.metrika.reachGoal("payment_success", { order_id: r.id, sum: r.totals.total });
+            show("ok", "Оплата прошла. Чек и подтверждение отправлены в SMS.");
+            $("actions").hidden = true;
+          } else {
+            show("bad", "Банк отклонил оплату. Проверьте данные карты или попробуйте другую карту.");
+          }
+        } catch (e) {
+          show("bad", e.message);
+        }
+      }
+
+      $("pay-ok").addEventListener("click", () => pay("success"));
+      $("pay-fail").addEventListener("click", () => pay("declined"));
+      render();
+    })();
+  </script>
+</body>
+</html>

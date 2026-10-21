@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Пульт тестирования — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+</head>
+<body>
+  <header class="tool-top">
+    <p class="logo">Стебель <span>стенд</span></p>
+    <nav aria-label="Разделы стенда">
+      <a href="index.html">Магазин</a>
+      <a href="channels.html">Мессенджеры</a>
+      <a href="crm.html">CRM</a>
+      <a href="lab.html" aria-current="page">Пульт тестирования</a>
+    </nav>
+  </header>
+
+  <main class="tool">
+    <h1>Пульт тестирования</h1>
+    <p class="intro">Здесь управляется всё, что в жизни зависит от внешнего мира: время, работа Telegram и внешней CRM. Тут же видно всё, что стенд «отправил наружу»: сообщения менеджеру, SMS клиентам и цели Метрики. Настройки действуют на все открытые вкладки стенда.</p>
+
+    <div class="panels">
+      <section class="panel" aria-labelledby="t-time">
+        <h2 id="t-time">Время на стенде</h2>
+        <p class="sub">Переведите часы, чтобы проверить, например, вечерний заказ, когда интервалы на сегодня уже закрыты. Время идёт дальше от выбранной точки.</p>
+        <p class="now" id="now"></p>
+        <div class="row">
+          <label class="sr-only" for="t-date">Дата</label><input type="date" id="t-date">
+          <label class="sr-only" for="t-clock">Время</label><input type="time" id="t-clock" step="60">
+          <button class="btn btn-small" type="button" id="t-set">Перевести часы</button>
+        </div>
+        <div class="row" style="margin-top: 10px">
+          <button class="btn btn-quiet btn-small" type="button" data-time="08:00">Утро, 8:00</button>
+          <button class="btn btn-quiet btn-small" type="button" data-time="14:30">День, 14:30</button>
+          <button class="btn btn-quiet btn-small" type="button" data-time="20:30">Вечер, 20:30</button>
+          <button class="btn btn-quiet btn-small" type="button" id="t-reset">Вернуть реальное время</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="t-fail">
+        <h2 id="t-fail">Сбои внешних сервисов</h2>
+        <p class="sub">Включите сбой и оформите заказ: он должен сохраниться в CRM, а в истории заявки появится ошибка отправки.</p>
+        <label class="check"><input type="checkbox" id="f-tg"> Telegram менеджеру недоступен</label>
+        <label class="check"><input type="checkbox" id="f-crm"> Внешняя CRM недоступна</label>
+        <div class="row" style="margin-top: 8px">
+          <label for="f-latency">Задержка ответа сервисов</label>
+          <select id="f-latency">
+            <option value="0">нет</option>
+            <option value="300">0,3 секунды</option>
+            <option value="2000">2 секунды</option>
+            <option value="8000">8 секунд</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel wide" aria-labelledby="t-runs">
+        <h2 id="t-runs">Автопрогон сценариев</h2>
+        <p class="sub">Каждый сценарий проходит путь клиента и менеджера и проверяет результат. Тестовые заявки помечены «Тест:» и остаются в CRM — их можно открыть и посмотреть.</p>
+        <div class="row">
+          <button class="btn" type="button" id="run-all">Запустить все сценарии</button>
+          <button class="btn btn-quiet" type="button" id="purge">Удалить тестовые заявки из CRM</button>
+          <span id="run-status" role="status"></span>
+        </div>
+        <ol class="runs" id="runs"></ol>
+      </section>
+
+      <section class="panel wide" aria-labelledby="t-log">
+        <h2 id="t-log">Что ушло наружу</h2>
+        <p class="sub">Журнал обновляется сам. В SMS клиенту есть ссылка на оплату — по ней можно перейти и «оплатить».</p>
+        <div class="tabs" id="tabs" role="group" aria-label="Фильтр журнала"></div>
+        <ol class="log" id="log"></ol>
+        <div class="row" style="margin-top: 12px">
+          <button class="btn btn-quiet btn-small" type="button" id="log-clear">Очистить журнал</button>
+          <button class="btn btn-quiet btn-small" type="button" id="reset-all">Сбросить весь стенд</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/messages.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/scenarios.js"></script>
+  <script src="js/lab.js"></script>
+</body>
+</html>

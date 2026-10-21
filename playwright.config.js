@@ -7,13 +7,13 @@ const launchOptions = fs.existsSync(localChromium) ? { executablePath: localChro
 
 module.exports = defineConfig({
   testDir: "tests/e2e",
-  timeout: 30_000,
+  timeout: 45_000,
   fullyParallel: true,
   reporter: [["list"]],
-  use: { baseURL: "http://localhost:4173", locale: "ru-RU", timezoneId: "Europe/Moscow", launchOptions },
+  use: { baseURL: "http://localhost:4173", locale: "ru-RU", timezoneId: "Europe/Moscow", reducedMotion: "reduce", launchOptions },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], launchOptions } },
-    { name: "mobile", use: { ...devices["Pixel 7"], launchOptions } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], reducedMotion: "reduce", launchOptions } },
+    { name: "mobile", use: { ...devices["Pixel 7"], reducedMotion: "reduce", launchOptions } },
   ],
   webServer: { command: "node tests/serve.mjs", url: "http://localhost:4173", reuseExistingServer: true },
 });

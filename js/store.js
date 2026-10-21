@@ -16,7 +16,9 @@
     cancelled: "Отменён",
   };
   const KIND = { order: "Заказ", callback: "Звонок" };
-  const SOURCE = { site: "Сайт", chat: "Чат-бот", crm: "CRM" };
+  const PAYMENT = { unpaid: "Не оплачен", paid: "Оплачен" };
+  const PAYABLE = ["confirmed", "assembling", "delivering", "ready"];
+  const SOURCE = { site: "Сайт", chat: "Чат на сайте", telegram: "Telegram", vk: "ВКонтакте", max: "MAX", alice: "Алиса", crm: "CRM" };
   const STORAGE_KEY = "stebel.crm.v1";
 
   function nextStatuses(rec) {
@@ -71,7 +73,9 @@
     const now = opts.now || (() => new Date());
     const key = opts.key || STORAGE_KEY;
     const webhook = opts.webhook || null;
+    const onEvent = opts.onEvent || (() => {});
     const pending = [];
+    const emit = (event, rec) => { try { onEvent(event, rec); } catch (e) { /* уведомления не должны ломать CRM */ } };
 
     function load() {
       try {
@@ -109,6 +113,7 @@
           date: input.date, slot: input.slot, note: input.note || "",
           items: input.items.map(({ id, name, price, qty }) => ({ id, name, price, qty })),
           totals: cart.totals(input.items, input.fulfillment),
+          payment: "unpaid",
         });
       } else {
         rec.topic = input.topic || "";
@@ -116,6 +121,7 @@
       db.items.push(rec);
       save(db);
       if (webhook) pending.push(sync(rec.id));
+      emit({ type: "created" }, clone(rec));
       return clone(rec);
     }
 
@@ -153,13 +159,33 @@
     }
 
     function setStatus(id, status, by = "Менеджер") {
-      return mutate(id, (r) => {
+      const rec = mutate(id, (r) => {
         if (!nextStatuses(r).includes(status)) {
           throw new Error(`Нельзя перевести ${r.id} из статуса «${STATUS[r.status]}» в «${STATUS[status] || status}».`);
         }
         r.status = status;
         r.history.push({ at: now().toISOString(), type: "status", status, by });
       });
+      emit({ type: "status", status }, rec);
+      return rec;
+    }
+
+    // outcome: "success" или "declined" (отказ банка). Платёж принимается только после подтверждения заказа.
+    function pay(id, outcome = "success") {
+      const rec = mutate(id, (r) => {
+        if (r.kind !== "order") throw new Error("Звонок нельзя оплатить.");
+        if (r.payment === "paid") throw new Error(`Заказ ${r.id} уже оплачен.`);
+        if (!PAYABLE.includes(r.status)) {
+          throw new Error(r.status === "new"
+            ? `Заказ ${r.id} ещё не подтверждён флористом. Оплата станет доступна после подтверждения.`
+            : `Заказ ${r.id} в статусе «${STATUS[r.status]}», оплатить его нельзя.`);
+        }
+        const ok = outcome === "success";
+        if (ok) r.payment = "paid";
+        r.history.push({ at: now().toISOString(), type: "payment", ok, text: ok ? `Оплачено ${cart.formatRub(r.totals.total)}` : "Банк отклонил оплату", by: "Платёжная страница" });
+      });
+      emit({ type: rec.payment === "paid" ? "paid" : "payment_failed" }, rec);
+      return rec;
     }
 
     function addComment(id, text, by = "Менеджер") {
@@ -170,6 +196,15 @@
 
     function reset() {
       storage.removeItem(key);
+    }
+
+    // Удаляет заявки по условию (например, тестовые). Возвращает число удалённых.
+    function purge(pred) {
+      const db = load();
+      const before = db.items.length;
+      db.items = db.items.filter((r) => !pred(clone(r)));
+      save(db);
+      return before - db.items.length;
     }
 
     function seedDemo(today) {
@@ -185,14 +220,22 @@
       addComment(d.id, "Нужен закрывающий документ на юрлицо.");
     }
 
-    return { create, get, list, setStatus, addComment, reset, seedDemo, flush: () => Promise.all(pending), storageKey: key };
+    return { create, get, list, setStatus, pay, addComment, reset, purge, seedDemo, flush: () => Promise.all(pending), storageKey: key };
   }
 
-  // Хранилище для страниц сайта: localStorage + внешний вебхук, если он задан в js/config.js.
+  // Хранилище для страниц сайта. Если в js/config.js задан webhookUrl — заявки уходят на настоящий сервер,
+  // иначе в симуляцию (js/sim.js): журнал Telegram, внешней CRM и SMS на пульте тестирования.
   function appStore() {
-    const url = root.Flora && root.Flora.config && root.Flora.config.webhookUrl;
-    return createStore({ storage: safeStorage(), webhook: url ? createWebhook(url) : null });
+    const F = root.Flora || {};
+    const url = F.config && F.config.webhookUrl;
+    const sim = F.simInstance;
+    return createStore({
+      storage: safeStorage(),
+      now: sim ? sim.now : undefined,
+      webhook: url ? createWebhook(url) : sim ? sim.webhook : null,
+      onEvent: sim ? sim.notify : undefined,
+    });
   }
 
-  return { STATUS, KIND, SOURCE, STORAGE_KEY, nextStatuses, memoryStorage, safeStorage, createWebhook, createStore, appStore };
+  return { STATUS, KIND, PAYMENT, PAYABLE, SOURCE, STORAGE_KEY, nextStatuses, memoryStorage, safeStorage, createWebhook, createStore, appStore };
 });

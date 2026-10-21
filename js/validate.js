@@ -1,9 +1,12 @@
 // Проверка данных заказа, телефоны, даты и интервалы доставки по московскому времени.
 (function (root, factory) {
-  const mod = factory();
+  const mod = factory(root);
   if (typeof module === "object" && module.exports) module.exports = mod;
   else (root.Flora = root.Flora || {}).validate = mod;
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (root) {
+  // В браузере время может быть сдвинуто пультом тестирования (js/sim.js).
+  const clock = () => (root && root.Flora && root.Flora.clock ? root.Flora.clock() : new Date());
+
   const SLOTS = [
     { id: "9-12", label: "9:00–12:00", start: 9 },
     { id: "12-15", label: "12:00–15:00", start: 12 },
@@ -19,7 +22,7 @@
     hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   });
 
-  function moscowNow(now = new Date()) {
+  function moscowNow(now = clock()) {
     const p = Object.fromEntries(mskFormat.formatToParts(now).map((x) => [x.type, x.value]));
     return { date: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour), minute: Number(p.minute) };
   }
@@ -36,12 +39,12 @@
     return d.toISOString().slice(0, 10);
   }
 
-  function dateRange(now = new Date()) {
+  function dateRange(now = clock()) {
     const today = moscowNow(now).date;
     return { min: today, max: addDays(today, MAX_DAYS_AHEAD) };
   }
 
-  function availableSlots(date, now = new Date()) {
+  function availableSlots(date, now = clock()) {
     if (!isIsoDate(date)) return [];
     const t = moscowNow(now);
     const { min, max } = dateRange(now);
@@ -77,7 +80,7 @@
   }
 
   // Принимает «25.12» или «25.12.2026», возвращает ISO-дату или null.
-  function parseRuDate(text, now = new Date()) {
+  function parseRuDate(text, now = clock()) {
     const m = String(text || "").trim().match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?$/);
     if (!m) return null;
     const today = moscowNow(now).date;
@@ -89,7 +92,7 @@
     return isIsoDate(iso) ? iso : null;
   }
 
-  function validateOrder(input, now = new Date()) {
+  function validateOrder(input, now = clock()) {
     const errors = {};
     const name = String(input.name || "").trim();
     const phone = normalizePhone(input.phone);

@@ -14,7 +14,12 @@
 </head>
 <body>
   <a class="skip" href="#main">Перейти к содержанию</a>
-  <p class="demo-bar">Демо-режим: заказы сохраняются в этом браузере и сразу видны в <a href="crm.html">CRM</a>.</p>
+  <nav class="demo-bar" aria-label="Тестовый стенд">
+    <span>Тестовый стенд: заказы видны в</span>
+    <a href="crm.html">CRM</a>
+    <a href="channels.html">Мессенджеры</a>
+    <a href="lab.html">Пульт тестирования</a>
+  </nav>
 
   <header class="top">
     <a class="logo" href="#" aria-label="Стебель, на главную">Стебель</a>
@@ -150,6 +155,9 @@
   </div>
 
   <script src="js/config.js"></script>
+  <script src="js/messages.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/metrika.js"></script>
   <script src="js/validate.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/catalog.js"></script>

@@ -1,4 +1,5 @@
-.demo-bar { background: var(--ink); color: #eadff0; text-align: center; font-size: .9rem; padding: 8px var(--gutter); }
+.demo-bar { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; background: var(--ink); color: #eadff0; font-size: .9rem; padding: 8px var(--gutter); }
+.demo-bar a { color: var(--white); font-weight: 600; }
 
 .top {
   display: flex; align-items: center; gap: 28px;
@@ -120,3 +121,11 @@
   .product .buy { flex-direction: column; align-items: stretch; }
   .delivery .terms { grid-template-columns: 1fr; }
 }
+
+.chat-log .chat-cards-wrap { max-width: 100%; padding: 0; background: none; align-self: stretch; }
+.chat-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; align-self: stretch; }
+.chat-cards li { max-width: none; display: grid; grid-template-columns: 52px 1fr; gap: 10px; align-items: center; background: var(--paper); border-radius: 12px; padding: 6px 10px 6px 6px; }
+.chat-cards svg { width: 52px; height: 58px; display: block; background: var(--white); border-radius: 8px; }
+.chat-cards b { display: block; font-weight: 600; }
+.chat-cards span { color: var(--ink-soft); font-size: .85rem; }
+.chat-log .typing { color: var(--ink-soft); font-style: italic; background: none; padding-left: 4px; }

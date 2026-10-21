@@ -1,8 +1,18 @@
 (function () {
-  const { bot, store: storeMod } = Flora;
+  const { bot, store: storeMod, flowers, catalog, cart } = Flora;
   const store = storeMod.appStore();
+  const goal = (g, params) => Flora.metrika && Flora.metrika.reachGoal(g, params);
   const $ = (id) => document.getElementById(id);
-  const ctx = { now: () => new Date(), create: (input) => store.create(input), lookup: (id) => store.get(id) };
+  const ctx = {
+    now: () => (Flora.clock ? Flora.clock() : new Date()),
+    create(input) {
+      const rec = store.create(input);
+      goal(rec.kind === "order" ? "chat_order" : "callback_request", { order_id: rec.id });
+      return rec;
+    },
+    lookup: (id) => store.get(id),
+  };
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   const panel = $("chat-panel");
   const launch = $("chat-open");
@@ -10,22 +20,30 @@
   const options = $("chat-options");
   const input = $("chat-text");
   let state = null;
+  let started = false;
+  // Ответы показываются строго по очереди, даже если клиент пишет, пока бот «печатает».
+  let queue = Promise.resolve();
+  const enqueue = (fn) => (queue = queue.then(fn, fn));
 
+  function add(el) {
+    log.appendChild(el);
+    log.scrollTop = log.scrollHeight;
+  }
   function say(who, text) {
     const li = document.createElement("li");
     li.className = who;
     li.textContent = text;
-    log.appendChild(li);
-    log.scrollTop = log.scrollHeight;
+    add(li);
+  }
+  // Букеты в чате на сайте — карточками с картинкой.
+  function cards(list) {
+    const li = document.createElement("li");
+    li.className = "chat-cards-wrap";
+    li.innerHTML = `<ul class="chat-cards">${list.map((c) => `<li>${flowers.bouquetSVG(catalog.byId(c.id))}<div><b>${c.name}, ${cart.formatRub(c.price)}</b><span>${c.composition}</span></div></li>`).join("")}</ul>`;
+    add(li);
   }
 
-  function apply(result) {
-    state = result.state;
-    let opts = [];
-    for (const msg of result.messages) {
-      say("bot", msg.text);
-      if (msg.options) opts = msg.options;
-    }
+  function showOptions(opts) {
     options.innerHTML = "";
     for (const o of opts) {
       const b = document.createElement("button");
@@ -36,15 +54,41 @@
     }
   }
 
+  // Короткая пауза «печатает…», чтобы ответ не появлялся мгновенно, как у робота.
+  async function apply(result) {
+    state = result.state;
+    let opts = [];
+    options.innerHTML = "";
+    for (const msg of result.messages) {
+      if (!reduced) {
+        const t = document.createElement("li");
+        t.className = "bot typing";
+        t.textContent = "печатает…";
+        add(t);
+        await new Promise((r) => setTimeout(r, Math.min(900, 250 + msg.text.length * 6)));
+        t.remove();
+      }
+      if (msg.text) say("bot", msg.text);
+      if (msg.cards) cards(msg.cards);
+      if (msg.options) opts = msg.options;
+    }
+    showOptions(opts);
+  }
+
   function send(text, value) {
     say("me", text);
-    apply(bot.reply(state, { text, value }, ctx));
+    options.innerHTML = "";
+    enqueue(() => apply(bot.reply(state, { text, value }, ctx)));
   }
 
   function open() {
     panel.hidden = false;
     launch.setAttribute("aria-expanded", "true");
-    if (!state) apply(bot.start());
+    if (!started) {
+      started = true;
+      goal("chat_open");
+      enqueue(() => apply(bot.start()));
+    }
     input.focus();
   }
   function close() {

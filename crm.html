@@ -14,29 +14,45 @@
 <body>
   <header class="crm-top">
     <p class="logo">Стебель <span>CRM</span></p>
-    <a href="index.html">Открыть магазин</a>
+    <nav aria-label="Разделы стенда">
+      <a href="index.html">Магазин</a>
+      <a href="channels.html">Мессенджеры</a>
+      <a href="lab.html">Пульт тестирования</a>
+    </nav>
   </header>
 
   <main class="crm">
+    <section class="howto" id="howto">
+      <div>
+        <h2>Как вести заказы</h2>
+        <p>Новые заявки с сайта и из мессенджеров появляются в колонке «Новые». Откройте карточку и нажмите главную кнопку — заказ перейдёт на следующий этап, а клиент получит SMS. Колонки идут слева направо, как заказ в жизни.</p>
+      </div>
+      <button class="icon-btn" type="button" id="howto-close" aria-label="Скрыть подсказку">✕</button>
+    </section>
+
     <section class="stats" aria-label="Сводка">
-      <div><p class="num" id="stat-new">0</p><p>Новые</p></div>
+      <div><p class="num" id="stat-new">0</p><p>Ждут звонка флориста</p></div>
       <div><p class="num" id="stat-work">0</p><p>В работе</p></div>
-      <div><p class="num" id="stat-done">0</p><p>Выполнено</p></div>
+      <div><p class="num" id="stat-unpaid">0</p><p>Подтверждены, но не оплачены</p></div>
       <div><p class="num" id="stat-sum">0 ₽</p><p>Сумма заказов в работе</p></div>
     </section>
 
     <form class="toolbar" id="filters" role="search">
+      <div class="view-switch" role="group" aria-label="Вид">
+        <button type="button" data-view="board" aria-pressed="true">Воронка</button>
+        <button type="button" data-view="list" aria-pressed="false">Список</button>
+      </div>
       <label class="search"><span class="sr-only">Поиск</span>
         <input type="search" name="q" placeholder="Номер, имя или телефон">
       </label>
-      <label><span class="sr-only">Статус</span>
-        <select name="status"><option value="">Все статусы</option></select>
-      </label>
-      <label><span class="sr-only">Источник</span>
-        <select name="source"><option value="">Все источники</option></select>
+      <label><span class="sr-only">Канал</span>
+        <select name="source"><option value="">Все каналы</option></select>
       </label>
       <label><span class="sr-only">Тип</span>
         <select name="kind"><option value="">Заказы и звонки</option></select>
+      </label>
+      <label class="list-only"><span class="sr-only">Статус</span>
+        <select name="status"><option value="">Все статусы</option></select>
       </label>
       <div class="tools">
         <button class="btn btn-quiet btn-small" type="button" id="seed">Добавить демо-данные</button>
@@ -46,24 +62,32 @@
     </form>
 
     <div class="layout">
-      <div class="table-wrap">
-        <table class="records" id="records">
-          <thead>
-            <tr>
-              <th scope="col">Номер</th>
-              <th scope="col">Клиент</th>
-              <th scope="col">Что</th>
-              <th scope="col">Когда</th>
-              <th scope="col">Сумма</th>
-              <th scope="col">Статус</th>
-              <th scope="col">Источник</th>
-            </tr>
-          </thead>
-          <tbody id="rows"></tbody>
-        </table>
+      <div class="main-pane">
+        <div class="board" id="board" aria-label="Воронка заказов"></div>
+
+        <div class="table-wrap" id="list" hidden>
+          <table class="records" id="records">
+            <thead>
+              <tr>
+                <th scope="col">Номер</th>
+                <th scope="col">Клиент</th>
+                <th scope="col">Что</th>
+                <th scope="col">Когда</th>
+                <th scope="col">Сумма</th>
+                <th scope="col">Статус</th>
+                <th scope="col">Канал</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+
         <div class="empty" id="empty" hidden>
           <p id="empty-text"></p>
-          <p class="empty-actions"><a class="btn btn-small" href="index.html">Открыть магазин</a></p>
+          <p class="empty-actions">
+            <a class="btn btn-small" href="index.html">Открыть магазин</a>
+            <a class="btn btn-small btn-ghost" href="channels.html">Написать в мессенджер</a>
+          </p>
         </div>
       </div>
 
@@ -73,13 +97,14 @@
           <button class="icon-btn" type="button" id="d-close" aria-label="Закрыть карточку">✕</button>
         </div>
         <p class="status-line"><span class="chip" id="d-status"></span> <span id="d-meta"></span></p>
-        <dl class="facts" id="d-facts"></dl>
+        <p class="explain" id="d-explain"></p>
         <div class="moves" id="d-moves"></div>
         <p class="field-error" id="d-error" role="alert" hidden></p>
+        <dl class="facts" id="d-facts"></dl>
         <form id="d-comment" class="comment">
-          <label for="d-text">Комментарий</label>
+          <label for="d-text">Комментарий для команды</label>
           <textarea id="d-text" rows="2" placeholder="Например: клиент просит позвонить за час"></textarea>
-          <button class="btn btn-small" type="submit">Добавить комментарий</button>
+          <button class="btn btn-small btn-quiet" type="submit">Добавить комментарий</button>
         </form>
         <h3>История</h3>
         <ol class="history" id="d-history"></ol>
@@ -88,6 +113,8 @@
   </main>
 
   <script src="js/config.js"></script>
+  <script src="js/messages.js"></script>
+  <script src="js/sim.js"></script>
   <script src="js/validate.js"></script>
   <script src="js/cart.js"></script>
   <script src="js/store.js"></script>

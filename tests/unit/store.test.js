@@ -113,3 +113,39 @@ test("seedDemo создаёт заявки в разных статусах", ()
   const st = s.list().map((r) => r.status).sort();
   assert.deepEqual(st, ["assembling", "confirmed", "new", "new"]);
 });
+
+test("оплата: только после подтверждения, отказ, успех, без повторов", () => {
+  const events = [];
+  const s = fresh({ onEvent: (e, r) => events.push(e.type + ":" + r.id) });
+  const { id } = s.create(order);
+  assert.equal(s.get(id).payment, "unpaid");
+  assert.throws(() => s.pay(id), /не подтверждён/);
+  s.setStatus(id, "confirmed");
+  assert.equal(s.pay(id, "declined").payment, "unpaid");
+  assert.equal(s.pay(id, "success").payment, "paid");
+  assert.throws(() => s.pay(id), /уже оплачен/);
+  assert.deepEqual(events, ["created:СТ-1001", "status:СТ-1001", "payment_failed:СТ-1001", "paid:СТ-1001"]);
+});
+
+test("звонок оплатить нельзя, отменённый заказ — тоже", () => {
+  const s = fresh();
+  const cb = s.create({ kind: "callback", source: "chat", name: "А", phone: "+79261112233" });
+  assert.throws(() => s.pay(cb.id), /Звонок нельзя оплатить/);
+  const { id } = s.create(order);
+  s.setStatus(id, "cancelled");
+  assert.throws(() => s.pay(id), /оплатить его нельзя/);
+});
+
+test("ошибка в обработчике уведомлений не ломает CRM", () => {
+  const s = fresh({ onEvent: () => { throw new Error("boom"); } });
+  const { id } = s.create(order);
+  assert.equal(s.setStatus(id, "confirmed").status, "confirmed");
+});
+
+test("purge удаляет только подходящие заявки", () => {
+  const s = fresh();
+  s.create(order);
+  s.create({ ...order, name: "Тест: X" });
+  assert.equal(s.purge((r) => r.customer.name.startsWith("Тест:")), 1);
+  assert.deepEqual(s.list().map((r) => r.customer.name), ["Мария"]);
+});
