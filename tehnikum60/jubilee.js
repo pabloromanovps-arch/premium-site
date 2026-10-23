@@ -35,8 +35,18 @@ P.prof = { bg: '#061C46', bg2: '#0C4C9C', grid: '#0B2A5E', line: 'rgba(255,255,2
 // ---------------------------------------------------------------- the logo
 // placement: the logo's own box (source px / 1000) fitted to 80 % of the frame height, centred
 const BOX = { x0: 0.275, x1: 1.559, y0: 0.344, y1: 1.559 };
-const K = (H * 0.8) / (BOX.y1 - BOX.y0);
-const OX = W / 2 - ((BOX.x0 + BOX.x1) / 2) * K, OY = H / 2 - ((BOX.y0 + BOX.y1) / 2) * K;
+// the logo's height as a share of the frame; a variant may set a smaller one (setLogoScale)
+let K, OX, OY;
+export function setLogoScale(share) {
+  K = (H * share) / (BOX.y1 - BOX.y0);
+  OX = W / 2 - ((BOX.x0 + BOX.x1) / 2) * K; OY = H / 2 - ((BOX.y0 + BOX.y1) / 2) * K;
+}
+setLogoScale(0.8);
+// the logo's box on screen: centre and the radius of a circle that holds all of it
+export function logoMedallion() {
+  const w = (BOX.x1 - BOX.x0) * K, h = (BOX.y1 - BOX.y0) * K;
+  return { cx: W / 2, cy: H / 2, r: Math.hypot(w, h) / 2 * 0.95 };
+}
 const toScreen = (x, y) => [OX + x * K, OY + y * K];
 
 function gearPath(ctx, cx, cy, r, teeth, depth, rot, hole = 0) {
@@ -64,7 +74,14 @@ function sparks(ctx, x, y, t, t0, n, seed, { speed = 520, life = 0.7, size = 7, 
   }
 }
 
-function drawLogo(ctx, t, pal, { glints = true } = {}) {
+// loop: a seamless loop of that many seconds with the logo already assembled (the master title):
+// the teeth turn one colour period (8 teeth) per loop and the glint crosses once
+function drawLogo(ctx, t0, pal, { glints = true, loop = 0 } = {}) {
+  const tl = loop ? t0 % loop : t0;
+  const t = loop ? 99 : t0;                       // every reveal finished
+  const teethRot = loop ? -(TAU / 4) * (tl / loop) : -t0 * 0.18;
+  const glintAt = loop ? [loop * 0.42] : [3.2, 6.4];
+  const gt = loop ? tl : t0;
   const { ring } = J;
   const [rcx, rcy] = toScreen(ring.cx, ring.cy), rout = ring.rout * K;
   ctx.save();
@@ -73,7 +90,7 @@ function drawLogo(ctx, t, pal, { glints = true } = {}) {
   if (t > 1.0 && kg > 0.001) {   // (outBack(0) is a hair above zero: guard on the start time)
     if (pal.chordTeeth) {
       // one tooth per brand colour, the chord running round the 0
-      const n = 32, rot = -t * 0.18, r0 = rout - 4, r1 = rout + 34 * kg;
+      const n = 32, rot = teethRot, r0 = rout - 4, r1 = rout + 34 * kg;
       for (let i = 0; i < n; i++) {
         const a = rot + (i / n) * TAU, sA = TAU / n;
         ctx.fillStyle = CHORD8[i % 8];
@@ -86,7 +103,7 @@ function drawLogo(ctx, t, pal, { glints = true } = {}) {
       }
     } else {
       ctx.fillStyle = pal.accent;
-      gearPath(ctx, rcx, rcy, rout + 34 * kg, 28, 34 * kg, -t * 0.18, rout - 4);
+      gearPath(ctx, rcx, rcy, rout + 34 * kg, 28, 34 * kg, teethRot, rout - 4);
       ctx.fill('evenodd');
     }
   }
@@ -139,8 +156,8 @@ function drawLogo(ctx, t, pal, { glints = true } = {}) {
     c.save(); c.translate(rcx, rcy); c.scale(s, s); c.translate(-rcx, -rcy); part(nm); c.restore();
   });
   // the glint: a bright band crossing the logo at the house angle, clipped to the logo's shapes
-  if (glints) for (const g0 of [3.2, 6.4]) {
-    const kgl = clamp((t - g0) / 0.9);
+  if (glints) for (const g0 of glintAt) {
+    const kgl = clamp((gt - g0) / 0.9);
     if (kgl <= 0 || kgl >= 1) continue;
     const gx = lerp(OX - 300, OX + (BOX.x1 + 0.1) * K + 300, E.inOutSine(kgl));
     c.save(); c.globalCompositeOperation = 'source-atop';
@@ -369,7 +386,11 @@ export function jubileeClips() {
     jlogo_prof: logo(P.prof),
     jz_prof3d: { dur: 8, samples: (t) => (t < 2.6 ? 6 : 3),
       async init() { this.m = await import('./jubilee3d.js'); await this.m.init3d(); },
-      draw(ctx, t) { this.m.drawFon3D(ctx, t); drawLogo(ctx, t, P.prof); } },
+      draw(ctx, t) { setLogoScale(0.53); this.m.drawFon3D(ctx, t, logoMedallion()); drawLogo(ctx, t, P.prof); } },
+    // the master title: a 10 s seamless loop, logo assembled, everything else moving
+    jmaster: { dur: 10, samples: () => 3,
+      async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
+      draw(ctx, t) { setLogoScale(0.53); this.m.drawGlassMaster(ctx, t); drawLogo(ctx, t, P.prof, { loop: 10 }); } },
     jfon_prof: { dur: LOOP, samples: () => 4, draw(ctx, t) { drawFonProf(ctx, t); } },
     jz_prof: { dur: 8, samples: (t) => (t < 2.6 ? 8 : 4), draw(ctx, t) { drawFonProf(ctx, t); drawLogo(ctx, t, P.prof); } },
   };
