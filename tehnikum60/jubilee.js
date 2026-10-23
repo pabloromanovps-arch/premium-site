@@ -388,6 +388,9 @@ export function jubileeClips() {
       async init() { this.m = await import('./jubilee3d.js'); await this.m.init3d(); },
       draw(ctx, t) { setLogoScale(0.53); this.m.drawFon3D(ctx, t, logoMedallion()); drawLogo(ctx, t, P.prof); } },
     // the master title: a 10 s seamless loop, logo assembled, everything else moving
+    jmaster_reeded: { dur: 10, samples: () => 3,
+      async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
+      draw(ctx, t) { setLogoScale(0.53); this.m.drawGlassMaster(ctx, t, { reeded: true }); drawLogo(ctx, t, P.prof, { loop: 10 }); } },
     jmaster: { dur: 10, samples: () => 3,
       async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
       draw(ctx, t) { setLogoScale(0.53); this.m.drawGlassMaster(ctx, t); drawLogo(ctx, t, P.prof, { loop: 10 }); } },

@@ -155,11 +155,21 @@ export async function initGlass(loop = 10) {
 }
 
 const GLASS_Z = 5;
-export function drawGlassMaster(ctx, t) {
+// reeded: fluted glass. Everything behind the pane is drawn to its own layer, then laid back in
+// vertical ribs, each rib a little cylinder lens (magnified, so the image breaks at every rib),
+// lit on one side and shaded on the other. That is what makes the glass read as glass.
+export function drawGlassMaster(ctx, t, { reeded = false } = {}) {
+  const SS = ctx.getTransform().a;
+  let dst = ctx;
+  if (reeded) {
+    G2.behind = G2.behind || document.createElement('canvas');
+    if (G2.behind.width !== W * SS) { G2.behind.width = W * SS; G2.behind.height = H * SS; }
+    dst = G2.behind.getContext('2d'); dst.setTransform(SS, 0, 0, SS, 0, 0); dst.clearRect(0, 0, W, H);
+  }
   const p = (t % LOOP) / LOOP;
-  const g = ctx.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, W * 0.65);
+  const g = dst.createRadialGradient(W / 2, H / 2, 60, W / 2, H / 2, W * 0.65);
   g.addColorStop(0, '#0E4C9E'); g.addColorStop(0.55, '#082F6E'); g.addColorStop(1, '#041537');
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  dst.fillStyle = g; dst.fillRect(0, 0, W, H);
   // each object breathes in depth once per loop: from deep behind (-12) up against the glass (4.6)
   const binOf = [];
   for (const m of G2.items) {
@@ -176,11 +186,54 @@ export function drawGlassMaster(ctx, t) {
   for (let b = 3; b >= 0; b--) {
     G2.items.forEach((m, i) => { m.visible = binOf[i] === b; });
     R.setClearColor(0x000000, 0); R.render(scene, cam);
-    if (b === 0) { ctx.drawImage(R.domElement, 0, 0, W, H); continue; }
+    if (b === 0) { dst.drawImage(R.domElement, 0, 0, W, H); continue; }
     const c = G2.bins[b].getContext('2d');
     c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W / 4, H / 4);
     c.filter = `blur(${BLUR[b]}px)`; c.drawImage(R.domElement, 0, 0, W / 4, H / 4); c.filter = 'none';
-    ctx.globalAlpha = b === 3 ? 0.75 : 0.9; ctx.drawImage(G2.bins[b], 0, 0, W, H); ctx.globalAlpha = 1;
+    dst.globalAlpha = b === 3 ? 0.75 : 0.9; dst.drawImage(G2.bins[b], 0, 0, W, H); dst.globalAlpha = 1;
+  }
+  if (reeded) {
+    // a light behind the logo, inside the glass world, so the flutes bend it too
+    const pulse = 0.85 + 0.15 * Math.sin(TAU * p);
+    const lg = dst.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.62);
+    lg.addColorStop(0, `rgba(80,190,255,${0.42 * pulse})`); lg.addColorStop(0.45, `rgba(42,125,225,${0.18 * pulse})`);
+    lg.addColorStop(1, 'rgba(42,125,225,0)');
+    dst.globalCompositeOperation = 'lighter'; dst.fillStyle = lg; dst.fillRect(0, 0, W, H);
+    dst.globalCompositeOperation = 'source-over';
+    // flutes at the house angle (15 deg). Each one is a little cylinder: across it the image is
+    // sampled through sin(), so it is magnified in the middle and squeezed hard at the edges.
+    const sw = 72, mag = 1.3, SUB = 10, ang = 15 * Math.PI / 180;
+    const span = Math.hypot(W, H);
+    // a glint that runs across the flutes once per loop (and its weaker echo)
+    const beamX = -span / 2 + ((p * 1.0) % 1) * span * 1.6 - span * 0.3;
+    ctx.save();
+    ctx.translate(W / 2, H / 2); ctx.rotate(ang);
+    for (let x0 = -span / 2 - sw; x0 < span / 2 + sw; x0 += sw) {
+      const cx = x0 + sw / 2;
+      for (let j = 0; j < SUB; j++) {
+        const ua = -1 + (2 * j) / SUB, ub = ua + 2 / SUB;
+        const xa = cx + ua * sw / 2, xb = cx + ub * sw / 2;
+        const fa = Math.sin(ua * Math.PI / 2) / mag, fb = Math.sin(ub * Math.PI / 2) / mag;
+        const sa = cx + fa * sw / 2, sb = cx + fb * sw / 2;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(xa - 0.3, -span / 2, xb - xa + 0.6, span); ctx.clip();
+        // map rotated-frame x in [sa, sb] onto [xa, xb], then back into screen space
+        const k = (xb - xa) / (sb - sa);
+        ctx.translate(xa, 0); ctx.scale(k, 1); ctx.translate(-sa, 0);
+        ctx.rotate(-ang); ctx.translate(-W / 2, -H / 2);
+        ctx.drawImage(G2.behind, 0, 0, W * SS, H * SS, 0, 0, W, H);
+        ctx.restore();
+      }
+      // the flute's own light: a bright lip on one side, shade on the other; the glint lifts it
+      const near = Math.exp(-(((cx - beamX) / 260) ** 2)) + 0.4 * Math.exp(-(((cx - beamX + span * 0.55) / 200) ** 2));
+      const rg = ctx.createLinearGradient(x0, 0, x0 + sw, 0);
+      rg.addColorStop(0, `rgba(255,255,255,${0.10 + 0.32 * near})`);
+      rg.addColorStop(0.08, `rgba(255,255,255,${0.04 + 0.12 * near})`);
+      rg.addColorStop(0.35, 'rgba(255,255,255,0)');
+      rg.addColorStop(0.8, 'rgba(0,8,35,0)'); rg.addColorStop(1, 'rgba(0,8,35,0.22)');
+      ctx.fillStyle = rg; ctx.fillRect(x0, -span / 2, sw, span);
+    }
+    ctx.restore();
   }
   // the pane: a faint frost, grain, two soft reflections sweeping across once per loop
   ctx.fillStyle = 'rgba(200,225,255,0.05)'; ctx.fillRect(0, 0, W, H);
