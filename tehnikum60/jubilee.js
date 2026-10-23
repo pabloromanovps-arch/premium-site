@@ -367,6 +367,9 @@ export function jubileeClips() {
     jfon_teal: fon(P.teal), jfon_navy: fon(P.navy), jfon_light: fon(P.light),
     jz_teal: both(P.teal), jz_navy: both(P.navy), jz_light: both(P.light),
     jlogo_prof: logo(P.prof),
+    jz_prof3d: { dur: 8, samples: (t) => (t < 2.6 ? 6 : 3),
+      async init() { this.m = await import('./jubilee3d.js'); await this.m.init3d(); },
+      draw(ctx, t) { this.m.drawFon3D(ctx, t); drawLogo(ctx, t, P.prof); } },
     jfon_prof: { dur: LOOP, samples: () => 4, draw(ctx, t) { drawFonProf(ctx, t); } },
     jz_prof: { dur: 8, samples: (t) => (t < 2.6 ? 8 : 4), draw(ctx, t) { drawFonProf(ctx, t); drawLogo(ctx, t, P.prof); } },
   };
