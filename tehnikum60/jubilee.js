@@ -27,6 +27,10 @@ const P = {
     steam: '#7FBFC4', logo: '#078C95', accent: '#078C95' },
 };
 const SPARK = ['#FFFFFF', '#FFE7A3', '#FFB84D', '#FF8A1F'];
+// the «Профессионалитет» colour chord (brandbook p. 30)
+const CHORD8 = ['#00A1D3', '#3CBA94', '#F47920', '#43688F', '#A5ADB7', '#EF4323', '#025EA1', '#2A7DE1'];
+P.prof = { bg: '#061C46', bg2: '#0C4C9C', grid: '#0B2A5E', line: 'rgba(255,255,255,0.30)', fill: 'rgba(255,255,255,0.07)',
+  hi: 'rgba(255,255,255,0.75)', steam: '#E6F2FF', logo: '#FFFFFF', accent: '#2A7DE1', chordTeeth: true };
 
 // ---------------------------------------------------------------- the logo
 // placement: the logo's own box (source px / 1000) fitted to 80 % of the frame height, centred
@@ -67,9 +71,24 @@ function drawLogo(ctx, t, pal, { glints = true } = {}) {
   // the gear teeth behind the 0: they come out once the ring has closed, then keep turning
   const kg = ease(t, 1.0, 1.7, E.outBack);
   if (t > 1.0 && kg > 0.001) {   // (outBack(0) is a hair above zero: guard on the start time)
-    ctx.fillStyle = pal.accent;
-    gearPath(ctx, rcx, rcy, rout + 34 * kg, 28, 34 * kg, -t * 0.18, rout - 4);
-    ctx.fill('evenodd');
+    if (pal.chordTeeth) {
+      // one tooth per brand colour, the chord running round the 0
+      const n = 32, rot = -t * 0.18, r0 = rout - 4, r1 = rout + 34 * kg;
+      for (let i = 0; i < n; i++) {
+        const a = rot + (i / n) * TAU, sA = TAU / n;
+        ctx.fillStyle = CHORD8[i % 8];
+        ctx.beginPath();
+        ctx.moveTo(rcx + Math.cos(a - sA * 0.3) * r0, rcy + Math.sin(a - sA * 0.3) * r0);
+        ctx.lineTo(rcx + Math.cos(a - sA * 0.2) * r1, rcy + Math.sin(a - sA * 0.2) * r1);
+        ctx.lineTo(rcx + Math.cos(a + sA * 0.2) * r1, rcy + Math.sin(a + sA * 0.2) * r1);
+        ctx.lineTo(rcx + Math.cos(a + sA * 0.3) * r0, rcy + Math.sin(a + sA * 0.3) * r0);
+        ctx.closePath(); ctx.fill();
+      }
+    } else {
+      ctx.fillStyle = pal.accent;
+      gearPath(ctx, rcx, rcy, rout + 34 * kg, 28, 34 * kg, -t * 0.18, rout - 4);
+      ctx.fill('evenodd');
+    }
   }
   // the logo is drawn into its own layer so the glint can be clipped to its shapes
   const L = drawLogo.L || (drawLogo.L = document.createElement('canvas'));
@@ -226,6 +245,10 @@ function drawFon(ctx, t, pal) {
   for (let x = 0; x <= W; x += 64) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); }
   for (let y = 0; y <= H; y += 64) { ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); }
   ctx.stroke();
+  drawMid(ctx, tl, pal);
+}
+// gears, flasks and the electrode: the in-focus layer, shared by every background
+function drawMid(ctx, tl, pal) {
   // gears: a meshing train, lower left and upper right; each turns a whole number of teeth per loop
   const w = (TAU / 24) / LOOP;   // the 24-tooth gear advances one tooth per loop
   const gears = [[250, 870, 230, 24, w, 0], [250 + 230 + 128 - 22, 870 - 120, 128, 12, -2 * w, Math.PI / 12],
@@ -242,6 +265,99 @@ function drawFon(ctx, t, pal) {
   electrode(ctx, 1600, 900, pal, tl);
 }
 
+// ---------------------------------------------------------------- the brand variant: depth + glass
+// Three planes. Far: the colour chord, huge and out of focus, sliding one pattern width per loop.
+// Middle (in focus): the gears, flasks and electrode. Near: big out-of-focus industry symbols and
+// bokeh drifting past. Over the middle plane, liquid-glass pieces refract and frost what is behind
+// them: a lens behind the logo and two capsules that float on closed orbits (seamless loop).
+const LOW = 4;   // blurred planes are drawn at 1/4 size, blurred there, then scaled up: cheap and smooth
+const lowCv = () => { const c = document.createElement('canvas'); c.width = W / LOW; c.height = H / LOW; return c; };
+const PL = { far: null, mid: null, tmp: null, near: null };
+function blurInto(dst, src, px) {
+  const c = dst.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, dst.width, dst.height);
+  c.filter = `blur(${px}px)`; c.drawImage(src, 0, 0); c.filter = 'none';
+}
+function farPlane(c, tl) {
+  c.fillStyle = P.prof.bg; c.fillRect(0, 0, W, H);
+  const g = c.createRadialGradient(W / 2, H * 0.55, 40, W / 2, H / 2, W * 0.7);
+  g.addColorStop(0, P.prof.bg2); g.addColorStop(1, P.prof.bg);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // the chord as a broad ribbon crossing the frame at 15 deg, repeating every 8 bands
+  const bw = 170, period = bw * 8, shift = (tl / LOOP) * period;
+  c.save(); c.translate(W / 2, H * 0.62); c.rotate(-15 * Math.PI / 180);
+  for (let i = -16; i < 16; i++) {
+    c.fillStyle = CHORD8[((i % 8) + 8) % 8]; c.globalAlpha = 0.85;
+    c.fillRect(i * bw + shift - period, -150, bw + 1, 300);
+  }
+  c.restore(); c.globalAlpha = 1;
+}
+function nearPlane(c, tl) {
+  // bokeh: soft discs in the brand colours drifting up and across (each wraps once per loop)
+  for (let i = 0; i < 22; i++) {
+    const p = (tl / LOOP + hash01(i, 77)) % 1;
+    const x = (hash01(i, 78) * W * 1.2 - W * 0.1) + Math.sin(TAU * p + i) * 40, y = H * 1.1 - p * H * 1.3;
+    c.globalAlpha = 0.35 * Math.sin(Math.PI * p);
+    c.fillStyle = CHORD8[i % 8]; c.beginPath(); c.arc(x, y, 30 + 60 * hash01(i, 79), 0, TAU); c.fill();
+  }
+  c.globalAlpha = 1;
+  // two big out-of-focus gears in the near corners, turning slowly
+  const w = (TAU / 16) / LOOP;
+  [[-60, H + 40, 330, w, '#2A7DE1'], [W + 80, H * 0.45, 260, -w, '#3CBA94']].forEach(([cx, cy, r, om, col]) => {
+    c.globalAlpha = 0.55; c.fillStyle = col;
+    gearPath(c, cx, cy, r, 16, r * 0.16, om * tl, r * 0.35); c.fill('evenodd');
+  });
+  c.globalAlpha = 1;
+}
+// one liquid-glass shape: the plane behind, magnified and frosted inside it, a tint, a lit rim
+function glass(ctx, path, cx, cy, behindLow, mag = 1.08) {
+  ctx.save();
+  ctx.clip(path);
+  // refraction: the frosted plane behind, scaled about the glass centre
+  ctx.translate(cx, cy); ctx.scale(mag, mag); ctx.translate(-cx, -cy);
+  ctx.drawImage(behindLow, 0, 0, W, H);
+  ctx.restore();
+  ctx.save();
+  ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill(path);
+  // rim light: bright towards the top left, fading round to the bottom right
+  const rg = ctx.createLinearGradient(cx - 300, cy - 300, cx + 300, cy + 300);
+  rg.addColorStop(0, 'rgba(255,255,255,0.85)'); rg.addColorStop(0.5, 'rgba(255,255,255,0.12)'); rg.addColorStop(1, 'rgba(255,255,255,0.45)');
+  ctx.strokeStyle = rg; ctx.lineWidth = 3; ctx.stroke(path);
+  ctx.restore();
+}
+function drawFonProf(ctx, t) {
+  const tl = t % LOOP;
+  if (!PL.far) { PL.far = lowCv(); PL.farB = lowCv(); PL.mid = lowCv(); PL.midB = lowCv(); PL.near = lowCv(); PL.nearB = lowCv(); }
+  // far plane: drawn small, blurred hard (out of focus), scaled up
+  const fc = PL.far.getContext('2d'); fc.setTransform(1 / LOW, 0, 0, 1 / LOW, 0, 0); farPlane(fc, tl);
+  blurInto(PL.farB, PL.far, 10);
+  ctx.drawImage(PL.farB, 0, 0, W, H);
+  // grid, then the in-focus middle plane
+  ctx.strokeStyle = 'rgba(255,255,255,0.05)'; ctx.lineWidth = 2; ctx.beginPath();
+  for (let x = 0; x <= W; x += 64) { ctx.moveTo(x + 0.5, 0); ctx.lineTo(x + 0.5, H); }
+  for (let y = 0; y <= H; y += 64) { ctx.moveTo(0, y + 0.5); ctx.lineTo(W, y + 0.5); }
+  ctx.stroke();
+  drawMid(ctx, tl, P.prof);
+  // what the glass sees: the far + middle planes, small and frosted
+  const mc = PL.mid.getContext('2d'); mc.setTransform(1, 0, 0, 1, 0, 0); mc.drawImage(PL.farB, 0, 0);
+  mc.setTransform(1 / LOW, 0, 0, 1 / LOW, 0, 0); drawMid(mc, tl, P.prof);
+  blurInto(PL.midB, PL.mid, 4);
+  // liquid glass: the lens behind the logo, and two capsules on closed orbits
+  const lx = W / 2 + 40, ly = H / 2 + 60;
+  const lens = new Path2D(); lens.arc(lx, ly, 470, 0, TAU);
+  glass(ctx, lens, lx, ly, PL.midB, 1.1);
+  [[380, 760, 300, 110, 0], [1500, 300, 260, 96, 0.5]].forEach(([x0, y0, w, h, ph]) => {
+    const a = TAU * (tl / LOOP + ph), x = x0 + Math.cos(a) * 40, y = y0 + Math.sin(a) * 26, rot = -0.26 + 0.06 * Math.sin(a);
+    const cap = new Path2D(); cap.roundRect(-w / 2, -h / 2, w, h, h / 2);
+    const placed = new Path2D(); placed.addPath(cap, new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI));
+    glass(ctx, placed, x, y, PL.midB, 1.12);
+  });
+  // near plane: out of focus, over everything
+  const nc = PL.near.getContext('2d'); nc.setTransform(1 / LOW, 0, 0, 1 / LOW, 0, 0); nc.clearRect(0, 0, W, H); nearPlane(nc, tl);
+  blurInto(PL.nearB, PL.near, 7);
+  ctx.drawImage(PL.nearB, 0, 0, W, H);
+}
+
 export function jubileeClips() {
   const logo = (pal) => ({ dur: 8, samples: (t) => (t < 2.6 ? 8 : 4), draw(ctx, t) { drawLogo(ctx, t, pal); } });
   const fon = (pal) => ({ dur: LOOP, samples: () => 4, draw(ctx, t) { drawFon(ctx, t, pal); } });
@@ -250,5 +366,8 @@ export function jubileeClips() {
     jlogo_white: logo(P.teal), jlogo_teal: logo(P.light),
     jfon_teal: fon(P.teal), jfon_navy: fon(P.navy), jfon_light: fon(P.light),
     jz_teal: both(P.teal), jz_navy: both(P.navy), jz_light: both(P.light),
+    jlogo_prof: logo(P.prof),
+    jfon_prof: { dur: LOOP, samples: () => 4, draw(ctx, t) { drawFonProf(ctx, t); } },
+    jz_prof: { dur: 8, samples: (t) => (t < 2.6 ? 8 : 4), draw(ctx, t) { drawFonProf(ctx, t); drawLogo(ctx, t, P.prof); } },
   };
 }
