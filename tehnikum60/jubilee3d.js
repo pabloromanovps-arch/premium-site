@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import * as M from './lib/motion.js';
+import { drawIcon } from './lib/icons.js';
 
 const { W, H, TAU, hash01 } = M;
 let LOOP = 8;
@@ -14,7 +15,7 @@ const COLORS = { plane: '#00A1D3', leaf: '#3CBA94', drop: '#F47920', gear: '#436
   rail: '#EF4323', atom: '#025EA1', ship: '#2A7DE1' };
 const NAMES = Object.keys(COLORS);
 
-let R, scene, cam, planes, low, lowB;
+let R, scene, cam, planes, low, lowB, GEO;
 export async function init3d(loop = 8) {
   LOOP = loop;
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -49,6 +50,7 @@ export async function init3d(loop = 8) {
     g.computeVertexNormals();
     geo[n] = g;
   }
+  GEO = geo;
   // three planes of symbols: far (blurred), middle (sharp), near (blurred). Placed on rings round
   // the logo, each plane a different radius and depth, every symbol tumbling on its own axis.
   planes = { far: new THREE.Group(), mid: new THREE.Group(), near: new THREE.Group() };
@@ -125,6 +127,56 @@ export function drawFon3D(ctx, t, med) {
 // and away: pressed close to the glass they are sharp, the further back they go the more the frost
 // diffuses them (a per-object depth of field, in four focus bins). Soft reflections cross the pane.
 let G2 = null;
+// VTT's speciality icons (lib/icons.js, drawn for canvas) turned into extruded 3-D: the icon is
+// drawn into a context that records its paths instead of painting them
+const ICON3D = { flask: '#00A1D3', weld: '#F47920', molecule: '#3CBA94', chef: '#A5ADB7', building: '#2A7DE1', car: '#EF4323' };
+function iconShapes(name) {
+  const subs = []; let cur = null, T = [1, 0, 0, 1, 0, 0]; const stack = [];
+  const P = (x, y) => new THREE.Vector2(T[0] * x + T[2] * y + T[4], T[1] * x + T[3] * y + T[5]);
+  const mul = (a, b, c, d, e, f) => { const [A, B, C, D, E2, F] = T; T = [A * a + C * b, B * a + D * b, A * c + C * d, B * c + D * d, A * e + C * f + E2, B * e + D * f + F]; };
+  const move = (x, y) => { cur = [P(x, y)]; subs.push(cur); };
+  const line = (x, y) => { if (!cur) move(x, y); else cur.push(P(x, y)); };
+  const quad = { lineWidth: 0.1, stroked: [] };
+  const c = {
+    set fillStyle(v) {}, set strokeStyle(v) {}, set lineCap(v) {},
+    set lineWidth(v) { quad.lineWidth = v; }, get lineWidth() { return quad.lineWidth; },
+    save() { stack.push(T); }, restore() { T = stack.pop(); },
+    translate(x, y) { mul(1, 0, 0, 1, x, y); }, rotate(a) { mul(Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0); },
+    scale(x, y) { mul(x, 0, 0, y, 0, 0); },
+    beginPath() { cur = null; quad.stroked = []; }, closePath() { cur = null; },
+    moveTo(x, y) { move(x, y); quad.stroked.push([[x, y]]); }, lineTo(x, y) { line(x, y); quad.stroked.at(-1)?.push([x, y]); },
+    quadraticCurveTo(cx, cy, x, y) {
+      const p0 = cur.at(-1), q = P(cx, cy), e = P(x, y);
+      for (let i = 1; i <= 8; i++) { const u = i / 8; cur.push(new THREE.Vector2((1 - u) ** 2 * p0.x + 2 * u * (1 - u) * q.x + u * u * e.x, (1 - u) ** 2 * p0.y + 2 * u * (1 - u) * q.y + u * u * e.y)); }
+    },
+    arc(x, y, r, a0, a1, ccw = false) {
+      let d = a1 - a0; if (!ccw && d < 0) d += TAU; if (ccw && d > 0) d -= TAU; if (Math.abs(a1 - a0) >= TAU - 1e-6) d = ccw ? -TAU : TAU;
+      for (let i = 0; i <= 32; i++) { const a = a0 + (d * i) / 32; line(x + r * Math.cos(a), y + r * Math.sin(a)); }
+    },
+    rect(x, y, w, h) { move(x, y); line(x + w, y); line(x + w, y + h); line(x, y + h); cur = null; },
+    fillRect(x, y, w, h) { this.rect(x, y, w, h); }, fill() {},
+    stroke() {   // strokes (the molecule's bonds) become thin quads
+      const hw = quad.lineWidth / 2;
+      for (const pts of quad.stroked) for (let i = 1; i < pts.length; i++) {
+        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / L * hw, ny = (x1 - x0) / L * hw;
+        move(x0 + nx, y0 + ny); line(x1 + nx, y1 + ny); line(x1 - nx, y1 - ny); line(x0 - nx, y0 - ny); cur = null;
+      }
+    },
+  };
+  drawIcon(c, name);
+  // a subpath inside another one is its hole (the icons fill with evenodd); the rest are solids
+  const polys = subs.filter((s) => s.length > 2);
+  const inside = (pt, poly) => { let k = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < ((b.x - a.x) * (pt.y - a.y)) / (b.y - a.y) + a.x) k = !k; } return k; };
+  const area = (p) => THREE.ShapeUtils.area(p);
+  const shapes = [], owner = new Map();
+  polys.forEach((p, i) => { const o = polys.findIndex((q, j) => j !== i && Math.abs(area(q)) > Math.abs(area(p)) && p.every((pt) => inside(pt, q))); if (o >= 0) owner.set(i, o); });
+  polys.forEach((p, i) => { if (owner.has(i)) return; const sh = new THREE.Shape(area(p) < 0 ? p.slice().reverse() : p); shapes.push(sh); sh.idx = i; });
+  owner.forEach((o, i) => { const sh = shapes.find((s) => s.idx === o); if (sh) sh.holes.push(new THREE.Path(area(polys[i]) > 0 ? polys[i].slice().reverse() : polys[i])); });
+  const g = new THREE.ExtrudeGeometry(shapes, { depth: 0.22, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.03, bevelSegments: 4, curveSegments: 8 });
+  g.translate(0, 0, -0.11); g.scale(1, -1, 1); g.computeVertexNormals();
+  return g;
+}
+
 export async function initGlass(loop = 10) {
   await init3d(loop);
   // reuse the symbol geometries; one flat group of drifting objects, big symbols and small particles
@@ -133,9 +185,10 @@ export async function initGlass(loop = 10) {
   for (const g of Object.values(planes)) g.visible = false;
   const group = new THREE.Group(); scene.add(group);
   const items = [];
+  for (const n of Object.keys(ICON3D)) if (!GEO[n]) GEO[n] = iconShapes(n);
   const add = (name, size, k) => {
-    const geo = Object.values(planes).flatMap((g) => g.children).find((m) => m.material.color.getHexString() === new THREE.Color(COLORS[name]).getHexString())?.geometry;
-    const mat = new THREE.MeshPhysicalMaterial({ color: COLORS[name], metalness: 0, roughness: 0.4, clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 0.35 });
+    const geo = GEO[name];
+    const mat = new THREE.MeshPhysicalMaterial({ color: COLORS[name] ?? ICON3D[name], metalness: 0, roughness: 0.4, clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 0.35 });
     const m = new THREE.Mesh(geo, mat); m.scale.setScalar(size);
     // keep clear of the logo: positions inside the central ellipse are pushed out to its rim
     let x = (hash01(k, 11) - 0.5) * 22, y = (hash01(k, 12) - 0.5) * 11;
@@ -144,8 +197,11 @@ export async function initGlass(loop = 10) {
     m.userData = { x, y, ph: hash01(k, 13) * TAU, n: 1, sway: hash01(k, 14) * TAU };
     group.add(m); items.push(m);
   };
-  NAMES.forEach((n, i) => add(n, 1.4, i));                         // the eight symbols
-  for (let i = 0; i < 34; i++) add(NAMES[i % 8], 0.32 + 0.25 * hash01(i, 15), 20 + i);   // particles
+  // the big pieces: VTT's specialities (flask, welding, ...) and four of the brand's symbols
+  const BIG = ['flask', 'gear', 'weld', 'molecule', 'atom', 'chef', 'building', 'drop', 'car', 'leaf'];
+  BIG.forEach((n, i) => add(n, 1.4, i));
+  const SMALL = [...NAMES, ...Object.keys(ICON3D)];
+  for (let i = 0; i < 34; i++) add(SMALL[i % SMALL.length], 0.32 + 0.25 * hash01(i, 15), 20 + i);   // particles
   // a fixed frost grain for the pane (drawn once, seeded)
   const grain = document.createElement('canvas'); grain.width = W / 2; grain.height = H / 2;
   const gc = grain.getContext('2d'), img = gc.createImageData(grain.width, grain.height);
@@ -158,7 +214,8 @@ const GLASS_Z = 5;
 // reeded: fluted glass. Everything behind the pane is drawn to its own layer, then laid back in
 // vertical ribs, each rib a little cylinder lens (magnified, so the image breaks at every rib),
 // lit on one side and shaded on the other. That is what makes the glass read as glass.
-export function drawGlassMaster(ctx, t, { reeded = false } = {}) {
+export const FLUTE = { sw: 72, ang: 15 * Math.PI / 180, span: Math.hypot(W, H) };
+export function drawGlassMaster(ctx, t, { reeded = false, glow = 1, behind = null } = {}) {
   const SS = ctx.getTransform().a;
   let dst = ctx;
   if (reeded) {
@@ -194,16 +251,16 @@ export function drawGlassMaster(ctx, t, { reeded = false } = {}) {
   }
   if (reeded) {
     // a light behind the logo, inside the glass world, so the flutes bend it too
-    const pulse = 0.85 + 0.15 * Math.sin(TAU * p);
+    const pulse = (0.85 + 0.15 * Math.sin(TAU * p)) * glow;
     const lg = dst.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, H * 0.62);
     lg.addColorStop(0, `rgba(80,190,255,${0.42 * pulse})`); lg.addColorStop(0.45, `rgba(42,125,225,${0.18 * pulse})`);
     lg.addColorStop(1, 'rgba(42,125,225,0)');
     dst.globalCompositeOperation = 'lighter'; dst.fillStyle = lg; dst.fillRect(0, 0, W, H);
     dst.globalCompositeOperation = 'source-over';
+    if (behind) behind(dst);
     // flutes at the house angle (15 deg). Each one is a little cylinder: across it the image is
     // sampled through sin(), so it is magnified in the middle and squeezed hard at the edges.
-    const sw = 72, mag = 1.3, SUB = 10, ang = 15 * Math.PI / 180;
-    const span = Math.hypot(W, H);
+    const { sw, ang, span } = FLUTE, mag = 1.3, SUB = 10;
     // a glint that runs across the flutes once per loop (and its weaker echo)
     const beamX = -span / 2 + ((p * 1.0) % 1) * span * 1.6 - span * 0.3;
     ctx.save();
@@ -247,4 +304,14 @@ export function drawGlassMaster(ctx, t, { reeded = false } = {}) {
   });
   // the pane's edge catching light: a thin bright line round the frame
   ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 3; ctx.strokeRect(1.5, 1.5, W - 3, H - 3);
+}
+
+// a check sheet: the ten big pieces in a row, sharp, facing the camera (clip jm_icons)
+export function drawPieceSheet(ctx) {
+  ctx.fillStyle = '#082F6E'; ctx.fillRect(0, 0, W, H);
+  G2.items.forEach((m, i) => {
+    m.visible = i < 10;
+    m.position.set(-8 + (i % 5) * 4, i < 5 ? 2.2 : -2.2, 0); m.rotation.set(0.25, -0.35, 0);
+  });
+  R.setClearColor(0x000000, 0); R.render(scene, cam); ctx.drawImage(R.domElement, 0, 0, W, H);
 }

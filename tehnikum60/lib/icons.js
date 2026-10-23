@@ -87,3 +87,6 @@ export function icon(ctx, name, x, y, size, color, s = 1) {
   DRAW[name](ctx);
   ctx.restore();
 }
+
+// the bare drawing of one icon in its unit box, for code that records paths (jubilee3d.js)
+export const drawIcon = (ctx, name) => DRAW[name](ctx);

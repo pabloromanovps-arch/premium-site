@@ -37,6 +37,57 @@ P.prof = { bg: '#061C46', bg2: '#0C4C9C', grid: '#0B2A5E', line: 'rgba(255,255,2
 const BOX = { x0: 0.275, x1: 1.559, y0: 0.344, y1: 1.559 };
 // the logo's height as a share of the frame; a variant may set a smaller one (setLogoScale)
 let K, OX, OY;
+// the intro of the master title (jm_intro); m is jubilee3d.js
+let LOGO_L = null;
+function introMaster(ctx, t, m) {
+  const SS = ctx.getTransform().a, bt = (t + 5) % 10;       // ends exactly on the loop's first frame
+  setLogoScale(0.53);
+  if (!LOGO_L) LOGO_L = document.createElement('canvas');
+  if (LOGO_L.width !== W * SS) { LOGO_L.width = W * SS; LOGO_L.height = H * SS; }
+  const lc = LOGO_L.getContext('2d'); lc.setTransform(SS, 0, 0, SS, 0, 0); lc.clearRect(0, 0, W, H);
+  drawLogo(lc, bt, P.prof, { loop: 10 });
+  const { sw, ang, span } = m.FLUTE, b0 = -span / 2 - sw, k0 = Math.floor(-b0 / sw), NR = 9;
+  const ap = E.outCubic(clamp((t - 0.2) / 2.6));             // approach
+  const sBack = lerp(0.12, 0.9, ap), blur = lerp(11, 0.5, ap), aBack = clamp(t / 0.7);
+  const rp = clamp((t - 2.9) / 1.5), n = E.inOutCubic(rp) * (NR + 1);   // ribs released so far (continuous)
+  const rib = (i) => b0 + (k0 + i) * sw;                                // left edge of rib k0+i
+  const band = (c) => {   // the released ribs, in the flutes' rotated frame
+    if (n <= 0) return false;
+    const mid = rib(0) + sw / 2, hw = n * sw;   // opens from the middle of the centre rib, smoothly
+    c.translate(W / 2, H / 2); c.rotate(ang);
+    c.rect(mid - hw, -span, hw * 2, span * 2);
+    c.rotate(-ang); c.translate(-W / 2, -H / 2); return true;
+  };
+  const place = (c, s, dy) => { c.translate(W / 2, H / 2 + dy); c.scale(s, s); c.translate(-W / 2, -H / 2); };
+  m.drawGlassMaster(ctx, bt, { reeded: true, glow: 0.25 + 0.75 * ap, behind(dst) {
+    dst.save();
+    dst.beginPath(); dst.rect(-W, -H, W * 3, H * 3); band(dst); dst.clip('evenodd');
+    dst.globalAlpha = aBack; dst.filter = `blur(${blur * SS}px)`;
+    place(dst, sBack, (1 - ap) * 60);
+    dst.drawImage(LOGO_L, 0, 0, W, H);
+    dst.restore();
+  } });
+  if (n <= 0) return;
+  // in front of the glass: the logo inside the released ribs, settling forward to full size
+  const sFront = lerp(0.9, 1, E.inOutCubic(clamp((t - 2.9) / 1.9)));
+  ctx.save();
+  ctx.beginPath(); band(ctx); ctx.clip();
+  place(ctx, sFront, 0); ctx.drawImage(LOGO_L, 0, 0, W, H);
+  ctx.restore();
+  // a soft light rides on both edges of the opening, strongest mid-way, gone when it is open
+  const lit = Math.sin(Math.PI * rp) * 0.5, mid = rib(0) + sw / 2, hw = n * sw;
+  ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(ang); ctx.globalCompositeOperation = 'lighter';
+  for (const [x, dir] of [[mid - hw, 1], [mid + hw, -1]]) {
+    const g = ctx.createLinearGradient(x - dir * 70, 0, x + dir * 50, 0);
+    g.addColorStop(0, 'rgba(160,220,255,0)'); g.addColorStop(0.58, `rgba(200,240,255,${lit})`);
+    g.addColorStop(0.6, `rgba(255,255,255,${lit})`); g.addColorStop(1, 'rgba(160,220,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(Math.min(x - dir * 70, x + dir * 50), -span, 120, span * 2);
+  }
+  ctx.restore();
+}
+// inverse of inOutCubic: when does the release reach a given share
+function inv(y) { let a = 0, b = 1; for (let k = 0; k < 30; k++) { const c = (a + b) / 2; if (E.inOutCubic(c) * 1 < y) a = c; else b = c; } return (a + b) / 2; }
+
 export function setLogoScale(share) {
   K = (H * share) / (BOX.y1 - BOX.y0);
   OX = W / 2 - ((BOX.x0 + BOX.x1) / 2) * K; OY = H / 2 - ((BOX.y0 + BOX.y1) / 2) * K;
@@ -394,6 +445,13 @@ export function jubileeClips() {
     jm_fon_mat: { dur: 10, samples: () => 2,
       async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
       draw(ctx, t) { this.m.drawGlassMaster(ctx, t); } },
+    // intro: the logo swims up from deep behind the fluted glass, stops against it, then comes
+    // out through the flutes, rib by rib from the centre, and the 10 s loop carries on from t=0
+    jm_intro: { dur: 5, samples: () => 2,
+      async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
+      draw(ctx, t) { introMaster(ctx, t, this.m); } },
+    jm_icons: { dur: 1, samples: () => 1, async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
+      draw(ctx) { this.m.drawPieceSheet(ctx); } },
     jm_logo: { dur: 10, samples: () => 3,
       draw(ctx, t) { setLogoScale(0.53); drawLogo(ctx, t, P.prof, { loop: 10 }); } },
     jmaster_reeded: { dur: 10, samples: () => 3,
