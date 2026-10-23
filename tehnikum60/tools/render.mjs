@@ -56,7 +56,9 @@ if (AT) {
   let done = 0; const t0 = Date.now();
   await Promise.all(pages.map(async (p, w) => {
     for (let i = w; i < N; i += WORKERS) {
-      save(path.join(OUT, 'frames', `f_${String(i).padStart(5, '0')}.png`), await grab(p, i / FPS));
+      const f = path.join(OUT, 'frames', `f_${String(i).padStart(5, '0')}.png`);
+      if (fs.existsSync(f) && fs.statSync(f).size > 0) { ++done; continue; }   // resume an interrupted render
+      save(f, await grab(p, i / FPS));
       if (++done % 25 === 0) console.log(`${CLIP}: ${done}/${N} frames, ${((Date.now() - t0) / 1000 / 60).toFixed(1)} min`);
     }
   }));
