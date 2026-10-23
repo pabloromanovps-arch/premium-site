@@ -293,7 +293,9 @@ export function drawGlassMaster(ctx, t, { reeded = false, glow = 1, behind = nul
         ctx.restore();
       }
       // the flute's own light: a bright lip on one side, shade on the other; the glint lifts it
-      const near = Math.exp(-(((cx - beamX) / 260) ** 2)) + 0.4 * Math.exp(-(((cx - beamX + span * 0.55) / 200) ** 2));
+      // the echo is still on screen when the loop wraps, so it fades out over the last 1.5 s
+      const echo = 0.4 * (0.5 + 0.5 * Math.cos(Math.PI * clamp((p - 0.85) / 0.15)));
+      const near = Math.exp(-(((cx - beamX) / 260) ** 2)) + echo * Math.exp(-(((cx - beamX + span * 0.55) / 200) ** 2));
       const rg = ctx.createLinearGradient(x0, 0, x0 + sw, 0);
       rg.addColorStop(0, `rgba(255,255,255,${0.10 + 0.32 * near})`);
       rg.addColorStop(0.08, `rgba(255,255,255,${0.04 + 0.12 * near})`);
