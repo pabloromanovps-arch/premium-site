@@ -3,6 +3,7 @@
 import * as M from './lib/motion.js';
 import * as B from './lib/brand.js';
 import { icon } from './lib/icons.js';
+import { jubileeClips } from './jubilee.js';
 
 const { C, CHORD, DARK, LIGHT, DELA, MONT, font, pop, ease, lerp, clamp } = B;
 const { E, spring, W, H } = M;
@@ -469,6 +470,7 @@ function fonClip(bg, tint, chordAlpha = 1) {
 }
 
 export const CLIPS = {
+  ...jubileeClips(),
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
