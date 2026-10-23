@@ -9,7 +9,7 @@ import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import * as M from './lib/motion.js';
 import { drawIcon } from './lib/icons.js';
 
-const { W, H, TAU, hash01 } = M;
+const { W, H, TAU, hash01, clamp } = M;
 let LOOP = 8;
 const COLORS = { plane: '#00A1D3', leaf: '#3CBA94', drop: '#F47920', gear: '#43688F', mountains: '#A5ADB7',
   rail: '#EF4323', atom: '#025EA1', ship: '#2A7DE1' };
@@ -207,7 +207,7 @@ export async function initGlass(loop = 10) {
   const gc = grain.getContext('2d'), img = gc.createImageData(grain.width, grain.height);
   for (let i = 0; i < img.data.length; i += 4) { const v = 255 * hash01(i, 31); img.data[i] = img.data[i + 1] = img.data[i + 2] = 255; img.data[i + 3] = v < 30 ? 10 : 0; }
   gc.putImageData(img, 0, 0);
-  G2 = { group, items, grain, bins: [0, 1, 2, 3].map(() => { const c = document.createElement('canvas'); c.width = W / 4; c.height = H / 4; return c; }) };
+  G2 = { group, items, grain, bins: [0, 1, 2, 3, 4, 5].map(() => { const c = document.createElement('canvas'); c.width = W / 2; c.height = H / 2; return c; }) };
 }
 
 const GLASS_Z = 5;
@@ -228,26 +228,37 @@ export function drawGlassMaster(ctx, t, { reeded = false, glow = 1, behind = nul
   g.addColorStop(0, '#0E4C9E'); g.addColorStop(0.55, '#082F6E'); g.addColorStop(1, '#041537');
   dst.fillStyle = g; dst.fillRect(0, 0, W, H);
   // each object breathes in depth once per loop: from deep behind (-12) up against the glass (4.6)
-  const binOf = [];
+  // focus is continuous: each object has a blur level L (0 sharp .. 5 most diffused) from its
+  // distance behind the glass. It is drawn in the two levels around L: the blurrier one fully,
+  // the sharper one on top at (1 - f), so the image is lerp(sharper, blurrier, f): no pops.
+  const lev = [];
   for (const m of G2.items) {
     const u = m.userData;
     const k = 0.5 + 0.5 * Math.sin(TAU * p * u.n + u.ph);
     const z = -12 + (GLASS_Z - 0.4 + 12) * k;
     m.position.set(u.x + 0.6 * Math.sin(TAU * p + u.sway), u.y + 0.4 * Math.cos(TAU * p + u.sway), z);
     m.rotation.set(0.35 * Math.sin(TAU * p + u.ph), 0.5 * Math.sin(TAU * p + u.sway), 0.15 * Math.sin(TAU * p * 2 + u.ph));
-    const d = GLASS_Z - z;                         // distance behind the glass
-    binOf.push(d < 1.6 ? 0 : d < 4.5 ? 1 : d < 9 ? 2 : 3);
+    const d = GLASS_Z - z;                         // distance behind the glass, 0.4 .. 17.4
+    lev.push(5 * clamp((d - 0.6) / 15.5) ** 0.85);
   }
-  // render far bins first (most diffused), the sharp bin last
-  const BLUR = [0, 1.2, 2.8, 5];
-  for (let b = 3; b >= 0; b--) {
-    G2.items.forEach((m, i) => { m.visible = binOf[i] === b; });
+  const NL = 5, BLUR = [0, 1.0, 2.2, 3.8, 5.6, 7.6];   // px at half size
+  for (let b = NL; b >= 0; b--) {
+    let any = false;
+    G2.items.forEach((m, i) => {
+      const L = lev[i], lo = Math.floor(L), f = L - lo;
+      let o = 0;
+      if (b === lo + 1) o = 1;                     // the blurrier neighbour, full
+      else if (b === lo) o = lo === NL ? 1 : 1 - f; // the sharper one on top
+      m.visible = o > 0.002; m.material.transparent = true; m.material.opacity = o; any ||= m.visible;
+    });
+    if (!any) continue;
     R.setClearColor(0x000000, 0); R.render(scene, cam);
+    const fade = 1 - 0.05 * b;
     if (b === 0) { dst.drawImage(R.domElement, 0, 0, W, H); continue; }
     const c = G2.bins[b].getContext('2d');
-    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W / 4, H / 4);
-    c.filter = `blur(${BLUR[b]}px)`; c.drawImage(R.domElement, 0, 0, W / 4, H / 4); c.filter = 'none';
-    dst.globalAlpha = b === 3 ? 0.75 : 0.9; dst.drawImage(G2.bins[b], 0, 0, W, H); dst.globalAlpha = 1;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, W / 2, H / 2);
+    c.filter = `blur(${BLUR[b]}px)`; c.drawImage(R.domElement, 0, 0, W / 2, H / 2); c.filter = 'none';
+    dst.globalAlpha = fade; dst.drawImage(G2.bins[b], 0, 0, W, H); dst.globalAlpha = 1;
   }
   if (reeded) {
     // a light behind the logo, inside the glass world, so the flutes bend it too
