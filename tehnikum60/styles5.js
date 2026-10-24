@@ -101,14 +101,17 @@ function card(ctx, p, x, y, w, h, sc = 1) {
 function panel(ctx, x, y, w, h, r = 22) {
   ctx.save(); shadow(ctx, 60, 30, 0.22); ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); ctx.restore();
 }
+// a 3-D model standing on a panel edge at (x, y): a soft contact shadow, the model above it
+function restOn(ctx, piece, x, y, size) {
+  ctx.save(); ctx.fillStyle = 'rgba(20,30,60,0.22)'; ctx.filter = 'blur(10px)'; ctx.beginPath(); ctx.ellipse(x, y + 4, size * 0.2, size * 0.035, 0, 0, TAU); ctx.fill(); ctx.restore();
+  ctx.drawImage(model(piece, 0.45, -0.6), x - size / 2, y - size * 0.68, size, size);
+}
 function gHero(ctx) {
   studio(ctx);
   // the 60 stands centre right; its top half shows above the name panel
   extruded(ctx, '60', 1150, 780, 780, 40);
   thickRibbon(ctx, -100, 960, W + 400, 70, -0.12);
   card(ctx, MAMA, 390, 200, 420, 560);
-  ctx.save(); ctx.fillStyle = 'rgba(20,30,60,0.18)'; ctx.filter = 'blur(18px)'; ctx.beginPath(); ctx.ellipse(805, 850, 110, 20, 0, 0, TAU); ctx.fill(); ctx.restore();
-  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), 600, 520, 420, 420);
   const px = 930, py = 560, pw = 700, ph = 330;
   panel(ctx, px, py, pw, ph);
   const x = px + 44; let y = py + 54;
@@ -118,16 +121,17 @@ function gHero(ctx) {
   text(ctx, MAMA.name, x, y, font(40, MONT, 700), INK); y += 30;
   CHORD.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + i * 22, y, 22, 7); }); y += 50;
   text(ctx, MAMA.role, x, y, fit(ctx, MAMA.role, 30, pw - 88, (f) => font(f, MONT, 400)), '#3A4458');
+  // the speciality model rests on the panel's top corner, away from the face
+  restOn(ctx, MAMA.piece, px + pw - 70, py, 330);
   logoAt(ctx, 1560, 130, 130, P.light);
 }
 function gTrio(ctx) {
   studio(ctx);
   extruded(ctx, '60', W / 2, 760, 820);
-  thickRibbon(ctx, -100, 990, W + 400, 56, -0.08);
+  thickRibbon(ctx, -100, 1060, W + 400, 56, -0.08);
   TRIO.forEach((p, i) => {
     const cx = W / 2 + (i - 1) * 470, w = 290, h = 360, x = cx - w / 2, y = 150;
     card(ctx, p, x, y, w, h, 0.75);
-    ctx.drawImage(model(p.piece, 0.45, -0.6), x + w - 170, y + h - 250, 320, 320);
     panel(ctx, cx - 215, y + h + 40, 430, 230, 18);
     let ty = y + h + 110;
     text(ctx, p.surname.toUpperCase(), cx, ty, fit(ctx, p.surname.toUpperCase(), 54, 400, (f) => font(f, DELA)), INK, 'center'); ty += 44;
@@ -135,6 +139,8 @@ function gTrio(ctx) {
     CHORD.forEach((c, j) => { ctx.fillStyle = c; ctx.fillRect(cx - 64 + j * 16, ty, 16, 6); }); ty += 42;
     wrap2(ctx, p.role, font(24, MONT, 400), 400).forEach((s, j) => text(ctx, s, cx, ty + j * 30, font(24, MONT, 400), '#3A4458', 'center'));
   });
+  // the speciality models stand on the ribbon, one under each person, clear of photos and names
+  TRIO.forEach((p, i) => { const cx = W / 2 + (i - 1) * 470, ry = 1060 - Math.tan(0.08) * (cx + 100) - 26; restOn(ctx, p.piece, cx, ry, 260); });
 }
 
 // ================================================================ H: Cinematic
@@ -181,7 +187,7 @@ function hName(ctx, p, cx, y, sc = 1, maxW = 760) {
 function hHero(ctx) {
   stage(ctx);
   metalRing(ctx, MAMA, W / 2, 380, 205);
-  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), W / 2 + 90, 360, 370, 370);
+  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), 1460 - 200, 560 - 200, 400, 400);   // on its own, right of the ring
   hName(ctx, MAMA, W / 2, 790);
   logoAt(ctx, W / 2 + 600, 120, 120, P.prof);
 }
@@ -189,8 +195,9 @@ function hTrio(ctx) {
   stage(ctx);
   TRIO.forEach((p, i) => {
     const cx = W / 2 + (i - 1) * 470;
+    // the model behind the ring, peeking out at the top right: depth, and the face stays clear
+    ctx.drawImage(model(p.piece, 0.45, -0.6), cx + 110 - 140, 250 - 140, 280, 280);
     metalRing(ctx, p, cx, 380, 130, 0.7);
-    ctx.drawImage(model(p.piece, 0.45, -0.6), cx + 20, 370, 250, 250);
     hName(ctx, p, cx, 680, 0.68, 600);
   });
 }
