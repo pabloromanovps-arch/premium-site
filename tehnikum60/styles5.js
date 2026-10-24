@@ -207,3 +207,57 @@ export function styles5Clips() {
   const still = (f) => ({ dur: 1, samples: () => 1, init, draw(ctx) { f(ctx); } });
   return { sg_hero: still(gHero), sg_trio: still(gTrio), sh_hero: still(hHero), sh_trio: still(hTrio) };
 }
+
+// ================================================================ G2: one card per person
+// The person is one object: photo, name, role and the speciality badge on the card's corner. The
+// sequence (one, then the next, then all three) only moves and scales these cards, so a card in
+// the row of three is the same card as when it stood alone.
+const CW = 520, CH = 760;   // the card at full size
+function personCard(ctx, p, cx, cy, s) {
+  const w = CW * s, h = CH * s, x = cx - w / 2, y = cy - h / 2, r = 26 * s, pad = 18 * s;
+  ctx.save(); shadow(ctx, 70 * s, 36 * s, 0.3); ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); ctx.restore();
+  // photo
+  const ph = h * 0.6;
+  ctx.save(); ctx.beginPath(); ctx.roundRect(x + pad, y + pad, w - 2 * pad, ph, r * 0.7); ctx.clip();
+  person(ctx, x + pad, y + pad, w - 2 * pad, ph, '#8EA9CC', '#3D5F8E', 'rgba(255,255,255,0.6)');
+  const sh = ctx.createLinearGradient(x, y, x + w, y + ph); sh.addColorStop(0, 'rgba(255,255,255,0.22)'); sh.addColorStop(0.45, 'rgba(255,255,255,0)');
+  ctx.fillStyle = sh; ctx.fillRect(x, y, w, ph + pad); ctx.restore();
+  // index tab
+  ctx.fillStyle = p.col; ctx.beginPath(); ctx.roundRect(x + pad + 16 * s, y + pad + 16 * s, 104 * s, 44 * s, 10 * s); ctx.fill();
+  text(ctx, `№ ${p.n}`, x + pad + 68 * s, y + pad + 47 * s, font(24 * s, MONT, 700), '#FFFFFF', 'center', 2 * s);
+  // the speciality badge, fixed on the photo's top right corner: a white disc, a ring in the
+  // person's colour, the 3-D model inside it
+  const br = 74 * s, bx = x + w - pad - 14 * s - br * 0.6, by = y + pad + 14 * s + br * 0.6;   // top right, opposite the index
+  ctx.save(); shadow(ctx, 30 * s, 12 * s, 0.25); ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(bx, by, br, 0, TAU); ctx.fill(); ctx.restore();
+  ctx.lineWidth = 6 * s; ctx.strokeStyle = p.col; ctx.beginPath(); ctx.arc(bx, by, br - 3 * s, 0, TAU); ctx.stroke();
+  const ms = br * 3.1; ctx.drawImage(model(p.piece, 0.45, -0.6), bx - ms / 2, by - ms / 2, ms, ms);
+  // name block
+  let ty = y + pad + ph + 92 * s; const tw = w - 2 * pad - 20 * s;
+  text(ctx, p.surname.toUpperCase(), cx, ty, fit(ctx, p.surname.toUpperCase(), 58 * s, tw, (f) => font(f, DELA)), INK, 'center'); ty += 50 * s;
+  text(ctx, p.name, cx, ty, fit(ctx, p.name, 34 * s, tw, (f) => font(f, MONT, 700)), INK, 'center'); ty += 28 * s;
+  CHORD.forEach((c, j) => { ctx.fillStyle = c; ctx.fillRect(cx - 72 * s + j * 18 * s, ty, 18 * s, 6 * s); }); ty += 50 * s;
+  wrap2(ctx, p.role, font(26 * s, MONT, 400), tw).forEach((sl, j) => text(ctx, sl, cx, ty + j * 34 * s, font(26 * s, MONT, 400), '#3A4458', 'center'));
+}
+const CAST = [{ ...MAMA, n: '01' }, ...TRIO.map((p, i) => ({ ...p, n: String(i + 2).padStart(2, '0') }))].slice(1);
+function scene(ctx) { studio(ctx); extruded(ctx, '60', W / 2, 800, 860, 44); thickRibbon(ctx, -100, 1060, W + 400, 56, -0.08); logoAt(ctx, 1560, 110, 110, P.light); }
+// step k of the sequence: 0 = first card alone, 1 = the second arrives, 2 = the third, 3 = all three in a row
+function step(ctx, k) {
+  scene(ctx);
+  const at = {
+    0: [[W / 2, 520, 0.98]],
+    1: [[W / 2 - 430, 540, 0.62], [W / 2 + 60, 520, 0.98]],
+    2: [[W / 2 - 560, 560, 0.5], [W / 2 - 250, 545, 0.62], [W / 2 + 240, 520, 0.98]],
+    3: [[W / 2 - 470, 520, 0.82], [W / 2, 520, 0.82], [W / 2 + 470, 520, 0.82]],
+  }[k];
+  // the small, older cards behind first, the new one on top
+  at.map((a, i) => [a, i]).sort((a, b) => a[0][2] - b[0][2]).forEach(([[cx, cy, s], i]) => {
+    if (k < 3 && i < k) { ctx.save(); ctx.globalAlpha = 0.95; personCard(ctx, CAST[i], cx, cy, s); ctx.restore(); }
+    else personCard(ctx, CAST[i], cx, cy, s);
+  });
+}
+export function cardsClips() {
+  const init = async () => { if (!G) { G = await import('./jubilee3d.js'); await G.initGlass(10); } };
+  const still = (f) => ({ dur: 1, samples: () => 1, init, draw(ctx) { f(ctx); } });
+  return { sk_0: still((c) => step(c, 0)), sk_1: still((c) => step(c, 1)), sk_2: still((c) => step(c, 2)), sk_3: still((c) => step(c, 3)) };
+}
