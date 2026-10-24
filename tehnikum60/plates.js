@@ -24,7 +24,7 @@ function placeholder(ctx, cx, cy, r) {
 
 // the round lens: photo inside, a thick glass ring with a lit rim and a specular arc, a ring of
 // chord-coloured teeth outside (the jubilee logo's own device), turning slowly
-function lens(ctx, cx, cy, r, t, k, { photo = true, spin = 0 } = {}) {
+function lens(ctx, cx, cy, r, t, k, { photo = true, spin = 0, teeth = true } = {}) {
   if (k <= 0) return;
   const w = r * 0.13;
   ctx.save();
@@ -52,6 +52,7 @@ function lens(ctx, cx, cy, r, t, k, { photo = true, spin = 0 } = {}) {
   ctx.lineWidth = w * 0.2; ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.beginPath(); ctx.arc(cx, cy, r + w * 0.5, Math.PI * 0.1, Math.PI * 0.2); ctx.stroke();
   // chord teeth
+  if (!teeth) { ctx.restore(); return; }
   const n = 56, r0 = r + w + r * 0.07, r1 = r0 + r * 0.11, on = clamp((k - 0.3) / 0.7);
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + spin + t * 0.15, kk = clamp(on * 1.6 - (i / n) * 0.6);
@@ -137,7 +138,7 @@ const LUDA = { surname: 'Хитрецова', name: 'Людмила', role: 'в�
 const IVAN = { surname: 'Тимошкин', name: 'Иван', role: 'выпускник ВТТ', piece: 'weld3d' };
 
 // the photo / video frame: a rounded glass bevel round an empty window, the logo medallion on its corner
-let LOGO = null;
+let MED = null;
 function photoFrame(ctx, t, k) {
   const w = 1280, h = 720, x = (W - w) / 2, y = (H - h) / 2 + 10, r = 44, b = 22;
   const kk = E.outCubic(k);
@@ -163,15 +164,29 @@ function photoFrame(ctx, t, k) {
   // logo medallion, top-left corner, inside a small lens
   const km = clamp((k - 0.4) / 0.6);
   if (km > 0) {
-    const mx = x + 40, my = y + 30, mr = 92;
-    ctx.save(); ctx.fillStyle = 'rgba(8,47,110,0.85)'; ctx.beginPath(); ctx.arc(mx, my, mr * E.outBack(km), 0, TAU); ctx.fill(); ctx.restore();
-    lens(ctx, mx, my, mr, t, km, { photo: false });
-    if (!LOGO) LOGO = document.createElement('canvas');
-    const SS = ctx.getTransform().a; if (LOGO.width !== W * SS) { LOGO.width = W * SS; LOGO.height = H * SS; }
-    const lc = LOGO.getContext('2d'); lc.setTransform(SS, 0, 0, SS, 0, 0); lc.clearRect(0, 0, W, H);
-    setLogoScale(0.53); drawLogo(lc, 0, P.prof, { loop: 10 });
-    const s = (mr * 1.18) / (H * 0.53) * E.outBack(km);
-    ctx.save(); ctx.globalAlpha = km; ctx.translate(mx, my); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2); ctx.drawImage(LOGO, 0, 0, W, H); ctx.restore();
+    const mx = x + 60, my = y + 50, mr = 125;
+    // an opaque disc under the logo: a semi-transparent one lets the alpha edge clean-up
+    // (film.js) recolour the pixels round the type and the words grow a white halo
+    const dg = ctx.createRadialGradient(mx - mr * 0.3, my - mr * 0.3, 0, mx, my, mr);
+    dg.addColorStop(0, '#1E5FB4'); dg.addColorStop(1, '#082F6E');
+    ctx.save(); ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(mx, my, mr * E.outBack(km), 0, TAU); ctx.fill(); ctx.restore();
+    lens(ctx, mx, my, mr, t, km, { photo: false, teeth: false });   // the logo brings its own teeth
+    // the logo is drawn full size once, then halved step by step down to the medallion: one
+    // big jump (10x) through drawImage smears its thin type
+    const SS = ctx.getTransform().a, s = (mr * 1.32) / (H * 0.53) * E.outBack(km);
+    if (!MED || MED.SS !== SS) {
+      const big = document.createElement('canvas'); big.width = W * SS; big.height = H * SS;
+      const bc = big.getContext('2d'); bc.setTransform(SS, 0, 0, SS, 0, 0);
+      setLogoScale(0.53); drawLogo(bc, 5, P.prof, { loop: 10, glints: false });
+      let cur = big;
+      while (cur.width / 2 >= W * SS * 0.3) {
+        const nx = document.createElement('canvas'); nx.width = cur.width / 2; nx.height = cur.height / 2;
+        const nc = nx.getContext('2d'); nc.imageSmoothingQuality = 'high'; nc.drawImage(cur, 0, 0, nx.width, nx.height); cur = nx;
+      }
+      MED = { SS, img: cur };
+    }
+    ctx.save(); ctx.globalAlpha = km; ctx.imageSmoothingQuality = 'high'; ctx.translate(mx, my); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
+    ctx.drawImage(MED.img, 0, 0, W, H); ctx.restore();
   }
 }
 
