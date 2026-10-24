@@ -50,6 +50,7 @@ function cleanEdges() {
 await Promise.all(['400 40px Dela', '400 40px Mont', '700 40px Mont'].map((f) => document.fonts.load(f, 'АБВ60')));
 await B.loadSymbols();
 await (await import('./jubilee.js')).loadJubilee();
+await (await import('./lib/sample.js')).loadSample();
 if (CLIP.init) await CLIP.init();
 const IMG = {};
 await Promise.all(Object.entries({ logo: 'assets/logo_vtt.png' }).map(async ([k, src]) => {

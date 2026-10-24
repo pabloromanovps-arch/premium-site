@@ -4,6 +4,7 @@
 //   F "Dark premium": graphite, the colour chord as thin lines of light, a coloured halo per person.
 // Everything centred inside the middle 1440 px.
 import * as M from './lib/motion.js';
+import { sampleCover } from './lib/sample.js';
 import { C, CHORD, DELA, MONT, font, SLANT, symbol, SYMBOLS, measure } from './lib/brand.js';
 import { icon } from './lib/icons.js';
 import { drawLogo, P, setLogoScale } from './jubilee.js';
@@ -29,6 +30,7 @@ function wrap2(ctx, str, f, maxW) {
   return best[1];
 }
 function person(ctx, cx, cy, r, c0, c1, fg = 'rgba(255,255,255,0.55)') {
+  return sampleCover(ctx, cx - r, cy - r, 2 * r, 2 * r);   // the real stand-in photo (lib/sample.js)
   const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r); g.addColorStop(0, c0); g.addColorStop(1, c1);
   ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
   ctx.fillStyle = fg;

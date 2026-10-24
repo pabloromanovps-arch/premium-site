@@ -5,6 +5,7 @@
 //   S "Thread of generations": the eight brand colours braided into one warm cord that runs
 //     through the frame and wraps each photo, tying the people together.
 import * as M from './lib/motion.js';
+import { sampleCover } from './lib/sample.js';
 import { C, CHORD, DELA, MONT, font, measure } from './lib/brand.js';
 import { drawLogo, P, setLogoScale } from './jubilee.js';
 
@@ -29,6 +30,7 @@ function wrap2(ctx, str, f, maxW) {
   return best[1];
 }
 function person(ctx, cx, cy, r, c0, c1, fg) {
+  return sampleCover(ctx, cx - r, cy - r, 2 * r, 2 * r);   // the real stand-in photo (lib/sample.js)
   const g = ctx.createLinearGradient(cx, cy - r, cx, cy + r); g.addColorStop(0, c0); g.addColorStop(1, c1);
   ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);
   ctx.fillStyle = fg;

@@ -6,6 +6,7 @@
 //   B "Blueprint": a navy engineering sheet, fine grid, thin white line work, scales, dimension
 //     lines and a drawing's title block; the brand colours only as accents.
 import * as M from './lib/motion.js';
+import { sampleCover } from './lib/sample.js';
 import { C, CHORD, DARK, DELA, MONT, font, SLANT, symbol, ribbon, measure } from './lib/brand.js';
 import { icon } from './lib/icons.js';
 import { drawLogo, P, setLogoScale } from './jubilee.js';
@@ -32,6 +33,7 @@ function text(ctx, s, x, y, f, color, align = 'left', track = 0) {
 }
 // the photo stand-in: a person silhouette on a soft gradient
 function person(ctx, x, y, w, h, c0, c1, fg) {
+  return sampleCover(ctx, x, y, w, h);   // the real stand-in photo (lib/sample.js)
   const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, c0); g.addColorStop(1, c1);
   ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
   const cx = x + w / 2, s = Math.min(w, h);

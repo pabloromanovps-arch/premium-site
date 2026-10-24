@@ -3,6 +3,7 @@
 // VTT's specialities as 3-D pieces. Everything sits in the centre 1440 px (4:3 safe): the screens
 // at the venue crop the sides. Plates are on alpha; the photo window is left transparent.
 import * as M from './lib/motion.js';
+import { sampleCover } from './lib/sample.js';
 import { CHORD, MONT, font } from './lib/brand.js';
 import { drawLogo, P, setLogoScale } from './jubilee.js';
 
@@ -14,6 +15,7 @@ const sprite = (name, rx, ry) => (SPR[`${name}${rx}${ry}`] ||= G.renderPiece(nam
 
 // a stand-in for the photo, so stills read; the delivered plates leave this window empty
 function placeholder(ctx, cx, cy, r) {
+  return sampleCover(ctx, cx - r, cy - r, 2 * r, 2 * r);   // the real stand-in photo (lib/sample.js)
   const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.4, r * 0.1, cx, cy, r);
   g.addColorStop(0, '#6FA8EC'); g.addColorStop(1, '#11559B');
   ctx.fillStyle = g; ctx.fillRect(cx - r, cy - r, 2 * r, 2 * r);

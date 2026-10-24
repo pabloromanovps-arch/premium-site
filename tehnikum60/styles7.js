@@ -6,6 +6,7 @@
 //     lights, the photo in a soft round frame, a large white name.
 // Style frames only, centred in the middle 1440 px.
 import * as M from './lib/motion.js';
+import { sampleCover } from './lib/sample.js';
 import { C, CHORD, DELA, MONT, font, measure } from './lib/brand.js';
 import { drawLogo, P, setLogoScale } from './jubilee.js';
 
@@ -30,6 +31,7 @@ function wrap2(ctx, str, f, maxW) {
   return best[1];
 }
 function person(ctx, x, y, w, h, c0, c1, fg) {
+  return sampleCover(ctx, x, y, w, h);   // the real stand-in photo (lib/sample.js)
   const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, c0); g.addColorStop(1, c1);
   ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
   const cx = x + w / 2, s = Math.min(w, h);
