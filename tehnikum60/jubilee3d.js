@@ -172,8 +172,10 @@ function iconShapes(name) {
   polys.forEach((p, i) => { const o = polys.findIndex((q, j) => j !== i && Math.abs(area(q)) > Math.abs(area(p)) && p.every((pt) => inside(pt, q))); if (o >= 0) owner.set(i, o); });
   polys.forEach((p, i) => { if (owner.has(i)) return; const sh = new THREE.Shape(area(p) < 0 ? p.slice().reverse() : p); shapes.push(sh); sh.idx = i; });
   owner.forEach((o, i) => { const sh = shapes.find((s) => s.idx === o); if (sh) sh.holes.push(new THREE.Path(area(polys[i]) > 0 ? polys[i].slice().reverse() : polys[i])); });
-  const g = new THREE.ExtrudeGeometry(shapes, { depth: 0.22, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.03, bevelSegments: 4, curveSegments: 8 });
-  g.translate(0, 0, -0.11); g.scale(1, -1, 1); g.computeVertexNormals();
+  // the icons are built of overlapping parts (atoms and bonds, wheels and body): a bevel would show
+  // every seam, so they are extruded flat-sided and a little deeper
+  const g = new THREE.ExtrudeGeometry(shapes, { depth: 0.26, bevelEnabled: false, curveSegments: 8 });
+  g.translate(0, 0, -0.13); g.scale(1, -1, 1); g.computeVertexNormals();
   return g;
 }
 
@@ -327,4 +329,85 @@ export function drawPieceSheet(ctx) {
     m.position.set(-8 + (i % 5) * 4, i < 5 ? 2.2 : -2.2, 0); m.rotation.set(0.25, -0.35, 0);
   });
   R.setClearColor(0x000000, 0); R.render(scene, cam); ctx.drawImage(R.domElement, 0, 0, W, H);
+}
+
+// true 3-D models of VTT's specialities, for close-ups where an extruded silhouette would not
+// read: a molecule of glossy balls, a glass flask with liquid, a stretch of track, a chef's toque,
+// a welding torch with its spark. Each fits about a unit box, centred.
+function gloss(color, extra = {}) {
+  return new THREE.MeshPhysicalMaterial({ color, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 0.6, ...extra });
+}
+function makeModel(name) {
+  const g = new THREE.Group();
+  if (name === 'molecule3d') {
+    const at = [[-0.28, -0.2, 0, 0.2, '#3CBA94'], [0.3, -0.24, 0.05, 0.17, '#00A1D3'], [0.02, 0.3, -0.04, 0.22, '#F47920'], [0.33, 0.33, 0.12, 0.11, '#A5ADB7']];
+    const bond = (a, b) => {
+      const va = new THREE.Vector3(...a.slice(0, 3)), vb = new THREE.Vector3(...b.slice(0, 3)), L = va.distanceTo(vb);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, L, 24), gloss('#E8EEF6'));
+      m.position.copy(va).add(vb).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.clone().sub(va).normalize());
+      g.add(m);
+    };
+    bond(at[0], at[2]); bond(at[1], at[2]); bond(at[0], at[1]); bond(at[2], at[3]);
+    for (const [x, y, z, r, c] of at) { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), gloss(c)); m.position.set(x, y, z); g.add(m); }
+  } else if (name === 'flask3d') {
+    const prof = [[0.02, -0.5], [0.36, -0.5], [0.4, -0.46], [0.4, -0.42], [0.1, 0.12], [0.1, 0.42], [0.13, 0.45], [0.13, 0.5], [0.0, 0.5]];
+    const glass = new THREE.Mesh(new THREE.LatheGeometry(prof.map(([x, y]) => new THREE.Vector2(x, y)), 64),
+      new THREE.MeshPhysicalMaterial({ color: '#DDF3FF', roughness: 0.04, clearcoat: 1, transparent: true, opacity: 0.32, envMapIntensity: 1.2, side: THREE.DoubleSide, depthWrite: false }));
+    const liq = new THREE.Mesh(new THREE.LatheGeometry([[0.0, -0.47], [0.34, -0.47], [0.37, -0.43], [0.2, -0.12], [0.0, -0.12]].map(([x, y]) => new THREE.Vector2(x, y)), 64),
+      gloss('#00A1D3', { roughness: 0.15 }));
+    const surf = new THREE.Mesh(new THREE.CircleGeometry(0.2, 48), gloss('#4DC0E3')); surf.rotation.x = -Math.PI / 2; surf.position.y = -0.12;
+    g.add(liq, surf, glass); glass.renderOrder = 2;
+  } else if (name === 'rail3d') {
+    const steel = gloss('#C9CED4', { metalness: 0.6, roughness: 0.25 }), sleeper = gloss('#EF4323', { roughness: 0.45 });
+    for (const x of [-0.17, 0.17]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.08, 1.1), steel); r.position.set(x, 0.06, 0); g.add(r);
+      const h = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 1.1), steel); h.position.set(x, 0.1, 0); g.add(h); }
+    for (let i = 0; i < 5; i++) { const s = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.06, 0.12), sleeper); s.position.set(0, 0, -0.44 + i * 0.22); g.add(s); }
+    g.rotation.set(0.55, 0.6, 0); const w = new THREE.Group(); w.add(g); return w;
+  } else if (name === 'chef3d') {
+    const white = gloss('#F4F7FB', { roughness: 0.5, clearcoat: 0.3 });
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.22, 64, 1, true), white); band.position.y = -0.3; band.material.side = THREE.DoubleSide;
+    g.add(band);
+    for (const [x, y, z, r] of [[0, 0.12, 0, 0.3], [-0.2, 0.0, 0.05, 0.22], [0.2, 0.0, 0.05, 0.22], [0, 0.0, -0.18, 0.22], [0, 0.02, 0.2, 0.2]]) {
+      const m = new THREE.Mesh(new THREE.SphereGeometry(r, 48, 32), white); m.position.set(x, y, z); m.scale.y = 0.85; g.add(m);
+    }
+    const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.275, 0.275, 0.05, 64, 1, true), gloss('#F47920')); stripe.position.y = -0.33; g.add(stripe);
+  } else if (name === 'weld3d') {
+    const body = gloss('#43688F'), tip = gloss('#C9CED4', { metalness: 0.7 }), hand = gloss('#F47920');
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.08, 0.5, 32), hand); grip.position.y = -0.2;
+    const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.3, 32), body); neck.position.y = 0.2;
+    const noz = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.05, 0.12, 32), tip); noz.position.y = 0.4;
+    const arm = new THREE.Group(); arm.add(grip, neck, noz); arm.rotation.z = -0.7; arm.position.set(0.1, -0.05, 0); g.add(arm);
+    // the spark: a bright star of thin cones
+    const spark = new THREE.Group(), hot = new THREE.MeshBasicMaterial({ color: '#FFE7A8' });
+    for (let i = 0; i < 9; i++) { const c = new THREE.Mesh(new THREE.ConeGeometry(0.018, 0.16 + 0.1 * (i % 3), 8), hot); const a = (i / 9) * TAU;
+      c.position.set(Math.cos(a) * 0.09, Math.sin(a) * 0.09, 0); c.rotation.z = a - Math.PI / 2; spark.add(c); }
+    const core = new THREE.Mesh(new THREE.SphereGeometry(0.05, 24, 16), new THREE.MeshBasicMaterial({ color: '#FFFFFF' })); spark.add(core);
+    spark.position.set(-0.22, 0.34, 0.05); g.add(spark);
+  }
+  return g;
+}
+
+// one piece (a speciality icon or a brand symbol) rendered alone, for 2-D layouts: returns a
+// square canvas `px` wide with the piece on transparency, turned by (rx, ry)
+const PIECE = {};
+export function renderPiece(name, rx = 0.2, ry = -0.35, px = 540) {
+  if (!PIECE.mesh) PIECE.mesh = {};
+  let m = PIECE.mesh[name];
+  if (!m && name.endsWith('3d')) { m = makeModel(name); PIECE.mesh[name] = m; scene.add(m); }
+  if (!m) {
+    const src = G2.items.find((it) => it.geometry === GEO[name]);
+    m = new THREE.Mesh(GEO[name], src ? src.material.clone() : new THREE.MeshPhysicalMaterial({ color: COLORS[name] }));
+    m.material.transparent = false; m.material.opacity = 1; m.material.envMapIntensity = 0.5;
+    PIECE.mesh[name] = m; scene.add(m);
+  }
+  const vis = scene.children.map((c) => c.visible);
+  G2.items.forEach((it) => { it.visible = false; });
+  Object.values(PIECE.mesh).forEach((x) => { x.visible = x === m; });
+  m.position.set(0, 0, 0); m.rotation.set(rx, ry, 0); m.scale.setScalar(name.endsWith('3d') ? 5.4 : 6.2);
+  R.setClearColor(0x000000, 0); R.render(scene, cam);
+  m.visible = false;
+  const c = document.createElement('canvas'); c.width = c.height = px;
+  const k = R.domElement.height / H;
+  c.getContext('2d').drawImage(R.domElement, (W / 2 - 270) * k, (H / 2 - 270) * k, 540 * k, 540 * k, 0, 0, px, px);
+  return c;
 }

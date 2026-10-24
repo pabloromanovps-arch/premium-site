@@ -464,3 +464,4 @@ export function jubileeClips() {
     jz_prof: { dur: 8, samples: (t) => (t < 2.6 ? 8 : 4), draw(ctx, t) { drawFonProf(ctx, t); drawLogo(ctx, t, P.prof); } },
   };
 }
+export { drawLogo, P };
