@@ -9,6 +9,7 @@ import { styles2Clips } from './styles2.js';
 import { styles3Clips } from './styles3.js';
 import { styles4Clips } from './styles4.js';
 import { styles5Clips, cardsClips } from './styles5.js';
+import { styles6Clips } from './styles6.js';
 
 const { C, CHORD, DARK, LIGHT, DELA, MONT, font, pop, ease, lerp, clamp } = B;
 const { E, spring, W, H } = M;
@@ -482,6 +483,7 @@ export const CLIPS = {
   ...styles4Clips(),
   ...styles5Clips(),
   ...cardsClips(),
+  ...styles6Clips(),
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
