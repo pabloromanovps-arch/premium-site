@@ -6,6 +6,7 @@ import { icon } from './lib/icons.js';
 import { jubileeClips } from './jubilee.js';
 import { platesClips } from './plates.js';
 import { styles2Clips } from './styles2.js';
+import { styles3Clips } from './styles3.js';
 
 const { C, CHORD, DARK, LIGHT, DELA, MONT, font, pop, ease, lerp, clamp } = B;
 const { E, spring, W, H } = M;
@@ -475,6 +476,7 @@ export const CLIPS = {
   ...jubileeClips(),
   ...platesClips(),
   ...styles2Clips(),
+  ...styles3Clips(),
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
