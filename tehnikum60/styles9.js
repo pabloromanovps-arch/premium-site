@@ -10,6 +10,7 @@ import * as M from './lib/motion.js';
 import { sampleCover } from './lib/sample.js';
 import { C, CHORD, DARK, DELA, MONT, font, SLANT, measure } from './lib/brand.js';
 import { drawLogo, P, setLogoScale } from './jubilee.js';
+import { studio, extruded, thickRibbon } from './styles5.js';
 
 const { W, H, TAU, hash01 } = M;
 
@@ -42,55 +43,54 @@ function speckle(ctx, n, seed, dark, light) {
 
 // ================================================================ T: Magazine cover
 // one cover, w x h at (x, y): photo full bleed, the masthead across the top, cover lines low left
+// one cover: a solid band of the person's colour with the masthead, the photo below it, a spine
+// of the same colour down the left edge; so three covers side by side read as three issues
 function cover(ctx, p, x, y, w, h) {
-  const s = w / 600;
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.35)'; ctx.shadowBlur = 40 * s; ctx.shadowOffsetY = 20 * s;
+  const s = w / 600, band = h * 0.2, spine = 18 * s;
+  ctx.save(); ctx.shadowColor = 'rgba(20,30,60,0.35)'; ctx.shadowBlur = 50 * s; ctx.shadowOffsetY = 26 * s;
   ctx.fillStyle = '#FFF'; ctx.fillRect(x, y, w, h); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  sampleCover(ctx, x, y, w, h);
-  // a band of the person's colour under the cover lines, so the type reads on any photo
-  const g = ctx.createLinearGradient(0, y + h * 0.55, 0, y + h); g.addColorStop(0, 'rgba(10,20,40,0)'); g.addColorStop(1, 'rgba(10,20,40,0.85)');
+  sampleCover(ctx, x, y + band * 0.7, w, h - band * 0.7);
+  const g = ctx.createLinearGradient(0, y + h * 0.55, 0, y + h); g.addColorStop(0, 'rgba(10,20,40,0)'); g.addColorStop(1, 'rgba(10,20,40,0.88)');
   ctx.fillStyle = g; ctx.fillRect(x, y + h * 0.5, w, h * 0.5);
-  // masthead: ВТТ huge, in white with the 60 in the person's colour
-  ctx.save(); ctx.globalCompositeOperation = 'source-over';
-  // the masthead fits the cover's width: «ВТТ» white, «60» in the person's colour, on a dark top band
-  const tg = ctx.createLinearGradient(0, y, 0, y + 260 * s); tg.addColorStop(0, 'rgba(10,20,40,0.75)'); tg.addColorStop(1, 'rgba(10,20,40,0)');
-  ctx.fillStyle = tg; ctx.fillRect(x, y, w, 260 * s);
-  let ms = 130 * s; while (measure(ctx, 'ВТТ 60', font(ms, DELA)).w > w - 56 * s) ms -= 2;
-  text(ctx, 'ВТТ', x + 28 * s, y + 20 * s + ms * 0.78, font(ms, DELA), '#FFFFFF');
-  const mw = measure(ctx, 'ВТТ ', font(ms, DELA)).w;
-  text(ctx, '60', x + 28 * s + mw, y + 20 * s + ms * 0.78, font(ms, DELA), p.col);
-  ctx.restore();
-  text(ctx, `ЮБИЛЕЙНЫЙ ВЫПУСК · № ${p.n} · 1965—2025`, x + 30 * s, y + 40 * s + ms * 0.95, font(17 * s, MONT, 700), '#FFFFFF', 'left', 3 * s);
+  ctx.fillStyle = p.col; ctx.fillRect(x, y, w, band); ctx.fillRect(x, y, spine, h);
+  // masthead: «ВТТ» and «60» white on the colour, the issue line under them
+  let ms = 140 * s; while (measure(ctx, 'ВТТ 60', font(ms, DELA)).w > w - 70 * s) ms -= 2;
+  text(ctx, 'ВТТ 60', x + spine + 22 * s, y + band * 0.66, font(ms, DELA), '#FFFFFF');
+  text(ctx, `ЮБИЛЕЙНЫЙ ВЫПУСК · № ${p.n} · 1965—2025`, x + spine + 24 * s, y + band - 16 * s, font(17 * s, MONT, 700), 'rgba(255,255,255,0.92)', 'left', 3 * s);
+  // the issue number, big, in the bottom right corner of the photo
+  ctx.save(); ctx.font = font(150 * s, DELA); ctx.textAlign = 'right'; ctx.lineWidth = 3 * s; ctx.strokeStyle = p.col; ctx.strokeText(p.n, x + w - 24 * s, y + h * 0.66); ctx.restore();
   // cover lines
   let ty = y + h - 190 * s;
-  ctx.fillStyle = p.col; ctx.fillRect(x + 30 * s, ty - 46 * s, measure(ctx, 'ГЕРОЙ НОМЕРА', font(16 * s, MONT, 700), 2 * s).w + 22 * s, 34 * s);
-  text(ctx, 'ГЕРОЙ НОМЕРА', x + 40 * s, ty - 22 * s, font(16 * s, MONT, 700), '#FFFFFF', 'left', 2 * s);
-  text(ctx, p.surname.toUpperCase(), x + 30 * s, ty + 40 * s, fit(ctx, p.surname.toUpperCase(), 66 * s, w - 60 * s, (f) => font(f, DELA)), '#FFFFFF'); ty += 86 * s;
-  text(ctx, p.name, x + 30 * s, ty, fit(ctx, p.name, 32 * s, w - 60 * s, (f) => font(f, MONT, 700)), '#FFFFFF'); ty += 40 * s;
-  wrap2(ctx, p.role, font(24 * s, MONT, 400), w - 60 * s).slice(0, 2).forEach((l, i) => text(ctx, l, x + 30 * s, ty + i * 30 * s, font(24 * s, MONT, 400), 'rgba(255,255,255,0.9)'));
+  ctx.fillStyle = p.col; ctx.fillRect(x + spine + 22 * s, ty - 46 * s, measure(ctx, 'ГЕРОЙ НОМЕРА', font(16 * s, MONT, 700), 2 * s).w + 22 * s, 34 * s);
+  text(ctx, 'ГЕРОЙ НОМЕРА', x + spine + 32 * s, ty - 22 * s, font(16 * s, MONT, 700), '#FFFFFF', 'left', 2 * s);
+  const tx = x + spine + 22 * s, tw = w - spine - 50 * s;
+  text(ctx, p.surname.toUpperCase(), tx, ty + 40 * s, fit(ctx, p.surname.toUpperCase(), 66 * s, tw, (f) => font(f, DELA)), '#FFFFFF'); ty += 86 * s;
+  text(ctx, p.name, tx, ty, fit(ctx, p.name, 32 * s, tw, (f) => font(f, MONT, 700)), '#FFFFFF'); ty += 40 * s;
+  wrap2(ctx, p.role, font(24 * s, MONT, 400), tw).slice(0, 2).forEach((l, i) => text(ctx, l, tx, ty + i * 30 * s, font(24 * s, MONT, 400), 'rgba(255,255,255,0.9)'));
   ctx.restore();
 }
 function desk(ctx) {
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#E9E4DC'); g.addColorStop(1, '#D6CFC4');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); speckle(ctx, 9000, 51, 'rgba(90,70,40,0.05)', 'rgba(255,255,255,0.3)');
 }
+function magScene(ctx, big = 880, y60 = 820) {
+  studio(ctx); extruded(ctx, '60', W / 2, y60, big, 44); thickRibbon(ctx, -100, 1050, W + 400, 60, -0.09);
+}
 function tHero(ctx) {
-  desk(ctx);
-  // the cover, and a second issue peeking behind it: the series continues
-  ctx.save(); ctx.translate(W / 2 + 90, 540); ctx.rotate(0.05); ctx.translate(-(W / 2 + 90), -540);
-  ctx.fillStyle = '#FFFFFF'; ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = 30; ctx.fillRect(W / 2 - 230, 120, 600, 840); ctx.restore();
-  ctx.save(); ctx.translate(W / 2 + 90, 540); ctx.rotate(0.05); ctx.translate(-(W / 2 + 90), -540);
-  ctx.fillStyle = TRIO[0].col; ctx.fillRect(W / 2 - 230, 120, 600, 120); ctx.restore();
+  magScene(ctx);
+  // the next issue peeking out behind, turned a little: the series continues
+  ctx.save(); ctx.translate(W / 2 + 160, 540); ctx.rotate(0.06); ctx.translate(-(W / 2 + 160), -540);
+  cover(ctx, TRIO[0], W / 2 - 170, 130, 560, 800); ctx.restore();
   cover(ctx, MAMA, W / 2 - 330, 110, 600, 860);
-  logoAt(ctx, W / 2 + 610, 110, 110, P.light);
+  logoAt(ctx, W / 2 + 620, 110, 110, P.light);
 }
 function tTrio(ctx) {
-  desk(ctx);
+  magScene(ctx);
   TRIO.forEach((p, i) => {
-    const cx = W / 2 + (i - 1) * 470, w = 420, h = 600;
-    ctx.save(); ctx.translate(cx, 540); ctx.rotate([-0.03, 0.01, 0.03][i]); ctx.translate(-cx, -540);
-    cover(ctx, p, cx - w / 2, 540 - h / 2, w, h); ctx.restore();
+    const cx = W / 2 + (i - 1) * 470, w = 420, h = 600, cy = 520;
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate([-0.035, 0.012, 0.03][i]); ctx.translate(-cx, -cy);
+    cover(ctx, p, cx - w / 2, cy - h / 2, w, h); ctx.restore();
   });
   logoAt(ctx, W / 2 + 640, 90, 100, P.light);
 }

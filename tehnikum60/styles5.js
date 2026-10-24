@@ -58,14 +58,14 @@ function grain(ctx, a = 0.035) {
 }
 
 // ================================================================ G: 3-D collage
-function studio(ctx) {
+export function studio(ctx) {
   const g = ctx.createRadialGradient(W * 0.5, H * 0.35, 80, W * 0.5, H * 0.5, W * 0.75);
   g.addColorStop(0, '#FFFFFF'); g.addColorStop(0.6, '#EEF1F6'); g.addColorStop(1, '#D9DFE8');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   grain(ctx);
 }
 // a big number set in Dela and extruded down-right: dark sides stepped back, a pale front face
-function extruded(ctx, str, x, y, size, depth = 34) {
+export function extruded(ctx, str, x, y, size, depth = 34) {
   ctx.save(); ctx.font = font(size, DELA); ctx.textAlign = 'center';
   shadow(ctx, 60, 40, 0.22); ctx.fillStyle = '#C9D1DC'; ctx.fillText(str, x + depth, y + depth); noShadow(ctx);
   for (let i = depth; i > 0; i--) { const k = i / depth; ctx.fillStyle = `rgb(${Math.round(176 + 40 * (1 - k))},${Math.round(186 + 38 * (1 - k))},${Math.round(201 + 34 * (1 - k))})`; ctx.fillText(str, x + i, y + i); }
@@ -74,7 +74,7 @@ function extruded(ctx, str, x, y, size, depth = 34) {
   ctx.restore();
 }
 // the colour chord as a thick ribbon: each band has a top face and a darker front edge
-function thickRibbon(ctx, x0, y0, len, thick, ang, depth = 22) {
+export function thickRibbon(ctx, x0, y0, len, thick, ang, depth = 22) {
   ctx.save(); ctx.translate(x0, y0); ctx.rotate(ang);
   const bw = len / 8;
   shadow(ctx, 40, 26, 0.25); ctx.fillStyle = '#000'; ctx.fillRect(0, -thick / 2, len, thick + depth); noShadow(ctx);
