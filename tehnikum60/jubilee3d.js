@@ -391,7 +391,8 @@ function makeModel(name) {
 // one piece (a speciality icon or a brand symbol) rendered alone, for 2-D layouts: returns a
 // square canvas `px` wide with the piece on transparency, turned by (rx, ry)
 const PIECE = {};
-export function renderPiece(name, rx = 0.2, ry = -0.35, px = 540) {
+// the window is 900 px of the frame, wide enough for any piece at any turn (540 cut corners off)
+export function renderPiece(name, rx = 0.2, ry = -0.35, px = 600) {
   if (!PIECE.mesh) PIECE.mesh = {};
   let m = PIECE.mesh[name];
   if (!m && name.endsWith('3d')) { m = makeModel(name); PIECE.mesh[name] = m; scene.add(m); }
@@ -409,6 +410,6 @@ export function renderPiece(name, rx = 0.2, ry = -0.35, px = 540) {
   m.visible = false;
   const c = document.createElement('canvas'); c.width = c.height = px;
   const k = R.domElement.height / H;
-  c.getContext('2d').drawImage(R.domElement, (W / 2 - 270) * k, (H / 2 - 270) * k, 540 * k, 540 * k, 0, 0, px, px);
+  c.getContext('2d').drawImage(R.domElement, (W / 2 - 450) * k, (H / 2 - 450) * k, 900 * k, 900 * k, 0, 0, px, px);
   return c;
 }

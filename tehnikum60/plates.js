@@ -111,7 +111,7 @@ function hero(ctx, t, { cx, cy, r, surname, name, role, piece, scale = 1, delay 
   // the speciality piece flies in from behind and settles on the ring, top right
   const kp = E.outCubic(clamp((tt - 0.35) / 1.0));
   if (kp > 0) {
-    const s = sprite(piece, 0.25, -0.5), d = r * 0.95 * lerp(0.4, 1, kp);
+    const s = sprite(piece, 0.25, -0.5), d = r * 0.95 * (900 / 540) * lerp(0.4, 1, kp);
     const a = -Math.PI / 4, px = cx + Math.cos(a) * r * 1.08, py = cy + Math.sin(a) * r * 1.08;
     ctx.save(); ctx.globalAlpha = clamp(kp * 2);
     ctx.translate(px, py + 6 * Math.sin(TAU * t / 4)); ctx.rotate(0.08 * Math.sin(TAU * t / 5));

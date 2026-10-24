@@ -97,21 +97,27 @@ function card(ctx, p, x, y, w, h, sc = 1) {
   ctx.fillStyle = p.col; ctx.beginPath(); ctx.roundRect(x + 22 * sc, y - 30 * sc, 96 * sc, 40 * sc, 8 * sc); ctx.fill();
   text(ctx, `№ ${p.n}`, x + 70 * sc, y - 2 * sc, font(22 * sc, MONT, 700), '#FFFFFF', 'center', 2 * sc);
 }
+// a white paper panel with a soft shadow: the name sits on it, clear of the big 60 behind
+function panel(ctx, x, y, w, h, r = 22) {
+  ctx.save(); shadow(ctx, 60, 30, 0.22); ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); ctx.restore();
+}
 function gHero(ctx) {
   studio(ctx);
-  extruded(ctx, '60', W / 2 + 120, 700, 700);
-  thickRibbon(ctx, -100, 930, W + 400, 70, -0.12);
-  card(ctx, MAMA, 470, 210, 420, 540);
-  // the 3-D speciality model floating off the card's corner, with its contact shadow
-  ctx.save(); ctx.fillStyle = 'rgba(20,30,60,0.18)'; ctx.filter = 'blur(18px)'; ctx.beginPath(); ctx.ellipse(885, 830, 100, 18, 0, 0, TAU); ctx.fill(); ctx.restore();
-  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), 760, 600, 250, 250);
-  const x = 1020; let y = 330;
-  text(ctx, 'ВТТ · 1965 — 2025', x, y, font(20, MONT, 700), '#6B778C', 'left', 6); y += 24;
-  ctx.fillStyle = INK; ctx.fillRect(x, y, 600, 2); y += 96;
-  text(ctx, MAMA.surname.toUpperCase(), x, y, fit(ctx, MAMA.surname.toUpperCase(), 88, 620, (f) => font(f, DELA)), INK); y += 62;
-  text(ctx, MAMA.name, x, y, font(44, MONT, 700), INK); y += 40;
-  CHORD.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + i * 22, y, 22, 8); }); y += 58;
-  wrap2(ctx, MAMA.role, font(32, MONT, 400), 600).forEach((s, i) => text(ctx, s, x, y + i * 42, font(32, MONT, 400), '#3A4458'));
+  // the 60 stands centre right; its top half shows above the name panel
+  extruded(ctx, '60', 1150, 780, 780, 40);
+  thickRibbon(ctx, -100, 960, W + 400, 70, -0.12);
+  card(ctx, MAMA, 390, 200, 420, 560);
+  ctx.save(); ctx.fillStyle = 'rgba(20,30,60,0.18)'; ctx.filter = 'blur(18px)'; ctx.beginPath(); ctx.ellipse(805, 850, 110, 20, 0, 0, TAU); ctx.fill(); ctx.restore();
+  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), 600, 520, 420, 420);
+  const px = 930, py = 560, pw = 700, ph = 330;
+  panel(ctx, px, py, pw, ph);
+  const x = px + 44; let y = py + 54;
+  text(ctx, 'ВТТ · 1965 — 2025', x, y, font(18, MONT, 700), '#6B778C', 'left', 6); y += 18;
+  ctx.fillStyle = INK; ctx.fillRect(x, y, pw - 88, 2); y += 84;
+  text(ctx, MAMA.surname.toUpperCase(), x, y, fit(ctx, MAMA.surname.toUpperCase(), 80, pw - 88, (f) => font(f, DELA)), INK); y += 54;
+  text(ctx, MAMA.name, x, y, font(40, MONT, 700), INK); y += 30;
+  CHORD.forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(x + i * 22, y, 22, 7); }); y += 50;
+  text(ctx, MAMA.role, x, y, fit(ctx, MAMA.role, 30, pw - 88, (f) => font(f, MONT, 400)), '#3A4458');
   logoAt(ctx, 1560, 130, 130, P.light);
 }
 function gTrio(ctx) {
@@ -121,7 +127,8 @@ function gTrio(ctx) {
   TRIO.forEach((p, i) => {
     const cx = W / 2 + (i - 1) * 470, w = 290, h = 360, x = cx - w / 2, y = 150;
     card(ctx, p, x, y, w, h, 0.75);
-    ctx.drawImage(model(p.piece, 0.45, -0.6), x + w - 110, y + h - 190, 190, 190);
+    ctx.drawImage(model(p.piece, 0.45, -0.6), x + w - 170, y + h - 250, 320, 320);
+    panel(ctx, cx - 215, y + h + 40, 430, 230, 18);
     let ty = y + h + 110;
     text(ctx, p.surname.toUpperCase(), cx, ty, fit(ctx, p.surname.toUpperCase(), 54, 400, (f) => font(f, DELA)), INK, 'center'); ty += 44;
     text(ctx, p.name, cx, ty, font(30, MONT, 700), INK, 'center'); ty += 26;
@@ -174,7 +181,7 @@ function hName(ctx, p, cx, y, sc = 1, maxW = 760) {
 function hHero(ctx) {
   stage(ctx);
   metalRing(ctx, MAMA, W / 2, 380, 205);
-  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), W / 2 + 170, 430, 220, 220);
+  ctx.drawImage(model(MAMA.piece, 0.45, -0.6), W / 2 + 90, 360, 370, 370);
   hName(ctx, MAMA, W / 2, 790);
   logoAt(ctx, W / 2 + 600, 120, 120, P.prof);
 }
@@ -183,7 +190,7 @@ function hTrio(ctx) {
   TRIO.forEach((p, i) => {
     const cx = W / 2 + (i - 1) * 470;
     metalRing(ctx, p, cx, 380, 130, 0.7);
-    ctx.drawImage(model(p.piece, 0.45, -0.6), cx + 70, 420, 150, 150);
+    ctx.drawImage(model(p.piece, 0.45, -0.6), cx + 20, 370, 250, 250);
     hName(ctx, p, cx, 680, 0.68, 600);
   });
 }
