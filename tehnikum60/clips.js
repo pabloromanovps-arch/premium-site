@@ -8,6 +8,7 @@ import { platesClips } from './plates.js';
 import { styles2Clips } from './styles2.js';
 import { styles3Clips } from './styles3.js';
 import { styles4Clips } from './styles4.js';
+import { styles5Clips } from './styles5.js';
 
 const { C, CHORD, DARK, LIGHT, DELA, MONT, font, pop, ease, lerp, clamp } = B;
 const { E, spring, W, H } = M;
@@ -479,6 +480,7 @@ export const CLIPS = {
   ...styles2Clips(),
   ...styles3Clips(),
   ...styles4Clips(),
+  ...styles5Clips(),
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),

@@ -217,7 +217,7 @@ const GLASS_Z = 5;
 // vertical ribs, each rib a little cylinder lens (magnified, so the image breaks at every rib),
 // lit on one side and shaded on the other. That is what makes the glass read as glass.
 export const FLUTE = { sw: 72, ang: 15 * Math.PI / 180, span: Math.hypot(W, H) };
-export function drawGlassMaster(ctx, t, { reeded = false, glow = 1, behind = null } = {}) {
+export function drawGlassMaster(ctx, t, { reeded = false, glow = 1, behind = null, pane = true } = {}) {
   const SS = ctx.getTransform().a;
   let dst = ctx;
   if (reeded) {
@@ -307,6 +307,7 @@ export function drawGlassMaster(ctx, t, { reeded = false, glow = 1, behind = nul
     }
     ctx.restore();
   }
+  if (!pane) return;   // the 3-D world alone, no glass in front (styles5.js)
   // the pane: a faint frost, grain, two soft reflections sweeping across once per loop
   ctx.fillStyle = 'rgba(200,225,255,0.05)'; ctx.fillRect(0, 0, W, H);
   ctx.drawImage(G2.grain, 0, 0, W, H);
