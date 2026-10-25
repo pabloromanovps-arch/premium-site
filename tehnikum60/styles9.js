@@ -74,16 +74,42 @@ function desk(ctx) {
   const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#E9E4DC'); g.addColorStop(1, '#D6CFC4');
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); speckle(ctx, 9000, 51, 'rgba(90,70,40,0.05)', 'rgba(255,255,255,0.3)');
 }
-function magScene(ctx, big = 880, y60 = 820) {
-  studio(ctx); extruded(ctx, '60', W / 2, y60, big, 44); thickRibbon(ctx, -100, 1050, W + 400, 60, -0.09);
+// the hall is dark: a white set would dazzle the front rows. The dark themes keep the same set
+// (the 60 in relief, the ribbon) but tone on tone, so the covers are the brightest thing on screen.
+const THEMES = {
+  navy: { bg: ['#2A4677', '#17305A', '#0A1733'], face: ['#2E5088', '#21406F'], side: ['#0C1D3C', '#1B3462'], logo: 'prof' },
+  graphite: { bg: ['#45484F', '#2C2F36', '#16181D'], face: ['#4C505A', '#3B3F48'], side: ['#1C1E23', '#33363E'], logo: 'prof' },
+};
+let THEME = null;
+function darkStudio(ctx, th) {
+  const g = ctx.createRadialGradient(W * 0.5, H * 0.35, 80, W * 0.5, H * 0.5, W * 0.75);
+  g.addColorStop(0, th.bg[0]); g.addColorStop(0.6, th.bg[1]); g.addColorStop(1, th.bg[2]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  speckle(ctx, 9000, 71, 'rgba(0,0,0,0.12)', 'rgba(255,255,255,0.04)');
 }
+function darkExtruded(ctx, th, str, x, y, size, depth = 44) {
+  ctx.save(); ctx.font = font(size, DELA); ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 60; ctx.shadowOffsetY = 40; ctx.fillStyle = th.side[0]; ctx.fillText(str, x + depth, y + depth);
+  ctx.shadowColor = 'transparent';
+  const mix = (a, b, k) => { const pa = a.match(/\w\w/g).map((h) => parseInt(h, 16)), pb = b.match(/\w\w/g).map((h) => parseInt(h, 16)); return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * k)).join(',')})`; };
+  for (let i = depth; i > 0; i--) { ctx.fillStyle = mix(th.side[0], th.side[1], 1 - i / depth); ctx.fillText(str, x + i, y + i); }
+  const fg = ctx.createLinearGradient(0, y - size * 0.8, 0, y); fg.addColorStop(0, th.face[0]); fg.addColorStop(1, th.face[1]);
+  ctx.fillStyle = fg; ctx.fillText(str, x, y);
+  ctx.restore();
+}
+function magScene(ctx, big = 880, y60 = 820) {
+  if (THEME) { darkStudio(ctx, THEME); darkExtruded(ctx, THEME, '60', W / 2, y60, big); }
+  else { studio(ctx); extruded(ctx, '60', W / 2, y60, big, 44); }
+  thickRibbon(ctx, -100, 1050, W + 400, 60, -0.09);
+}
+const magLogo = () => (THEME ? P.prof : P.light);
 function tHero(ctx) {
   magScene(ctx);
   // the next issue peeking out behind, turned a little: the series continues
   ctx.save(); ctx.translate(W / 2 + 160, 540); ctx.rotate(0.06); ctx.translate(-(W / 2 + 160), -540);
   cover(ctx, TRIO[0], W / 2 - 170, 130, 560, 800); ctx.restore();
   cover(ctx, MAMA, W / 2 - 330, 110, 600, 860);
-  logoAt(ctx, W / 2 + 620, 110, 110, P.light);
+  logoAt(ctx, W / 2 + 620, 110, 110, magLogo());
 }
 function tTrio(ctx) {
   magScene(ctx);
@@ -92,7 +118,7 @@ function tTrio(ctx) {
     ctx.save(); ctx.translate(cx, cy); ctx.rotate([-0.035, 0.012, 0.03][i]); ctx.translate(-cx, -cy);
     cover(ctx, p, cx - w / 2, cy - h / 2, w, h); ctx.restore();
   });
-  logoAt(ctx, W / 2 + 640, 90, 100, P.light);
+  logoAt(ctx, W / 2 + 640, 90, 100, magLogo());
 }
 
 // ================================================================ U: Cut paper
@@ -217,6 +243,8 @@ function vTrio(ctx) {
 
 export function styles9Clips() {
   const still = (f) => ({ dur: 1, samples: () => 1, draw(ctx) { f(ctx); } });
-  return { st_hero: still(tHero), st_trio: still(tTrio), su_hero: still(uHero), su_trio: still(uTrio), sv_hero: still(vHero), sv_trio: still(vTrio) };
+  const themed = (th, f) => still((c) => { THEME = THEMES[th]; f(c); THEME = null; });
+  return { st_hero: still(tHero), st_trio: still(tTrio),
+    st_hero_navy: themed('navy', tHero), st_trio_navy: themed('navy', tTrio), st_hero_graphite: themed('graphite', tHero), st_trio_graphite: themed('graphite', tTrio), su_hero: still(uHero), su_trio: still(uTrio), sv_hero: still(vHero), sv_trio: still(vTrio) };
 }
 void CHORD; void DARK;
