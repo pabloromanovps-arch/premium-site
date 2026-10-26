@@ -39,19 +39,15 @@ export const DRAW2 = {
     c.beginPath(); rr(c, 0.4, 0.0, 0.06, 0.5, 0.02); c.fill();
     c.beginPath(); rr(c, -0.5, 0.44, 1.0, 0.06, 0.02); c.fill();
   },
-  // cookery and confectionery: the classic pleated toque
+  // cookery and confectionery: the tall chef's toque: band, a pleated crown widening upwards,
+  // a row of puffs along its top
   chef(c) {
     c.beginPath();
-    c.arc(-0.24, -0.06, 0.2, Math.PI * 0.5, Math.PI * 1.55);
-    c.arc(-0.06, -0.26, 0.2, Math.PI * 1.05, Math.PI * 1.75);
-    c.arc(0.14, -0.24, 0.2, Math.PI * 1.25, Math.PI * 1.95);
-    c.arc(0.25, -0.04, 0.19, Math.PI * 1.45, Math.PI * 2.5);
-    c.lineTo(0.27, 0.16); c.lineTo(-0.27, 0.16); c.closePath(); c.fill();
-    // the band, with two pleat slits
-    c.beginPath(); rr(c, -0.29, 0.21, 0.58, 0.25, 0.04);
-    c.moveTo(-0.1, 0.25); c.lineTo(-0.07, 0.25); c.lineTo(-0.07, 0.42); c.lineTo(-0.1, 0.42); c.closePath();
-    c.moveTo(0.07, 0.25); c.lineTo(0.1, 0.25); c.lineTo(0.1, 0.42); c.lineTo(0.07, 0.42); c.closePath();
+    c.moveTo(-0.22, 0.2); c.lineTo(-0.3, -0.2); c.lineTo(0.3, -0.2); c.lineTo(0.22, 0.2); c.closePath();
+    for (const x of [-0.12, 0, 0.12]) { c.moveTo(x - 0.012, -0.1); c.lineTo(x + 0.012, -0.1); c.lineTo(x + 0.01, 0.16); c.lineTo(x - 0.01, 0.16); c.closePath(); }
     c.fill('evenodd');
+    for (const [x, y, r] of [[-0.24, -0.24, 0.13], [-0.08, -0.31, 0.15], [0.08, -0.31, 0.15], [0.24, -0.24, 0.13]]) disc(c, x, y, r);
+    c.beginPath(); rr(c, -0.25, 0.24, 0.5, 0.18, 0.04); c.fill();            // the band
   },
   // building: a pointing trowel, seen from above, lying across the box
   trowel(c) {
@@ -128,14 +124,20 @@ export const DRAW2 = {
     const e = W2(0.46, 0);
     c.beginPath(); c.moveTo(e[0], e[1]); c.quadraticCurveTo(e[0] + 0.06, e[1] + 0.2, 0.36, 0.48); c.stroke();
     c.save(); c.translate(O[0], O[1]); c.rotate(th);
-    // the grip with three ribs
-    c.beginPath(); rr(c, 0.06, -0.08, 0.42, 0.16, 0.07);
-    for (const x of [0.16, 0.25, 0.34]) { c.moveTo(x, -0.06); c.lineTo(x + 0.025, -0.06); c.lineTo(x + 0.025, 0.06); c.lineTo(x, 0.06); c.closePath(); }
-    c.fill('evenodd');
+    // the grip
+    c.beginPath(); rr(c, 0.06, -0.075, 0.42, 0.15, 0.07); c.fill();
     c.beginPath(); rr(c, -0.02, -0.05, 0.1, 0.1, 0.015); c.fill();             // the metal neck
-    c.beginPath(); rr(c, 0.0, -0.15, 0.3, 0.045, 0.02); c.fill();              // the spring lever over the grip
-    c.beginPath(); c.moveTo(0.0, -0.15); c.lineTo(-0.2, -0.06); c.lineTo(-0.22, -0.02); c.lineTo(-0.02, -0.04); c.closePath(); c.fill();   // upper jaw
+    c.beginPath(); c.moveTo(0.0, -0.12); c.lineTo(-0.2, -0.06); c.lineTo(-0.22, -0.02); c.lineTo(-0.02, -0.04); c.closePath(); c.fill();   // upper jaw
     c.beginPath(); c.moveTo(-0.02, 0.05); c.lineTo(-0.22, 0.04); c.lineTo(-0.2, 0.08); c.lineTo(0.0, 0.06); c.closePath(); c.fill();     // lower jaw
+    // the gloved fist round the grip: knuckles below, finger folds as slits, the thumb on top
+    c.beginPath(); rr(c, 0.13, -0.12, 0.25, 0.27, 0.09);
+    for (const x of [0.19, 0.25, 0.31]) { c.moveTo(x, 0.04); c.lineTo(x + 0.016, 0.04); c.lineTo(x + 0.016, 0.15); c.lineTo(x, 0.15); c.closePath(); }
+    c.fill('evenodd');
+    c.beginPath(); rr(c, 0.05, -0.16, 0.2, 0.08, 0.04); c.fill();             // the thumb
+    // the gauntlet, wide, reaching up and out of the frame
+    c.beginPath(); c.moveTo(0.16, -0.08); c.quadraticCurveTo(0.26, -0.13, 0.36, -0.08); c.quadraticCurveTo(0.45, -0.22, 0.44, -0.38); c.quadraticCurveTo(0.26, -0.43, 0.08, -0.38); c.quadraticCurveTo(0.08, -0.22, 0.16, -0.08); c.closePath();
+    c.moveTo(0.12, -0.27); c.lineTo(0.4, -0.27); c.lineTo(0.4, -0.25); c.lineTo(0.12, -0.25); c.closePath();   // the cuff's seam
+    c.fill('evenodd');
     c.restore();
     // the electrode, clamped across the jaws, down to the plate
     const j = W2(-0.19, 0.01), tip = [-0.3, 0.17];
