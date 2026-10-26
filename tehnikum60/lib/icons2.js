@@ -126,39 +126,28 @@ export const DRAW2 = {
     c.closePath(); c.moveTo(0.065, 0); c.arc(0, 0, 0.065, 0, TAU, true);
     c.fill('evenodd');
   },
-  // welding: the welder at work, after the client's reference: hooded head in the welding mask in
-  // profile, shoulders, an arm holding the electrode holder, sparks bursting from the electrode
+  // welding: the welder face on, after the client's reference: the head in the welding mask with
+  // its wide window, the shoulders below, and beside him the holder with the electrode up and a spark
   welder(c) {
-    // body: shoulders and back, sitting low on the right
+    const X = 0.12;
+    // the mask: a rounded shell, the window cut through it
     c.beginPath();
-    c.moveTo(0.12, -0.02); c.quadraticCurveTo(0.2, -0.1, 0.34, -0.08); c.quadraticCurveTo(0.5, -0.04, 0.5, 0.14);
-    c.lineTo(0.5, 0.5); c.lineTo(0.06, 0.5); c.quadraticCurveTo(0.04, 0.22, 0.12, -0.02); c.closePath(); c.fill();
-    // the hooded head: the hood round the back, the mask in front with its dark window
-    c.beginPath();
-    c.moveTo(0.16, -0.5); c.quadraticCurveTo(0.42, -0.5, 0.42, -0.24); c.quadraticCurveTo(0.42, -0.08, 0.3, -0.06);
-    c.lineTo(0.12, -0.08); c.quadraticCurveTo(0.02, -0.1, 0.0, -0.2); c.lineTo(0.0, -0.3);
-    c.quadraticCurveTo(0.02, -0.44, 0.16, -0.5); c.closePath();
-    c.moveTo(0.03, -0.33); c.lineTo(0.13, -0.33); c.lineTo(0.13, -0.27); c.lineTo(0.03, -0.27); c.closePath();
+    c.moveTo(X - 0.25, -0.12); c.quadraticCurveTo(X - 0.26, -0.46, X, -0.47); c.quadraticCurveTo(X + 0.26, -0.46, X + 0.25, -0.12);
+    c.quadraticCurveTo(X + 0.24, 0.08, X, 0.11); c.quadraticCurveTo(X - 0.24, 0.08, X - 0.25, -0.12); c.closePath();
+    c.moveTo(X - 0.19, -0.27); c.lineTo(X + 0.19, -0.27); c.lineTo(X + 0.15, -0.1); c.lineTo(X - 0.15, -0.1); c.closePath();
     c.fill('evenodd');
-    c.save(); c.globalCompositeOperation = 'destination-out';     // the line between mask and hood
-    c.lineWidth = 0.025; c.beginPath(); c.moveTo(0.2, -0.46); c.quadraticCurveTo(0.26, -0.28, 0.2, -0.08);
-    c.lineTo(0.225, -0.08); c.quadraticCurveTo(0.285, -0.28, 0.225, -0.46); c.closePath(); c.fill(); c.restore();
-    // the arm: upper arm down from the shoulder, forearm forward to the hand
-    c.lineCap = 'round'; c.lineWidth = 0.15;
-    c.beginPath(); c.moveTo(0.2, 0.04); c.lineTo(0.06, 0.25); c.stroke();
-    c.lineWidth = 0.13; c.beginPath(); c.moveTo(0.06, 0.25); c.lineTo(-0.1, 0.17); c.stroke();
-    disc(c, -0.12, 0.15, 0.075);                                     // the gloved hand
-    // the holder in the hand and the electrode down to the arc
-    c.lineWidth = 0.05; c.beginPath(); c.moveTo(-0.12, 0.15); c.lineTo(-0.24, 0.07); c.stroke();
-    c.lineWidth = 0.022; c.lineCap = 'butt'; c.beginPath(); c.moveTo(-0.24, 0.07); c.lineTo(-0.33, 0.26); c.stroke();
-    // the spark burst: an irregular star
+    // the shoulders and chest, with a collar notch
     c.beginPath();
-    const sx = -0.33, sy = 0.29, rays = 14, K = 1.35;
-    for (let i = 0; i < rays * 2; i++) {
-      const a = (i / (rays * 2)) * TAU, R = i % 2 ? 0.03 : [0.17, 0.11, 0.15, 0.09, 0.14, 0.1, 0.16, 0.08, 0.13, 0.1, 0.15, 0.09, 0.12, 0.1][(i / 2) % rays];
-      const p = [sx + Math.cos(a) * R * K, sy + Math.sin(a) * R * K * 0.75];
-      i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]);
-    }
+    c.moveTo(X - 0.4, 0.5); c.quadraticCurveTo(X - 0.4, 0.2, X - 0.14, 0.16); c.lineTo(X - 0.05, 0.16); c.lineTo(X, 0.27); c.lineTo(X + 0.05, 0.16);
+    c.lineTo(X + 0.14, 0.16); c.quadraticCurveTo(X + 0.4, 0.2, X + 0.4, 0.5); c.closePath(); c.fill();
+    // the holder: grip at the bottom, the electrode standing up, a spark at its tip
+    const hx = -0.36;
+    c.beginPath(); rr(c, hx - 0.07, 0.18, 0.14, 0.3, 0.06); c.fill();
+    c.beginPath(); rr(c, hx - 0.045, 0.1, 0.09, 0.07, 0.015); c.fill();
+    c.lineWidth = 0.03; c.lineCap = 'butt'; c.beginPath(); c.moveTo(hx, 0.1); c.lineTo(hx, -0.2); c.quadraticCurveTo(hx, -0.26, hx + 0.04, -0.28); c.stroke();
+    c.beginPath();
+    const sx = hx + 0.06, sy = -0.33;
+    for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU, R = i % 2 ? 0.03 : 0.11; const p = [sx + Math.cos(a) * R, sy + Math.sin(a) * R]; i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]); }
     c.closePath(); c.fill();
   },
   // motor vehicles: a steering wheel, rim, three spokes and the hub

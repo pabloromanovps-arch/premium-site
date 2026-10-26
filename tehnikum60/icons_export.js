@@ -84,7 +84,7 @@ export const SPEC2 = [
   ['chef', B.C.orange, 'Повар — кондитер'], ['trowel', B.C.slate, 'Строительство — мастерок'],
   ['crane', B.C.slate, 'Строительство — башенный кран'], ['gearwrench', B.C.blue, 'Монтаж — ремонт оборудования'],
   ['wheel', B.C.sky, 'Ремонт — автотранспорт'], ['mask', B.C.red, 'Сварщик — маска'],
-  ['holder', B.C.red, 'Сварщик — держатель с электродом'],
+  ['holder', B.C.red, 'Сварщик — держатель с электродом'], ['welder', B.C.red, 'Сварщик — в маске с электродом'],
 ];
 export function icons2Sheet(ctx) {
   ctx.fillStyle = '#F2F4F7'; ctx.fillRect(0, 0, W, H);
