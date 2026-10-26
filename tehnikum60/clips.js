@@ -543,5 +543,6 @@ export const CLIPS = {
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
   ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),
   ...Object.fromEntries(Object.entries(GOV).map(([k, v]) => [k, govClip(v)])),
+  ...Object.fromEntries(Object.entries(GOV).map(([k, v]) => [`${k}_bez_gerba`, nameClip(v)])),
   ...Object.fromEntries(Object.entries(DATES).map(([k, v]) => [k, dateClip(v)])),
 };
