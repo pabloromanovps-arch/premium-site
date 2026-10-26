@@ -33,6 +33,7 @@ export async function loadSymbols() {
   return SYM;
 }
 export const SYM_COLOR = (name) => SYM[name].color;
+export const symbolPath = (name) => SYM[name].path;   // in its unit box (0..1)
 export const SYMBOLS = ['plane', 'leaf', 'drop', 'gear', 'mountains', 'rail', 'atom', 'ship'];
 // one industry symbol, centred on (x, y), fitting a size x size box; s scales it about its centre
 export function symbol(ctx, name, x, y, size, color, s = 1, rot = 0) {

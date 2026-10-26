@@ -14,6 +14,7 @@ import { styles7Clips } from './styles7.js';
 import { styles8Clips } from './styles8.js';
 import { styles9Clips } from './styles9.js';
 import { iconExportClips } from './icons_export.js';
+import { intro10Clips } from './intro10.js';
 
 const { C, CHORD, DARK, LIGHT, DELA, MONT, font, pop, ease, lerp, clamp } = B;
 const { E, spring, W, H } = M;
@@ -508,6 +509,7 @@ export const CLIPS = {
   ...styles8Clips(),
   ...styles9Clips(),
   ...iconExportClips(),
+  ...intro10Clips(),
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
