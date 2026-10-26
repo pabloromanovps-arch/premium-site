@@ -3,7 +3,7 @@
 import * as M from './lib/motion.js';
 import * as B from './lib/brand.js';
 import { icon } from './lib/icons.js';
-import { jubileeClips } from './jubilee.js';
+import { jubileeClips, drawLogo, P as JP, setLogoScale } from './jubilee.js';
 import { platesClips } from './plates.js';
 import { styles2Clips } from './styles2.js';
 import { styles3Clips } from './styles3.js';
@@ -44,10 +44,21 @@ function logoDisc(ctx, IMG, cx, cy, R, t, t0) {
   ctx.translate(cx, cy); ctx.scale(s, s);
   ctx.fillStyle = C.white;
   ctx.beginPath(); ctx.arc(0, 0, R, 0, M.TAU); ctx.fill();
-  const ls = pop(t, t0 + 0.12, { stiffness: 140, damping: 13 });
-  const img = IMG.logo, k = (R * 1.5) / Math.max(img.width, img.height) * ls;
-  ctx.drawImage(img, (-img.width * k) / 2, (-img.height * k) / 2 + R * 0.02, img.width * k, img.height * k);
+  // the jubilee logo (client's edit: it replaces the VTT emblem), drawn in vector, teal on white
+  const ls = pop(t, t0 + 0.12, { stiffness: 140, damping: 13 }), k = ((R * 1.45) / (H * 0.53)) * ls;
+  if (ls <= 0.002) { ctx.restore(); return; }   // nothing to draw yet (a zero scale breaks the logo's layer)
+  ctx.scale(k, k); ctx.translate(-W / 2, -H / 2);
+  setLogoScale(0.53); drawLogo(ctx, 5, JP.light, { loop: 10, glints: false });
   ctx.restore();
+}
+const LOGO_GREEN = '#078C95';   // the jubilee logo's teal
+// big digits in one solid colour, revealed left to right as the chord digits are
+function solidText(ctx, str, x, y, size, p, color) {
+  const f = font(size), m = B.measure(ctx, str, f), k = clamp(p);
+  ctx.save(); ctx.beginPath(); ctx.rect(x - 40, y - m.asc - 40, (m.w + 80) * E.outCubic(k), m.asc + m.desc + 80); ctx.clip();
+  ctx.font = f; ctx.fillStyle = color; ctx.textAlign = 'left'; ctx.fillText(str, x, y);
+  ctx.restore();
+  return m;
 }
 // big digits filled with the colour chord
 function chordText(ctx, str, x, y, size, p, { align = 'left' } = {}) {
@@ -113,7 +124,7 @@ const zastavka = {
       B.riseText(ctx, s, x + 35, y + 80, f1, C.white, ease(t, t0 + 0.15, t0 + 0.55));
     });
     // the hero: 60 in the colour chord, ЛЕТ beside it
-    const m60 = chordText(ctx, '60', x - 8, 760, 330, ease(t, 0.85, 1.7, (q) => q));
+    const m60 = solidText(ctx, '60', x - 8, 760, 330, ease(t, 0.85, 1.7, (q) => q), LOGO_GREEN);
     const lx = x + m60.w + 34;
     textPlate(ctx, 'ЛЕТ', lx, 562, font(104), C.ink, C.white, t, 1.3, { h: 150 });
     // descriptor
@@ -192,16 +203,15 @@ const chart = {
       ctx.fillStyle = C.ink; ctx.fillText(val, 0, 2);
       ctx.restore();
     });
-    // the growth from 2023 to 2025, in percentage points (68,4 − 60,7)
+    // the growth from 2023 to 2025 (68,4 − 60,7), shown as «+7,7%» as the client asked
     const kg = pop(t, 2.7, { stiffness: 220, damping: 14 });
     if (kg > 0) {
       ctx.save(); ctx.translate(110, 470); ctx.scale(kg, kg);
-      const f = font(76), m = B.measure(ctx, '+7,7', f);
-      ctx.fillStyle = C.red; ctx.fillRect(0, 0, m.w + 250, 120);
+      const f = font(76), m = B.measure(ctx, '+7,7%', f);
+      ctx.fillStyle = C.red; ctx.fillRect(0, 0, m.w + 160, 120);
       ctx.fillStyle = C.white;
       ctx.beginPath(); ctx.moveTo(34, 88); ctx.lineTo(64, 32); ctx.lineTo(94, 88); ctx.closePath(); ctx.fill();
-      ctx.font = f; ctx.fillText('+7,7', 118, 90);
-      ctx.font = font(30, MONT, 700); ctx.fillText('п.п.', 128 + m.w, 90);
+      ctx.font = f; ctx.fillText('+7,7%', 118, 90);
       ctx.restore();
       textPlate(ctx, 'с 2023 по 2025 год', 110, 590, font(32, MONT, 700), C.white, C.ink, t, 2.85, { padX: 26, h: 64 });
     }
@@ -216,7 +226,7 @@ const PROFS = {
   prof4: ['Строительство и эксплуатация', 'зданий и сооружений', C.slate, 'building'],
   prof5: ['Монтаж, техническое обслуживание', 'и ремонт промышленного оборудования', C.blue, 'gear'],
   prof6: ['Техническое обслуживание и ремонт', 'автотранспортных средств', C.sky, 'car'],
-  prof7: ['Сварщик (ручной и частично', 'механизированной сварки (наплавки))', C.red, 'weld'],
+  prof7: ['Сварщик (ручной и частично', 'механизированной сварки (наплавки)', C.red, 'weld'],
 };
 function profClip([l1, l2, col, ic]) {
   return {
@@ -251,43 +261,49 @@ const NAMES = {
   name_svetlana: ['Светлана Прохватаева', 'выпускница ВТТ', C.cyan],
   name_lyudmila: ['Людмила Хитрецова', 'выпускница ВТТ', C.orange],
   name_ivan: ['Иван Тимошкин', 'выпускник ВТТ', C.blue],
-  name_misha: ['Миша', 'ученик 9 класса', C.orange],
+  name_misha: ['Михаил Богатыревич', null, C.orange],
+  // Misha's grandparents
+  name_babushka: ['Нина Николаевна Стифеева', 'бабушка', C.green],
+  name_dedushka: ['Александр Сергеевич Стифеев', 'дедушка', C.blue],
 };
 function nameClip([name, role, col]) {
   return {
     dur: 5,
     samples: (t) => (t < 2.3 ? 8 : 1),
     draw(ctx, t) {
-      const x = 110, y = 800, h = 170;
+      const h = role ? 170 : 120, x = 110, y = 970 - h;
       // a vertical slice of the chord as the plate's spine
       B.chord(ctx, x, y, 90, h, ease(t, 0, 0.7, (q) => q), [C.cyan, C.green, C.orange, C.red]);
       const fn = font(60), fr = font(32, MONT, 700);
-      const w = Math.max(B.measure(ctx, name, fn).w, B.measure(ctx, role, fr).w + 50) + 90;
+      const w = Math.max(B.measure(ctx, name, fn).w, role ? B.measure(ctx, role, fr).w + 50 : 0) + 90;
       B.plate(ctx, x + 90, y, w, h, C.white, ease(t, 0.15, 0.7, (q) => q));
-      B.riseText(ctx, name, x + 134, y + 86, fn, C.ink, ease(t, 0.35, 0.8));
-      B.slash(ctx, x + 134, y + 106, 32, col, ease(t, 0.5, 0.75), 4);
-      B.riseText(ctx, role, x + 184, y + 136, fr, C.ink, ease(t, 0.55, 0.95));
+      B.riseText(ctx, name, x + 134, y + (role ? 86 : 84), fn, C.ink, ease(t, 0.35, 0.8));
+      if (role) {
+        B.slash(ctx, x + 134, y + 106, 32, col, ease(t, 0.5, 0.75), 4);
+        B.riseText(ctx, role, x + 184, y + 136, fr, C.ink, ease(t, 0.55, 0.95));
+      }
     },
   };
 }
 
 // ---------------------------------------------------------------- infographics (scenes 8, 10, 11)
 // a big number in the chord that counts up, a stack of colour plates beside it, a descriptor below
-function statClip({ prefix, value, fmt, plates, lines, accent, below = false }) {
+function statClip({ prefix, value, fmt, plates, lines, accent, below = false, size = 330 }) {
   return {
     dur: 6,
     samples: (t) => (t < 3.4 ? 8 : 1),
     draw(ctx, t) {
-      const x = 150, y = 230, big = font(330);
+      // sk scales the number and its plates; the descriptor keeps its size
+      const sk = size / 330, x = 150, y = 230 + (330 - size) * 1.1, big = font(size);
       if (prefix) textPlate(ctx, prefix, x, y, font(40), C.ink, C.white, t, 0, { padX: 26, h: 72 });
       const k = ease(t, 0.3, 1.9, E.outCubic);
-      chordText(ctx, fmt(value * k), x - 10, y + 360, 330, ease(t, 0.3, 1.2, (q) => q));
+      chordText(ctx, fmt(value * k), x - 10, y + 360 * sk, size, ease(t, 0.3, 1.2, (q) => q));
       // plates beside the number, or (for a wide number) one plate under it
-      const fx = below ? x : x + B.measure(ctx, fmt(value), big).w + 40;
-      const pw = Math.max(...plates.map(([str]) => textW(ctx, str, font(84), 36)));
-      const ph = plates.length > 1 ? 120 : 150, py = below ? y + 400 : y + 360 - plates.length * (ph + 6) + 6 - 4;
-      plates.forEach(([str, col], j) => textPlate(ctx, str, fx, py + j * (ph + 6), font(84), col, C.white, t, 0.9 + j * 0.15, { padX: 36, h: ph, w: pw }));
-      const fs = font(36, MONT, 700), dy = below ? y + 420 + ph + 16 : y + 420;
+      const fx = below ? x : x + B.measure(ctx, fmt(value), big).w + 40, pf = font(84 * sk);
+      const pw = Math.max(...plates.map(([str]) => textW(ctx, str, pf, 36 * sk)));
+      const ph = (plates.length > 1 ? 120 : 150) * sk, py = below ? y + 400 * sk : y + 360 - plates.length * (ph + 6) + 6 - 4;
+      plates.forEach(([str, col], j) => textPlate(ctx, str, fx, py + j * (ph + 6), pf, col, C.white, t, 0.9 + j * 0.15, { padX: 36 * sk, h: ph, w: pw }));
+      const fs = font(36, MONT, 700), dy = below ? y + 420 * sk + ph + 16 : y + 420;
       const w = Math.max(...lines.map((l) => B.measure(ctx, l, fs).w)) + 130;
       B.plate(ctx, x, dy, w, 50 + lines.length * 50, C.white, ease(t, 1.5, 2.0, (q) => q));
       B.slash(ctx, x + 32, dy + 32, 38, accent, ease(t, 1.7, 1.95), 5);
@@ -305,14 +321,14 @@ const STATS = {
   stat18000: { prefix: 'БОЛЕЕ', value: 18000, fmt: thousands, plates: [['СПЕЦИАЛИСТОВ', C.blue]], below: true,
     lines: ['разных профессий подготовил техникум', 'за 60 лет своей деятельности'], accent: C.blue },
   // scene 11: «85% от общего количества трудоустроенных находят работу на предприятиях Дорогобужского округа»
-  stat85: { prefix: null, value: 85, fmt: (v) => Math.round(v) + '%', plates: [['ДОРОГОБУЖСКИЙ ОКРУГ', C.green]], below: true,
+  stat85: { prefix: null, value: 85, fmt: (v) => Math.round(v) + '%', plates: [['ДОРОГОБУЖСКИЙ ОКРУГ', C.green]], below: true, size: 200,
     lines: ['от общего количества трудоустроенных находят', 'работу на предприятиях Дорогобужского округа'], accent: C.green },
 };
 
 // ---------------------------------------------------------------- dates (voice-over, scenes 4, 6, 8)
 const DATES = {
   date1965: ['1965', ['началось строительство профессионально-', 'технического училища в Верхнеднепровском'], C.grey],
-  date1966: ['1966', ['в сентябре ТУ-17 приняло', 'первых учащихся — их было триста'], C.slate],
+  date1966: ['1966', ['в сентябре ТУ-17 приняло', '300 первых учащихся'], C.slate],
   date1967: ['1967', ['первый выпуск', 'квалифицированных рабочих'], C.blue],
   date2008: ['2008', ['училище реорганизовано в Верхнеднепровский', 'технологический техникум'], C.cyan],
   date2024: ['2024', ['17 июля — соглашение о создании кластера', '«Химические технологии»', 'программы «Профессионалитет»'], C.green],
@@ -350,7 +366,7 @@ const final = {
     const x = 900, f = font(56);
     [['ВЕРХНЕДНЕПРОВСКОМУ', C.blue], ['ТЕХНОЛОГИЧЕСКОМУ', C.red], ['ТЕХНИКУМУ', C.ink]].forEach(([str, col], i) =>
       textPlate(ctx, str, x, 140 + i * 98, f, col, C.white, t, 0.4 + i * 0.13, { padX: 30, h: 90 }));
-    const m60 = chordText(ctx, '60', x - 8, 740, 300, ease(t, 0.95, 1.8, (q) => q));
+    const m60 = solidText(ctx, '60', x - 8, 740, 300, ease(t, 0.95, 1.8, (q) => q), LOGO_GREEN);
     textPlate(ctx, 'ЛЕТ', x + m60.w + 30, 556, font(96), C.ink, C.white, t, 1.4, { h: 140 });
     const fs = font(44, MONT, 700), str = 'История продолжается!';
     const mw = B.measure(ctx, str, fs).w;
@@ -361,7 +377,7 @@ const final = {
 };
 
 // ---------------------------------------------------------------- 12 the pass (scene 12)
-// «Михаил Николаевич, технолог цеха слабой азотной кислоты ПАО «Дорогобуж»» as a badge in the
+// «Михаил Богатыревич, технолог цеха слабой азотной кислоты ПАО «Дорогобуж»» as a badge in the
 // brandbook's corporate-badge layout (p. 53): it swings in on its lanyard and settles
 const propusk = {
   dur: 6,
@@ -404,7 +420,7 @@ const propusk = {
     B.riseText(ctx, 'Технолог', x + 36, y + 600, font(84, MONT, 700), C.ink, ease(t, 1.3, 1.7));
     B.slash(ctx, x + 40, y + 628, 34, C.green, ease(t, 1.5, 1.7), 4);
     B.riseText(ctx, 'Михаил', x + 96, y + 650, font(32, MONT, 700), C.ink, ease(t, 1.55, 1.9));
-    B.riseText(ctx, 'Николаевич', x + 96, y + 688, font(32, MONT, 700), C.ink, ease(t, 1.6, 1.95));
+    B.riseText(ctx, 'Богатыревич', x + 96, y + 688, font(32, MONT, 700), C.ink, ease(t, 1.6, 1.95));
     B.riseText(ctx, 'цех слабой азотной кислоты', x + 36, y + 740, font(24, MONT, 400), C.ink, ease(t, 1.7, 2.05));
     B.riseText(ctx, 'ПАО «ДОРОГОБУЖ»', x + 36, y + 778, font(28), C.ink, ease(t, 1.8, 2.15));
     ctx.restore();
@@ -439,7 +455,7 @@ const NAMES2 = {
   name_vypusknoy: ['Выпускной в ВТТ', '30 июня 2026 г.', C.blue],
   // Misha's parents (supplied by the client)
   name_mama: ['Ольга Александровна Богатыревич', 'инженер по транспорту железнодорожного цеха', C.red],
-  name_papa: ['Александр Иванович Богатыревич', 'транспортировщик в цехе полимерной продукции', C.sky],
+  name_papa: ['Александр Иванович Богатыревич', 'транспортировщик цеха полимерной продукции', C.sky],
 };
 
 // ---------------------------------------------------------------- full-frame backgrounds
