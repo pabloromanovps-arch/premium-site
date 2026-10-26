@@ -118,32 +118,39 @@ export const DRAW2 = {
     // the headgear knobs at the sides
     disc(c, -0.42, -0.02, 0.06); disc(c, 0.42, -0.02, 0.06);
   },
-  // welding: an electrode holder gripping an electrode, a few sparks at its tip
+  // welding: the electrode holder seen from the side: ribbed grip, spring lever, jaws clamping the
+  // electrode, the cable behind; the electrode's tip on a metal plate, sparks flying from the arc
   holder(c) {
-    c.save(); c.rotate(-Math.PI / 4);
-    c.beginPath(); rr(c, -0.075, 0.02, 0.15, 0.44, 0.06); c.fill();             // the insulated grip
-    c.beginPath(); rr(c, -0.06, -0.12, 0.12, 0.16, 0.02); c.fill();             // the jaws
-    c.beginPath(); rr(c, -0.09, -0.16, 0.18, 0.05, 0.02); c.fill();
+    const O = [0.06, -0.2], th = 0.5, co = Math.cos(th), si = Math.sin(th);
+    const W2 = (x, y) => [O[0] + x * co - y * si, O[1] + x * si + y * co];
+    // the cable, out of the grip's end and off the box
+    c.lineWidth = 0.07; c.lineCap = 'round';
+    const e = W2(0.46, 0);
+    c.beginPath(); c.moveTo(e[0], e[1]); c.quadraticCurveTo(e[0] + 0.06, e[1] + 0.2, 0.36, 0.48); c.stroke();
+    c.save(); c.translate(O[0], O[1]); c.rotate(th);
+    // the grip with three ribs
+    c.beginPath(); rr(c, 0.06, -0.08, 0.42, 0.16, 0.07);
+    for (const x of [0.16, 0.25, 0.34]) { c.moveTo(x, -0.06); c.lineTo(x + 0.025, -0.06); c.lineTo(x + 0.025, 0.06); c.lineTo(x, 0.06); c.closePath(); }
+    c.fill('evenodd');
+    c.beginPath(); rr(c, -0.02, -0.05, 0.1, 0.1, 0.015); c.fill();             // the metal neck
+    c.beginPath(); rr(c, 0.0, -0.15, 0.3, 0.045, 0.02); c.fill();              // the spring lever over the grip
+    c.beginPath(); c.moveTo(0.0, -0.15); c.lineTo(-0.2, -0.06); c.lineTo(-0.22, -0.02); c.lineTo(-0.02, -0.04); c.closePath(); c.fill();   // upper jaw
+    c.beginPath(); c.moveTo(-0.02, 0.05); c.lineTo(-0.22, 0.04); c.lineTo(-0.2, 0.08); c.lineTo(0.0, 0.06); c.closePath(); c.fill();     // lower jaw
     c.restore();
-    // the electrode, held across the jaws, down to the right
-    c.save(); c.translate(-0.03, -0.03); c.rotate(Math.PI / 4 + 0.35);
-    c.beginPath(); rr(c, -0.015, 0, 0.03, 0.42, 0.012); c.fill();
-    c.restore();
-    c.lineWidth = 0.022; c.lineCap = 'round'; c.beginPath();
-    for (const [a, l] of [[1.9, 0.1], [2.4, 0.12], [2.9, 0.1], [3.4, 0.09], [1.4, 0.08]]) { const x = -0.41, y = 0.15; c.moveTo(x + Math.cos(a) * 0.04, y + Math.sin(a) * 0.04); c.lineTo(x + Math.cos(a) * (0.04 + l), y + Math.sin(a) * (0.04 + l)); }
+    // the electrode, clamped across the jaws, down to the plate
+    const j = W2(-0.19, 0.01), tip = [-0.3, 0.17];
+    c.lineWidth = 0.034; c.lineCap = 'butt';
+    c.beginPath(); c.moveTo(j[0] + 0.02, j[1] - 0.04); c.lineTo(tip[0], tip[1]); c.stroke();
+    // the plate being welded
+    c.beginPath(); rr(c, -0.5, 0.22, 0.48, 0.06, 0.01); c.fill();
+    // the arc: a bright point and sparks thrown up and out
+    disc(c, tip[0], tip[1] + 0.02, 0.035);
+    c.lineWidth = 0.02; c.lineCap = 'round'; c.beginPath();
+    for (const [a, r0, l] of [[-2.9, 0.06, 0.12], [-2.4, 0.06, 0.16], [-1.9, 0.06, 0.1], [-0.6, 0.06, 0.12], [-0.2, 0.06, 0.15], [0.2, 0.06, 0.09], [-3.3, 0.06, 0.1]]) {
+      c.moveTo(tip[0] + Math.cos(a) * r0, tip[1] + 0.02 + Math.sin(a) * r0); c.lineTo(tip[0] + Math.cos(a) * (r0 + l), tip[1] + 0.02 + Math.sin(a) * (r0 + l));
+    }
     c.stroke();
-  },
-  // welding: a canvas work glove, thumb up
-  glove(c) {
-    c.beginPath(); rr(c, -0.24, -0.06, 0.44, 0.36, 0.1);
-    // the folded fingers: three seams on the right
-    for (const y of [0.04, 0.13, 0.22]) { c.moveTo(0.05, y); c.lineTo(0.2, y); c.lineTo(0.2, y + 0.02); c.lineTo(0.05, y + 0.02); c.closePath(); }
-    c.fill('evenodd');
-    c.save(); c.translate(-0.13, -0.05); c.rotate(-0.15);
-    c.beginPath(); rr(c, -0.075, -0.4, 0.15, 0.44, 0.075); c.fill(); c.restore();   // the thumb
-    c.beginPath(); rr(c, -0.28, 0.32, 0.52, 0.18, 0.03);                            // the cuff, with its stitch line
-    c.moveTo(-0.24, 0.39); c.lineTo(0.2, 0.39); c.lineTo(0.2, 0.41); c.lineTo(-0.24, 0.41); c.closePath();
-    c.fill('evenodd');
+    for (const [x, y, r] of [[-0.12, 0.08, 0.014], [-0.47, 0.06, 0.012], [-0.08, 0.15, 0.01]]) disc(c, x, y, r);
   },
 };
 export const ICONS2 = Object.keys(DRAW2);
