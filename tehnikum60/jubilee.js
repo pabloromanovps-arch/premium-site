@@ -438,6 +438,9 @@ export function jubileeClips() {
     jz_prof3d: { dur: 8, samples: (t) => (t < 2.6 ? 6 : 3),
       async init() { this.m = await import('./jubilee3d.js'); await this.m.init3d(); },
       draw(ctx, t) { setLogoScale(0.53); this.m.drawFon3D(ctx, t, logoMedallion()); drawLogo(ctx, t, P.prof); } },
+    jfon_prof3d: { dur: 8, samples: () => 1,   // the 3-D brandbook symbols alone (background still)
+      async init() { this.m = await import('./jubilee3d.js'); await this.m.init3d(); },
+      draw(ctx, t) { setLogoScale(0.53); this.m.drawFon3D(ctx, t, logoMedallion()); } },
     // the master title: a 10 s seamless loop, logo assembled, everything else moving
     jm_fon: { dur: 10, samples: () => 2,
       async init() { this.m = await import('./jubilee3d.js'); await this.m.initGlass(10); },
