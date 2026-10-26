@@ -50,7 +50,6 @@ for g in sorted(p for p in G.iterdir() if p.is_dir() and p.name[:2].isdigit()):
             ff("-i", str(src), "-vf", "unpremultiply=inplace=1,format=yuva420p", "-c:v", "libvpx-vp9", "-b:v", "8M",
                "-auto-alt-ref", "0", "-row-mt", "1", str(w))
         if w.exists(): put(w, f"{F1}/{g.name}/WEBM/{n}.webm")
-for f in (G / "DIAGRAMMA").iterdir(): put(f, f"{F1}/04_INFOGRAFIKA/DIAGRAMMA_izometriya_variant/{f.name}")
 
 # ---------------------------------------------------------------- 02 master title
 F2 = "02_MASTER_ZASTAVKA"
