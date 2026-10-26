@@ -23,6 +23,7 @@ export function iconExportClips() {
   for (const n of PIECES) clips[`ico_3d_${n}`] = still((ctx) => {
     const c = G.renderPiece(n, 0.4, -0.55, 1200); ctx.drawImage(c, W / 2 - 600, H / 2 - 600, 1200, 1200);
   }, init);
+  clips.ico2_sheet = still((ctx) => icons2Sheet(ctx));
   return clips;
 }
 
@@ -69,4 +70,24 @@ export function iconSVGPaths(name, drawIcon) {
   };
   drawIcon(c, name);
   return out;
+}
+
+// ---------------------------------------------------------------- round 2: a sheet for approval
+import { icon2 } from './lib/icons2.js';
+export const SPEC2 = [
+  ['flask', B.C.green, 'Химия — неорганические вещества'], ['tubes', B.C.cyan, 'Химия — соединения'],
+  ['chef', B.C.orange, 'Повар — кондитер'], ['trowel', B.C.slate, 'Строительство — мастерок'],
+  ['crane', B.C.slate, 'Строительство — башенный кран'], ['gearwrench', B.C.blue, 'Монтаж — ремонт оборудования'],
+  ['wheel', B.C.sky, 'Ремонт — автотранспорт'], ['mask', B.C.red, 'Сварщик — маска'],
+  ['holder', B.C.red, 'Сварщик — держатель'], ['glove', B.C.red, 'Сварщик — рукавица'],
+];
+export function icons2Sheet(ctx) {
+  ctx.fillStyle = '#F2F4F7'; ctx.fillRect(0, 0, W, H);
+  SPEC2.forEach(([n, col, label], i) => {
+    const cx = 192 + (i % 5) * 384, cy = 300 + Math.floor(i / 5) * 470;
+    icon2(ctx, n, cx, cy, 260, col);
+    ctx.font = B.font(22, B.MONT, 700); ctx.fillStyle = B.C.ink; ctx.textAlign = 'center';
+    const w = label.split(' — ');
+    w.forEach((l, j) => ctx.fillText(l, cx, cy + 200 + j * 28));
+  });
 }
