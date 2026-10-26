@@ -1,0 +1,72 @@
+// icons_export.js: every icon on its own, centred, on transparency, for the motion designer:
+// VTT's speciality icons and the brandbook's industry symbols (flat, in three colourings), and
+// the 3-D pieces. One clip per file: ico_<name>_<variant>.
+import * as B from './lib/brand.js';
+import { icon } from './lib/icons.js';
+import * as M from './lib/motion.js';
+
+const { W, H } = M;
+const SIZE = 860;   // the icon's box; tools/export_icons.py crops a 1000 px square round it
+export const SPEC = { flask: B.C.green, molecule: B.C.cyan, chef: B.C.orange, building: B.C.slate, gear: B.C.blue, car: B.C.sky, weld: B.C.red };
+export const PIECES = ['flask3d', 'molecule3d', 'rail3d', 'chef3d', 'weld3d', 'car', 'building', 'flask', 'molecule', 'chef', 'weld',
+  'plane', 'leaf', 'drop', 'gear', 'mountains', 'rail', 'atom', 'ship'];
+let G = null;
+export function iconExportClips() {
+  const clips = {};
+  const still = (f, init) => ({ dur: 1, samples: () => 1, init, draw(ctx) { f(ctx); } });
+  for (const v of ['color', 'white', 'ink']) {
+    const col = (c) => (v === 'color' ? c : v === 'white' ? '#FFFFFF' : B.C.ink);
+    for (const [n, c] of Object.entries(SPEC)) clips[`ico_spec_${n}_${v}`] = still((ctx) => icon(ctx, n, W / 2, H / 2, SIZE, col(c)));
+    for (const n of B.SYMBOLS) clips[`ico_sym_${n}_${v}`] = still((ctx) => B.symbol(ctx, n, W / 2, H / 2, SIZE, v === 'color' ? null : col()));
+  }
+  const init = async () => { if (!G) { G = await import('./jubilee3d.js'); await G.initGlass(10); } };
+  for (const n of PIECES) clips[`ico_3d_${n}`] = still((ctx) => {
+    const c = G.renderPiece(n, 0.4, -0.55, 1200); ctx.drawImage(c, W / 2 - 600, H / 2 - 600, 1200, 1200);
+  }, init);
+  return clips;
+}
+
+// ---------------------------------------------------------------- vector export (tools/export_icons.mjs)
+// A context that records what an icon draws as SVG paths (arcs stay true arcs), one path per
+// fill call with that call's fill rule, so overlapping parts (atoms and bonds, wheels and body)
+// stay solid. Coordinates are in the icon's unit box, centred on 0. Returns [{ d, rule }].
+export function iconSVGPaths(name, drawIcon) {
+  let T = [1, 0, 0, 1, 0, 0], d = '', cur = null, lw = 0.1, strokes = [];
+  const stack = [], out = [];
+  const P = (x, y) => [T[0] * x + T[2] * y + T[4], T[1] * x + T[3] * y + T[5]];
+  const sc = () => Math.hypot(T[0], T[1]);
+  const mul = (a, b, c, dd, e, f) => { const [A, Bb, Cc, D, E2, F] = T; T = [A * a + Cc * b, Bb * a + D * b, A * c + Cc * dd, Bb * c + D * dd, A * e + Cc * f + E2, Bb * e + D * f + F]; };
+  const f = (v) => +v.toFixed(5);
+  const to = (cmd, [x, y]) => { d += `${cmd}${f(x)} ${f(y)} `; cur = [x, y]; };
+  const rectD = (x, y, w, h) => { to('M', P(x, y)); to('L', P(x + w, y)); to('L', P(x + w, y + h)); to('L', P(x, y + h)); d += 'Z '; cur = null; };
+  const c = {
+    set fillStyle(v) {}, set strokeStyle(v) {}, set lineCap(v) {},
+    set lineWidth(v) { lw = v; }, get lineWidth() { return lw; },
+    save() { stack.push(T); }, restore() { T = stack.pop(); },
+    translate(x, y) { mul(1, 0, 0, 1, x, y); }, rotate(a) { mul(Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0); }, scale(x, y) { mul(x, 0, 0, y, 0, 0); },
+    beginPath() { d = ''; cur = null; strokes = []; }, closePath() { if (cur) d += 'Z '; cur = null; },
+    moveTo(x, y) { to('M', P(x, y)); strokes.push([[x, y]]); }, lineTo(x, y) { to(cur ? 'L' : 'M', P(x, y)); strokes.at(-1)?.push([x, y]); },
+    quadraticCurveTo(cx, cy, x, y) { const q = P(cx, cy), e = P(x, y); d += `Q${f(q[0])} ${f(q[1])} ${f(e[0])} ${f(e[1])} `; cur = e; },
+    arc(x, y, r, a0, a1, ccw = false) {
+      let span = a1 - a0; if (!ccw && span < 0) span += 2 * Math.PI; if (ccw && span > 0) span -= 2 * Math.PI;
+      if (Math.abs(a1 - a0) >= 2 * Math.PI - 1e-6) span = ccw ? -2 * Math.PI : 2 * Math.PI;
+      const pt = (a) => P(x + r * Math.cos(a), y + r * Math.sin(a)), R = r * sc();
+      to(cur ? 'L' : 'M', pt(a0));
+      const n = Math.ceil(Math.abs(span) / (Math.PI * 0.99));
+      for (let i = 1; i <= n; i++) { const e = pt(a0 + (span * i) / n); d += `A${f(R)} ${f(R)} 0 0 ${span > 0 ? 1 : 0} ${f(e[0])} ${f(e[1])} `; cur = e; }
+    },
+    rect(x, y, w, h) { rectD(x, y, w, h); },
+    fillRect(x, y, w, h) { const keep = d; d = ''; rectD(x, y, w, h); out.push({ d: d.trim(), rule: 'nonzero' }); d = keep; },
+    fill(rule = 'nonzero') { if (d.trim()) out.push({ d: d.trim(), rule }); },
+    stroke() {   // a stroke (the molecule's bonds) becomes its outline
+      const hw = lw / 2, keep = d; d = '';
+      for (const pts of strokes) for (let i = 1; i < pts.length; i++) {
+        const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0), nx = (-(y1 - y0) / L) * hw, ny = ((x1 - x0) / L) * hw;
+        to('M', P(x0 + nx, y0 + ny)); to('L', P(x1 + nx, y1 + ny)); to('L', P(x1 - nx, y1 - ny)); to('L', P(x0 - nx, y0 - ny)); d += 'Z ';
+      }
+      out.push({ d: d.trim(), rule: 'nonzero' }); d = keep; cur = null;
+    },
+  };
+  drawIcon(c, name);
+  return out;
+}

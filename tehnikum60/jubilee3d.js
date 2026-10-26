@@ -392,6 +392,8 @@ function makeModel(name) {
 // square canvas `px` wide with the piece on transparency, turned by (rx, ry)
 const PIECE = {};
 // the window is 900 px of the frame, wide enough for any piece at any turn (540 cut corners off)
+// a larger drawing buffer for still exports (icons at 4K); k = 1 restores the film size
+export function setRenderScale(k) { R.setSize(W * k, H * k, false); }
 export function renderPiece(name, rx = 0.2, ry = -0.35, px = 600) {
   if (!PIECE.mesh) PIECE.mesh = {};
   let m = PIECE.mesh[name];
