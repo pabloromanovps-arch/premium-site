@@ -268,6 +268,9 @@ const NAMES = {
   name_babushka: ['Нина Николаевна Стифеева', 'бабушка', C.green],
   name_dedushka: ['Александр Сергеевич Стифеев', 'дедушка', C.blue],
 };
+const GOV = {
+  name_gubernator: ['Василий Николаевич Анохин', 'Губернатор Смоленской области', C.red],
+};
 function nameClip([name, role, col]) {
   return {
     dur: 5,
@@ -284,6 +287,28 @@ function nameClip([name, role, col]) {
         B.slash(ctx, x + 134, y + 106, 32, col, ease(t, 0.5, 0.75), 4);
         B.riseText(ctx, role, x + 184, y + 136, fr, C.ink, ease(t, 0.55, 0.95));
       }
+    },
+  };
+}
+
+// the governor: the name plate with the Smolensk region's coat of arms in front of it
+let GERB = null;
+function govClip([name, role, col]) {
+  const base = nameClip([name, role, col]);
+  return {
+    dur: 5,
+    samples: (t) => (t < 2.3 ? 8 : 1),
+    async init() {
+      if (!GERB) await new Promise((ok, no) => { GERB = new Image(); GERB.onload = ok; GERB.onerror = no; GERB.src = 'assets/gerb_smolensk.png'; });
+    },
+    draw(ctx, t) {
+      // the plate moves right to make room for the arms
+      ctx.save(); ctx.translate(230, 0); base.draw(ctx, t); ctx.restore();
+      const h = 250, w = (h * GERB.width) / GERB.height, cx = 110 + w / 2, cy = 970 - 85;
+      const s = pop(t, 0.1, { stiffness: 220, damping: 15 });
+      if (s <= 0.001) return;
+      ctx.save(); ctx.translate(cx, cy); ctx.scale(s, s);
+      ctx.drawImage(GERB, -w / 2, -h / 2, w, h); ctx.restore();
     },
   };
 }
@@ -517,5 +542,6 @@ export const CLIPS = {
   ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
   ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),
+  ...Object.fromEntries(Object.entries(GOV).map(([k, v]) => [k, govClip(v)])),
   ...Object.fromEntries(Object.entries(DATES).map(([k, v]) => [k, dateClip(v)])),
 };
