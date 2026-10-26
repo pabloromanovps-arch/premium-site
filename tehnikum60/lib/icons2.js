@@ -82,9 +82,9 @@ export const DRAW2 = {
   // industrial equipment: a gear in the middle, a double open-ended spanner behind it on the
   // diagonal; the spanner stops short of the gear, so the two never merge into one blot
   gearwrench(c) {
-    const n = 10, R0 = 0.24, R1 = 0.31, g = 0.035, r = 0.1, w = 0.042, dl = Math.asin(w / r), d = 0.4;
-    // the gear, a little up and to the left
-    c.save(); c.translate(-0.06, -0.06);
+    const n = 10, R0 = 0.25, R1 = 0.32, g = 0.035, r = 0.1, w = 0.042, dl = Math.asin(w / r), d = 0.4;
+    // the gear, centred
+    c.save();
     c.beginPath();
     for (let i = 0; i < n * 2; i++) { const a0 = (i / (n * 2)) * TAU, a1 = ((i + 1) / (n * 2)) * TAU; c.arc(0, 0, i % 2 ? R0 : R1, a0, a1); }
     c.closePath(); c.moveTo(0.1, 0); c.arc(0, 0, 0.1, 0, TAU, true);
@@ -104,6 +104,62 @@ export const DRAW2 = {
       c.restore();
     }
     c.restore();
+  },
+  // industrial equipment, variant B: two spanners crossed behind a gear, the classic emblem
+  gearwrench2(c) {
+    const r = 0.095, w = 0.04, dl = Math.asin(w / r), d = 0.47, n = 9, R0 = 0.14, R1 = 0.19, g = 0.035;
+    for (const ang of [-Math.PI / 4, Math.PI / 4]) {
+      c.save(); c.rotate(ang);
+      c.beginPath(); rr(c, -0.045, -d, 0.09, 2 * d, 0.045); c.fill();
+      for (const sgn of [-1, 1]) {
+        c.save(); c.scale(1, sgn);
+        c.beginPath(); c.arc(0, d, r, Math.PI / 2 - dl, Math.PI / 2 + dl - 2 * Math.PI, true);
+        c.lineTo(-w, d - 0.02); c.lineTo(w, d - 0.02); c.closePath(); c.fill();
+        c.restore();
+      }
+      c.restore();
+    }
+    // a gap round the gear, then the gear on top
+    c.save(); c.globalCompositeOperation = 'destination-out'; c.beginPath(); c.arc(0, 0, R1 + g, 0, TAU); c.fill(); c.restore();
+    c.beginPath();
+    for (let i = 0; i < n * 2; i++) { const a0 = (i / (n * 2)) * TAU, a1 = ((i + 1) / (n * 2)) * TAU; c.arc(0, 0, i % 2 ? R0 : R1, a0, a1); }
+    c.closePath(); c.moveTo(0.065, 0); c.arc(0, 0, 0.065, 0, TAU, true);
+    c.fill('evenodd');
+  },
+  // welding: the welder at work, after the client's reference: hooded head in the welding mask in
+  // profile, shoulders, an arm holding the electrode holder, sparks bursting from the electrode
+  welder(c) {
+    // body: shoulders and back, sitting low on the right
+    c.beginPath();
+    c.moveTo(0.12, -0.02); c.quadraticCurveTo(0.2, -0.1, 0.34, -0.08); c.quadraticCurveTo(0.5, -0.04, 0.5, 0.14);
+    c.lineTo(0.5, 0.5); c.lineTo(0.06, 0.5); c.quadraticCurveTo(0.04, 0.22, 0.12, -0.02); c.closePath(); c.fill();
+    // the hooded head: the hood round the back, the mask in front with its dark window
+    c.beginPath();
+    c.moveTo(0.16, -0.5); c.quadraticCurveTo(0.42, -0.5, 0.42, -0.24); c.quadraticCurveTo(0.42, -0.08, 0.3, -0.06);
+    c.lineTo(0.12, -0.08); c.quadraticCurveTo(0.02, -0.1, 0.0, -0.2); c.lineTo(0.0, -0.3);
+    c.quadraticCurveTo(0.02, -0.44, 0.16, -0.5); c.closePath();
+    c.moveTo(0.03, -0.33); c.lineTo(0.13, -0.33); c.lineTo(0.13, -0.27); c.lineTo(0.03, -0.27); c.closePath();
+    c.fill('evenodd');
+    c.save(); c.globalCompositeOperation = 'destination-out';     // the line between mask and hood
+    c.lineWidth = 0.025; c.beginPath(); c.moveTo(0.2, -0.46); c.quadraticCurveTo(0.26, -0.28, 0.2, -0.08);
+    c.lineTo(0.225, -0.08); c.quadraticCurveTo(0.285, -0.28, 0.225, -0.46); c.closePath(); c.fill(); c.restore();
+    // the arm: upper arm down from the shoulder, forearm forward to the hand
+    c.lineCap = 'round'; c.lineWidth = 0.15;
+    c.beginPath(); c.moveTo(0.2, 0.04); c.lineTo(0.06, 0.25); c.stroke();
+    c.lineWidth = 0.13; c.beginPath(); c.moveTo(0.06, 0.25); c.lineTo(-0.1, 0.17); c.stroke();
+    disc(c, -0.12, 0.15, 0.075);                                     // the gloved hand
+    // the holder in the hand and the electrode down to the arc
+    c.lineWidth = 0.05; c.beginPath(); c.moveTo(-0.12, 0.15); c.lineTo(-0.24, 0.07); c.stroke();
+    c.lineWidth = 0.022; c.lineCap = 'butt'; c.beginPath(); c.moveTo(-0.24, 0.07); c.lineTo(-0.33, 0.26); c.stroke();
+    // the spark burst: an irregular star
+    c.beginPath();
+    const sx = -0.33, sy = 0.29, rays = 14, K = 1.35;
+    for (let i = 0; i < rays * 2; i++) {
+      const a = (i / (rays * 2)) * TAU, R = i % 2 ? 0.03 : [0.17, 0.11, 0.15, 0.09, 0.14, 0.1, 0.16, 0.08, 0.13, 0.1, 0.15, 0.09, 0.12, 0.1][(i / 2) % rays];
+      const p = [sx + Math.cos(a) * R * K, sy + Math.sin(a) * R * K * 0.75];
+      i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1]);
+    }
+    c.closePath(); c.fill();
   },
   // motor vehicles: a steering wheel, rim, three spokes and the hub
   wheel(c) {
