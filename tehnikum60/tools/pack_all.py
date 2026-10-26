@@ -11,6 +11,8 @@ out = root / "out/tehnikum60"
 dst, zdst = root / "VTT60_VSE", root / "VTT60_VSE_ZIP"
 G, Z, ALFA = root / "VTT60_GRAFIKA", root / "VTT60_ZASTAVKA", root / "VTT60_ALFA"
 SKIP_VIDEO = "--skip-video" in sys.argv
+# the master title and the plate concepts were not redone with the new icons: only on request
+WITH_MASTER, WITH_CONCEPTS = "--with-master" in sys.argv, "--with-concepts" in sys.argv
 ff = lambda *a: subprocess.run(["ffmpeg", "-v", "error", "-y", *a], check=True)
 def put(src, rel):
     f = dst / rel; f.parent.mkdir(parents=True, exist_ok=True)
@@ -52,46 +54,47 @@ for f in (G / "DIAGRAMMA").iterdir(): put(f, f"{F1}/04_INFOGRAFIKA/DIAGRAMMA_izo
 
 # ---------------------------------------------------------------- 02 master title
 F2 = "02_MASTER_ZASTAVKA"
-M = dst / F2 / "MASTER_LUP"; M.mkdir(parents=True)
-fon, intro, logo = out / "jm_fon/frames/f_%05d.png", out / "jm_intro/frames/f_%05d.png", out / "jm_logo/frames/f_%05d.png"
-mcache = out / "vse_master"; mcache.mkdir(exist_ok=True)
-x264 = lambda crf: ["-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
-PR = {"ProRes422HQ": "3", "ProRes422": "2", "ProRes422LT": "1"}
-if not SKIP_VIDEO:
-    # the master: the fluted glass with the logo over it (the logo is straight-alpha PNG frames)
-    ff("-framerate", "50", "-i", str(fon), "-framerate", "50", "-i", str(logo), "-filter_complex", "[0][1]overlay=format=auto,format=rgb24",
-       "-c:v", "png", str(mcache / "master_frames.mov"))
-    for name, src in [("FON_10s_lup", ["-framerate", "50", "-i", str(fon)]), ("MASTER_10s_lup", ["-i", str(mcache / "master_frames.mov")]),
-                      ("INTRO_5s", ["-framerate", "50", "-i", str(intro)])]:
-        for tag, p in PR.items():
-            if name != "INTRO_5s" and tag == "ProRes422HQ": continue   # 480 MB: over the upload limit, the 422 is plenty
-            ff(*src, "-c:v", "prores_ks", "-profile:v", p, "-pix_fmt", "yuv422p10le", "-vendor", "apl0", str(mcache / f"{name}_{tag}.mov"))
-        ff(*src, *x264(8), str(mcache / f"{name}_MAX.mp4"))
-        ff(*src, *x264(18), str(mcache / f"{name}.mp4"))
-    for name in ["FON", "MASTER"]:
-        ff("-stream_loop", "11", "-i", str(mcache / f"{name}_10s_lup_MAX.mp4"), "-c", "copy", str(mcache / f"{name}_2min.mp4"))
-    # the whole title as it plays: intro, then the loop
-    lst = mcache / "seq.txt"
-    for k, n in [("15s_MAX", 1), ("2min", 12)]:
-        lst.write_text("".join(f"file '{f}'\n" for f in [mcache / "INTRO_5s_MAX.mp4"] + [mcache / "MASTER_10s_lup_MAX.mp4"] * n))
-        ff("-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(mcache / f"ZASTAVKA_intro_plus_lup_{k}.mp4"))
-for f in sorted(mcache.glob("*.m*")):
-    if f.name != "master_frames.mov": put(f, f"{F2}/MASTER_LUP/{f.name}")
-for f in sorted((Z / "MASTER_LUP").glob("LOGO_60_master_*")): put(f, f"{F2}/LOGO_60_alfa/{f.name}")
-S2 = f"{F2}/STILY"
-for src, n in [(out / "jm_fon/frames/f_00200.png", "01_Riflenoe_steklo_3D_znachki.png"), (out / "jm_fon_mat/still_4.00.png", "03_Matovoe_steklo.png")]:
-    put(src, f"{F2}/FONY_STILY/{n}")
-for n in ["02_Riflenoe_steklo_bez_znachkov.png", "04_3D_simvoly_brendbuka.png", "05_Biryuzovyy_shesterni.png", "06_Temno-siniy_shesterni.png",
-          "07_Svetlyy_shesterni.png", "08_Professionalitet_yarkiy.png"]:
-    put(Z / "FONY_MASTER_STILY" / n, f"{F2}/FONY_STILY/{n}")
-for t in ["1.50", "4.00", "7.00"]:
-    put(out / f"jmaster_reeded/still_{t}.png", f"{S2}/MASTER_riflenoe_steklo_{t}s.png")
-    put(out / f"jmaster/still_{t}.png", f"{S2}/MASTER_matovoe_steklo_{t}s.png")
-put(out / "jm_intro/frames/f_00100.png", f"{S2}/INTRO_logo_iz_glubiny_2s.png")
-put(out / "jm_icons/still_0.00.png", f"{S2}/3D_znachki_specialnostey.png")
+if WITH_MASTER:
+  M = dst / F2 / "MASTER_LUP"; M.mkdir(parents=True)
+  fon, intro, logo = out / "jm_fon/frames/f_%05d.png", out / "jm_intro/frames/f_%05d.png", out / "jm_logo/frames/f_%05d.png"
+  mcache = out / "vse_master"; mcache.mkdir(exist_ok=True)
+  x264 = lambda crf: ["-c:v", "libx264", "-preset", "slow", "-crf", str(crf), "-pix_fmt", "yuv420p", "-movflags", "+faststart"]
+  PR = {"ProRes422HQ": "3", "ProRes422": "2", "ProRes422LT": "1"}
+  if not SKIP_VIDEO:
+      # the master: the fluted glass with the logo over it (the logo is straight-alpha PNG frames)
+      ff("-framerate", "50", "-i", str(fon), "-framerate", "50", "-i", str(logo), "-filter_complex", "[0][1]overlay=format=auto,format=rgb24",
+         "-c:v", "png", str(mcache / "master_frames.mov"))
+      for name, src in [("FON_10s_lup", ["-framerate", "50", "-i", str(fon)]), ("MASTER_10s_lup", ["-i", str(mcache / "master_frames.mov")]),
+                        ("INTRO_5s", ["-framerate", "50", "-i", str(intro)])]:
+          for tag, p in PR.items():
+              if name != "INTRO_5s" and tag == "ProRes422HQ": continue   # 480 MB: over the upload limit, the 422 is plenty
+              ff(*src, "-c:v", "prores_ks", "-profile:v", p, "-pix_fmt", "yuv422p10le", "-vendor", "apl0", str(mcache / f"{name}_{tag}.mov"))
+          ff(*src, *x264(8), str(mcache / f"{name}_MAX.mp4"))
+          ff(*src, *x264(18), str(mcache / f"{name}.mp4"))
+      for name in ["FON", "MASTER"]:
+          ff("-stream_loop", "11", "-i", str(mcache / f"{name}_10s_lup_MAX.mp4"), "-c", "copy", str(mcache / f"{name}_2min.mp4"))
+      # the whole title as it plays: intro, then the loop
+      lst = mcache / "seq.txt"
+      for k, n in [("15s_MAX", 1), ("2min", 12)]:
+          lst.write_text("".join(f"file '{f}'\n" for f in [mcache / "INTRO_5s_MAX.mp4"] + [mcache / "MASTER_10s_lup_MAX.mp4"] * n))
+          ff("-f", "concat", "-safe", "0", "-i", str(lst), "-c", "copy", str(mcache / f"ZASTAVKA_intro_plus_lup_{k}.mp4"))
+  for f in sorted(mcache.glob("*.m*")):
+      if f.name != "master_frames.mov": put(f, f"{F2}/MASTER_LUP/{f.name}")
+  for f in sorted((Z / "MASTER_LUP").glob("LOGO_60_master_*")): put(f, f"{F2}/LOGO_60_alfa/{f.name}")
+  S2 = f"{F2}/STILY"
+  for src, n in [(out / "jm_fon/frames/f_00200.png", "01_Riflenoe_steklo_3D_znachki.png"), (out / "jm_fon_mat/still_4.00.png", "03_Matovoe_steklo.png")]:
+      put(src, f"{F2}/FONY_STILY/{n}")
+  for n in ["02_Riflenoe_steklo_bez_znachkov.png", "04_3D_simvoly_brendbuka.png", "05_Biryuzovyy_shesterni.png", "06_Temno-siniy_shesterni.png",
+            "07_Svetlyy_shesterni.png", "08_Professionalitet_yarkiy.png"]:
+      put(Z / "FONY_MASTER_STILY" / n, f"{F2}/FONY_STILY/{n}")
+  for t in ["1.50", "4.00", "7.00"]:
+      put(out / f"jmaster_reeded/still_{t}.png", f"{S2}/MASTER_riflenoe_steklo_{t}s.png")
+      put(out / f"jmaster/still_{t}.png", f"{S2}/MASTER_matovoe_steklo_{t}s.png")
+  put(out / "jm_intro/frames/f_00100.png", f"{S2}/INTRO_logo_iz_glubiny_2s.png")
+  put(out / "jm_icons/still_0.00.png", f"{S2}/3D_znachki_specialnostey.png")
 
 # ---------------------------------------------------------------- 03 icons
-F3, V2, V1 = "03_IKONKI", root / "VTT60_IKONKI_v2", root / "VTT60_IKONKI"
+F3, V2, V1 = "02_IKONKI", root / "VTT60_IKONKI_v2", root / "VTT60_IKONKI"
 for f in sorted(V2.rglob("*.*")): put(f, f"{F3}/SPETSIALNOSTI_VTT/{f.relative_to(V2)}")
 for f in sorted((V1 / "OTRASLI_Professionalitet").iterdir()): put(f, f"{F3}/OTRASLI_Professionalitet/{f.name}")
 for f in sorted((V1 / "3D").glob("Otrasl_*")): put(f, f"{F3}/OTRASLI_Professionalitet/3D_4K/{f.name}")
@@ -117,17 +120,14 @@ OTRASLI_Professionalitet/   8 символов отраслей из бренд�
 
 # ---------------------------------------------------------------- 04 plate concepts
 F4 = "04_KONCEPTSII_PLASHEK"
-subprocess.run([sys.executable, str(root / "tehnikum60/tools/concepts_pdf.py"), str(dst / F4)], check=True)
+if WITH_CONCEPTS: subprocess.run([sys.executable, str(root / "tehnikum60/tools/concepts_pdf.py"), str(dst / F4)], check=True)
 
 (dst / "README.txt").write_text("""VTT 60 — вся графика в одном месте (актуальные версии, новые иконки специальностей)
 
 01_GRAFIKA_FILMA        графика для фильма: .mov ProRes 4444 с альфой (Premultiplied),
                         WEBM/ — те же ролики в WebM с альфой (открываются в Windows),
                         PREVYU/ — mp4 для просмотра
-02_MASTER_ZASTAVKA      мастер-заставка (рифлёное стекло): лупы 10 с, 2 мин, интро 5 с,
-                        логотип на альфе, стилы фонов и кадры
-03_IKONKI               иконки специальностей (вектор, PNG, 3D) и символы отраслей
-04_KONCEPTSII_PLASHEK   8 концепций плашек: PDF и PNG
+02_IKONKI               иконки специальностей (вектор, PNG, 3D) и символы отраслей
 
 Архивы VTT60_VSE_*.zip распакуйте все в одну папку — получится это же дерево целиком.
 """, encoding="utf-8")
