@@ -79,20 +79,30 @@ export const DRAW2 = {
     c.lineWidth = 0.016; c.beginPath(); c.moveTo(0.295, -0.26); c.lineTo(0.295, 0.06); c.stroke();
     c.lineWidth = 0.03; c.beginPath(); c.arc(0.275, 0.1, 0.045, -Math.PI * 0.6, Math.PI * 0.95); c.stroke();
   },
-  // industrial equipment: a gear with a spanner laid across it
+  // industrial equipment: a gear in the middle, a double open-ended spanner behind it on the
+  // diagonal; the spanner stops short of the gear, so the two never merge into one blot
   gearwrench(c) {
-    c.save(); c.translate(-0.1, -0.08);
+    const n = 10, R0 = 0.24, R1 = 0.31, g = 0.035, r = 0.1, w = 0.042, dl = Math.asin(w / r), d = 0.4;
+    // the gear, a little up and to the left
+    c.save(); c.translate(-0.06, -0.06);
     c.beginPath();
-    const n = 10;
-    for (let i = 0; i < n * 2; i++) { const a0 = (i / (n * 2)) * TAU, a1 = ((i + 1) / (n * 2)) * TAU, r = i % 2 ? 0.27 : 0.36; c.arc(0, 0, r, a0, a1); }
-    c.closePath(); c.moveTo(0.11, 0); c.arc(0, 0, 0.11, 0, TAU, true);
-    c.fill('evenodd'); c.restore();
-    // the spanner: open jaw at the top right, a long handle to the bottom left
-    c.save(); c.translate(0.2, 0.2); c.rotate(-Math.PI / 4);
-    c.beginPath(); rr(c, -0.05, -0.02, 0.1, 0.4, 0.05); c.fill();
-    c.beginPath(); c.arc(0, -0.08, 0.13, 0, TAU);
-    c.moveTo(-0.045, -0.24); c.lineTo(0.045, -0.24); c.lineTo(0.045, -0.08); c.lineTo(-0.045, -0.08); c.closePath();
+    for (let i = 0; i < n * 2; i++) { const a0 = (i / (n * 2)) * TAU, a1 = ((i + 1) / (n * 2)) * TAU; c.arc(0, 0, i % 2 ? R0 : R1, a0, a1); }
+    c.closePath(); c.moveTo(0.1, 0); c.arc(0, 0, 0.1, 0, TAU, true);
     c.fill('evenodd');
+    c.restore();
+    // the spanner across it on the diagonal, with a gap cut round it so the shapes stay apart
+    c.save(); c.rotate(-Math.PI / 4);
+    c.save(); c.globalCompositeOperation = 'destination-out';
+    c.beginPath(); rr(c, -0.045 - g, -d, 0.09 + 2 * g, 2 * d, 0.045 + g); c.fill();
+    for (const sgn of [-1, 1]) { c.beginPath(); c.arc(0, sgn * d, r + g, 0, TAU); c.fill(); }
+    c.restore();
+    c.beginPath(); rr(c, -0.045, -d, 0.09, 2 * d, 0.045); c.fill();
+    for (const sgn of [-1, 1]) {
+      c.save(); c.scale(1, sgn);
+      c.beginPath(); c.arc(0, d, r, Math.PI / 2 - dl, Math.PI / 2 + dl - 2 * Math.PI, true);
+      c.lineTo(-w, d - 0.02); c.lineTo(w, d - 0.02); c.closePath(); c.fill();
+      c.restore();
+    }
     c.restore();
   },
   // motor vehicles: a steering wheel, rim, three spokes and the hub
@@ -156,9 +166,19 @@ export const DRAW2 = {
   },
 };
 export const ICONS2 = Object.keys(DRAW2);
+// drawn on its own layer first: some icons erase parts of themselves (bubbles, the gap round the
+// spanner), and that must not cut into whatever lies under the icon
+let LAYER = null;
 export function icon2(ctx, name, x, y, size, color, s = 1) {
   if (s <= 0.001) return;
-  ctx.save(); ctx.translate(x, y); ctx.scale(size * s, size * s);
-  ctx.fillStyle = color; ctx.strokeStyle = color; DRAW2[name](ctx); ctx.restore();
+  const m = ctx.getTransform(), k = Math.hypot(m.a, m.b) * size * s, px = Math.ceil(k * 1.3);
+  LAYER ||= document.createElement('canvas');
+  if (LAYER.width < px) { LAYER.width = LAYER.height = px; }
+  const c = LAYER.getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.clearRect(0, 0, LAYER.width, LAYER.height);
+  c.setTransform(k, 0, 0, k, px / 2, px / 2);
+  c.fillStyle = color; c.strokeStyle = color; DRAW2[name](c);
+  ctx.save(); ctx.translate(x, y); const u = (size * s) / k;
+  ctx.drawImage(LAYER, 0, 0, px, px, (-px / 2) * u, (-px / 2) * u, px * u, px * u); ctx.restore();
 }
 export const drawIcon2 = (ctx, name) => DRAW2[name](ctx);

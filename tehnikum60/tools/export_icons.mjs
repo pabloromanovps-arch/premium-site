@@ -24,7 +24,16 @@ const items = await p.evaluate(async (PX) => {
   const sym = await fetch('assets/symbols.json').then((r) => r.json());
   const out = [];
   const png = (draw) => { const c = document.createElement('canvas'); c.width = c.height = PX; const g = c.getContext('2d'); g.imageSmoothingQuality = 'high'; draw(g); return c.toDataURL('image/png'); };
-  const svgOf = (paths, col, vb) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="1024" height="1024"><g fill="${col}">${paths.map((q) => `<path d="${q.d}" fill-rule="${q.rule}"/>`).join('')}</g></svg>`;
+  // a path erased by later parts (bubbles, the gap round a spanner) carries a mask of those cuts
+  const svgOf = (paths, col, vb) => {
+    let defs = '';
+    const body = paths.map((q, i) => {
+      if (!q.cuts) return `<path d="${q.d}" fill-rule="${q.rule}"/>`;
+      defs += `<mask id="c${i}" maskUnits="userSpaceOnUse" x="-1" y="-1" width="2" height="2"><rect x="-1" y="-1" width="2" height="2" fill="#fff"/>${q.cuts.map((k) => `<path d="${k.d}" fill-rule="${k.rule}" fill="#000"/>`).join('')}</mask>`;
+      return `<path d="${q.d}" fill-rule="${q.rule}" mask="url(#c${i})"/>`;
+    }).join('');
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb}" width="1024" height="1024"><defs>${defs}</defs><g fill="${col}">${body}</g></svg>`;
+  };
   const svg = (d, col, rule, vb) => svgOf([{ d, rule }], col, vb);
   const SPECN = { flask: '01_Khimiya_neorganicheskie', molecule: '02_Khimiya_soedineniya', chef: '03_Povar_konditer', building: '04_Stroitelstvo',
     gear: '05_Montazh_oborudovaniya', car: '06_Avtotransport', weld: '07_Svarshchik' };

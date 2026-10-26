@@ -32,7 +32,7 @@ export function iconExportClips() {
 // fill call with that call's fill rule, so overlapping parts (atoms and bonds, wheels and body)
 // stay solid. Coordinates are in the icon's unit box, centred on 0. Returns [{ d, rule }].
 export function iconSVGPaths(name, drawIcon) {
-  let T = [1, 0, 0, 1, 0, 0], d = '', cur = null, lw = 0.1, strokes = [];
+  let T = [1, 0, 0, 1, 0, 0], d = '', cur = null, lw = 0.1, strokes = [], op = 'source-over';
   const stack = [], out = [];
   const P = (x, y) => [T[0] * x + T[2] * y + T[4], T[1] * x + T[3] * y + T[5]];
   const sc = () => Math.hypot(T[0], T[1]);
@@ -43,7 +43,8 @@ export function iconSVGPaths(name, drawIcon) {
   const c = {
     set fillStyle(v) {}, set strokeStyle(v) {}, set lineCap(v) {},
     set lineWidth(v) { lw = v; }, get lineWidth() { return lw; },
-    save() { stack.push(T); }, restore() { T = stack.pop(); },
+    set globalCompositeOperation(v) { op = v; }, get globalCompositeOperation() { return op; },
+    save() { stack.push([T, op]); }, restore() { [T, op] = stack.pop(); },
     translate(x, y) { mul(1, 0, 0, 1, x, y); }, rotate(a) { mul(Math.cos(a), Math.sin(a), -Math.sin(a), Math.cos(a), 0, 0); }, scale(x, y) { mul(x, 0, 0, y, 0, 0); },
     beginPath() { d = ''; cur = null; strokes = []; }, closePath() { if (cur) d += 'Z '; cur = null; },
     moveTo(x, y) { to('M', P(x, y)); strokes.push([[x, y]]); }, lineTo(x, y) { to(cur ? 'L' : 'M', P(x, y)); strokes.at(-1)?.push([x, y]); },
@@ -58,7 +59,11 @@ export function iconSVGPaths(name, drawIcon) {
     },
     rect(x, y, w, h) { rectD(x, y, w, h); },
     fillRect(x, y, w, h) { const keep = d; d = ''; rectD(x, y, w, h); out.push({ d: d.trim(), rule: 'nonzero' }); d = keep; },
-    fill(rule = 'nonzero') { if (d.trim()) out.push({ d: d.trim(), rule }); },
+    fill(rule = 'nonzero') {
+      if (!d.trim()) return;
+      if (op === 'destination-out') out.forEach((q) => (q.cuts ||= []).push({ d: d.trim(), rule }));   // erase: a cut on what is already there
+      else out.push({ d: d.trim(), rule });
+    },
     stroke() {   // a stroke (the molecule's bonds) becomes its outline
       const hw = lw / 2, keep = d; d = '';
       for (const pts of strokes) for (let i = 1; i < pts.length; i++) {
