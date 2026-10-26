@@ -1,6 +1,7 @@
 // icons.js: flat silhouettes for VTT's specialities, drawn in the brandbook's symbol manner (one
 // solid colour, bold simple masses, the 15 deg cut where it fits). Each fills a unit box centred on
 // the origin; icon(ctx, name, x, y, size, color).
+import { icon2 } from './icons2.js';
 const TAU = Math.PI * 2;
 
 const DRAW = {
@@ -79,7 +80,12 @@ const DRAW = {
   },
 };
 export const ICONS = Object.keys(DRAW);
-export function icon(ctx, name, x, y, size, color, s = 1) {
+// Round 2: the client replaced the whole set with icons that read by their silhouette
+// (lib/icons2.js). Every graphic still asks for the old names; they now draw the new icons.
+export const OLD2NEW = { flask: 'flask', molecule: 'tubes', chef: 'chef', building: 'crane', gear: 'gearwrench', car: 'wheel', weld: 'holder' };
+export function icon(ctx, name, x, y, size, color, s = 1) { icon2(ctx, OLD2NEW[name] ?? name, x, y, size, color, s); }
+// the first-round drawings, kept for reference
+export function iconV1(ctx, name, x, y, size, color, s = 1) {
   if (s <= 0.001) return;
   ctx.save();
   ctx.translate(x, y); ctx.scale(size * s, size * s);
@@ -88,5 +94,5 @@ export function icon(ctx, name, x, y, size, color, s = 1) {
   ctx.restore();
 }
 
-// the bare drawing of one icon in its unit box, for code that records paths (jubilee3d.js)
+// the bare drawing of one first-round icon in its unit box, for code that records paths
 export const drawIcon = (ctx, name) => DRAW[name](ctx);

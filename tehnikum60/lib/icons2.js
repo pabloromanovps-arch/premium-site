@@ -171,7 +171,9 @@ export const DRAW2 = {
   },
   // welding: the electrode holder seen from the side: ribbed grip, spring lever, jaws clamping the
   // electrode, the cable behind; the electrode's tip on a metal plate, sparks flying from the arc
-  holder(c) {
+  // drawn a little larger than its box and off to the right: scaled and centred into it
+  holder(c) { c.save(); c.scale(0.885, 0.885); c.translate(-0.063, -0.009); DRAW2.holderRaw(c); c.restore(); },
+  holderRaw(c) {
     const O = [0.06, -0.2], th = 0.5, co = Math.cos(th), si = Math.sin(th);
     const W2 = (x, y) => [O[0] + x * co - y * si, O[1] + x * si + y * co];
     // the cable, out of the grip's end and off the box

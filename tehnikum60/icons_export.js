@@ -24,6 +24,16 @@ export function iconExportClips() {
     const c = G.renderPiece(n, 0.4, -0.55, 1200); ctx.drawImage(c, W / 2 - 600, H / 2 - 600, 1200, 1200);
   }, init);
   clips.ico2_sheet = still((ctx) => icons2Sheet(ctx));
+  // the seven in 3-D, on the hall's dark blue and on light, for approval
+  for (const [k, bg, ink] of [['ico2_3d_sheet', '#0E1B33', '#FFFFFF'], ['ico2_3d_sheet_light', '#F2F4F7', B.C.ink]]) clips[k] = still((ctx) => {
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    SPEC2.forEach(([n, col, label], i) => {
+      const row = i < 4 ? 0 : 1, cnt = row ? 3 : 4, j = row ? i - 4 : i, cx = W / 2 + (j - (cnt - 1) / 2) * 440, cy = 280 + row * 470;
+      const c = G.renderPiece(G.addIcon2Piece(n, col), 0.35, -0.5, 900); ctx.drawImage(c, cx - 190, cy - 190, 380, 380);
+      ctx.font = B.font(22, B.MONT, 700); ctx.fillStyle = ink; ctx.textAlign = 'center';
+      label.split(' — ').forEach((l, q) => ctx.fillText(l, cx, cy + 215 + q * 28));
+    });
+  }, init);
   return clips;
 }
 
@@ -31,8 +41,8 @@ export function iconExportClips() {
 // A context that records what an icon draws as SVG paths (arcs stay true arcs), one path per
 // fill call with that call's fill rule, so overlapping parts (atoms and bonds, wheels and body)
 // stay solid. Coordinates are in the icon's unit box, centred on 0. Returns [{ d, rule }].
-export function iconSVGPaths(name, drawIcon) {
-  let T = [1, 0, 0, 1, 0, 0], d = '', cur = null, lw = 0.1, strokes = [], op = 'source-over';
+export function iconSVGPaths(name, drawIcon, { native = false } = {}) {
+  let T = [1, 0, 0, 1, 0, 0], d = '', cur = null, lw = 0.1, cap = 'butt', strokes = [], op = 'source-over';
   const stack = [], out = [];
   const P = (x, y) => [T[0] * x + T[2] * y + T[4], T[1] * x + T[3] * y + T[5]];
   const sc = () => Math.hypot(T[0], T[1]);
@@ -41,7 +51,7 @@ export function iconSVGPaths(name, drawIcon) {
   const to = (cmd, [x, y]) => { d += `${cmd}${f(x)} ${f(y)} `; cur = [x, y]; };
   const rectD = (x, y, w, h) => { to('M', P(x, y)); to('L', P(x + w, y)); to('L', P(x + w, y + h)); to('L', P(x, y + h)); d += 'Z '; cur = null; };
   const c = {
-    set fillStyle(v) {}, set strokeStyle(v) {}, set lineCap(v) {},
+    set fillStyle(v) {}, set strokeStyle(v) {}, set lineCap(v) { cap = v; },
     set lineWidth(v) { lw = v; }, get lineWidth() { return lw; },
     set globalCompositeOperation(v) { op = v; }, get globalCompositeOperation() { return op; },
     save() { stack.push([T, op]); }, restore() { [T, op] = stack.pop(); },
@@ -55,7 +65,7 @@ export function iconSVGPaths(name, drawIcon) {
       const pt = (a) => P(x + r * Math.cos(a), y + r * Math.sin(a)), R = r * sc();
       to(cur ? 'L' : 'M', pt(a0));
       const n = Math.ceil(Math.abs(span) / (Math.PI * 0.99));
-      for (let i = 1; i <= n; i++) { const e = pt(a0 + (span * i) / n); d += `A${f(R)} ${f(R)} 0 0 ${span > 0 ? 1 : 0} ${f(e[0])} ${f(e[1])} `; cur = e; }
+      for (let i = 1; i <= n; i++) { const e = pt(a0 + (span * i) / n); d += `A${f(R)} ${f(R)} 0 0 ${(span > 0) === (T[0] * T[3] - T[1] * T[2] > 0) ? 1 : 0} ${f(e[0])} ${f(e[1])} `;  cur = e; }
     },
     rect(x, y, w, h) { rectD(x, y, w, h); },
     fillRect(x, y, w, h) { const keep = d; d = ''; rectD(x, y, w, h); out.push({ d: d.trim(), rule: 'nonzero' }); d = keep; },
@@ -64,7 +74,8 @@ export function iconSVGPaths(name, drawIcon) {
       if (op === 'destination-out') out.forEach((q) => (q.cuts ||= []).push({ d: d.trim(), rule }));   // erase: a cut on what is already there
       else out.push({ d: d.trim(), rule });
     },
-    stroke() {   // a stroke (the molecule's bonds) becomes its outline
+    stroke() {   // a stroke (the molecule's bonds) becomes its outline; { native: true } keeps it a true SVG stroke (curves, round caps)
+      if (native) { if (d.trim()) out.push({ d: d.trim(), stroke: lw * sc(), cap }); return; }
       const hw = lw / 2, keep = d; d = '';
       for (const pts of strokes) for (let i = 1; i < pts.length; i++) {
         const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0), nx = (-(y1 - y0) / L) * hw, ny = ((x1 - x0) / L) * hw;
@@ -81,15 +92,17 @@ export function iconSVGPaths(name, drawIcon) {
 import { icon2 } from './lib/icons2.js';
 export const SPEC2 = [
   ['flask', B.C.green, 'Химия — неорганические вещества'], ['tubes', B.C.cyan, 'Химия — соединения'],
-  ['chef', B.C.orange, 'Повар — кондитер'], ['trowel', B.C.slate, 'Строительство — мастерок'],
-  ['crane', B.C.slate, 'Строительство — башенный кран'], ['gearwrench', B.C.blue, 'Монтаж — ремонт оборудования'],
-  ['wheel', B.C.sky, 'Ремонт — автотранспорт'], ['mask', B.C.red, 'Сварщик — маска'],
-  ['holder', B.C.red, 'Сварщик — держатель с электродом'], ['welder', B.C.red, 'Сварщик — в маске с электродом'],
+  ['chef', B.C.orange, 'Повар — кондитер'], ['crane', B.C.slate, 'Строительство — башенный кран'],
+  ['gearwrench', B.C.blue, 'Монтаж — ремонт оборудования'], ['wheel', B.C.sky, 'Ремонт — автотранспорт'],
+  ['holder', B.C.red, 'Сварщик — держатель с электродом'],
 ];
+// the files, in the film's order of the specialities (prof1..prof7)
+export const SPEC2_FILES = ['01_Khimiya_neorganicheskie', '02_Khimiya_soedineniya', '03_Povar_konditer', '04_Stroitelstvo',
+  '05_Montazh_oborudovaniya', '06_Avtotransport', '07_Svarshchik'];
 export function icons2Sheet(ctx) {
   ctx.fillStyle = '#F2F4F7'; ctx.fillRect(0, 0, W, H);
   SPEC2.forEach(([n, col, label], i) => {
-    const cx = 192 + (i % 5) * 384, cy = 300 + Math.floor(i / 5) * 470;
+    const row = i < 4 ? 0 : 1, cnt = row ? 3 : 4, j = row ? i - 4 : i, cx = W / 2 + (j - (cnt - 1) / 2) * 440, cy = 300 + row * 470;
     icon2(ctx, n, cx, cy, 260, col);
     ctx.font = B.font(22, B.MONT, 700); ctx.fillStyle = B.C.ink; ctx.textAlign = 'center';
     const w = label.split(' — ');

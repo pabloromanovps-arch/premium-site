@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { SVGLoader } from 'three/addons/loaders/SVGLoader.js';
 import * as M from './lib/motion.js';
-import { drawIcon } from './lib/icons.js';
+import { drawIcon, OLD2NEW } from './lib/icons.js';
+import { icon2 } from './lib/icons2.js';
 
 const { W, H, TAU, hash01, clamp } = M;
 let LOOP = 8;
@@ -187,7 +188,8 @@ export async function initGlass(loop = 10) {
   for (const g of Object.values(planes)) g.visible = false;
   const group = new THREE.Group(); scene.add(group);
   const items = [];
-  for (const n of Object.keys(ICON3D)) if (!GEO[n]) GEO[n] = iconShapes(n);
+  // the specialities as the client's second-round icons (the old names map onto them)
+  for (const n of Object.keys(ICON3D)) if (!GEO[n]) GEO[n] = icon2Geometry(OLD2NEW[n]);
   const add = (name, size, k) => {
     const geo = GEO[name];
     const mat = new THREE.MeshPhysicalMaterial({ color: COLORS[name] ?? ICON3D[name], metalness: 0, roughness: 0.4, clearcoat: 0.7, clearcoatRoughness: 0.12, envMapIntensity: 0.35 });
@@ -388,6 +390,68 @@ function makeModel(name) {
   return g;
 }
 
+// The second-round icons (lib/icons2.js) in 3-D. They are built of overlapping parts and parts cut
+// out of others, so instead of extruding each part the icon is drawn, and its silhouette traced
+// (marching squares on the antialiased alpha, so the outline sits between pixels), simplified, and
+// extruded once as a single solid with a rounded bevel: no seams, the cuts are real gaps.
+const ICON2_N = 1400, ICON2_VB = 1.2;
+export function icon2Geometry(name) {
+  const N = ICON2_N, cv = document.createElement('canvas'); cv.width = cv.height = N + 2;
+  const g = cv.getContext('2d'); icon2(g, name, (N + 2) / 2, (N + 2) / 2, N / ICON2_VB, '#000');
+  const a = g.getImageData(0, 0, N + 2, N + 2).data, S = N + 2, v = (x, y) => a[(y * S + x) * 4 + 3] / 255;
+  // one point on each grid edge the 0.5 level crosses; segments join them, every point has two
+  const pts = new Map(), adj = new Map();
+  const pt = (key, x0, y0, x1, y1) => { if (!pts.has(key)) { const t = (0.5 - v(x0, y0)) / (v(x1, y1) - v(x0, y0)); pts.set(key, [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t]); } return key; };
+  const link = (p, q) => { (adj.get(p) || adj.set(p, []).get(p)).push(q); (adj.get(q) || adj.set(q, []).get(q)).push(p); };
+  for (let y = 0; y < S - 1; y++) for (let x = 0; x < S - 1; x++) {
+    const A = v(x, y) >= 0.5, B = v(x + 1, y) >= 0.5, C = v(x + 1, y + 1) >= 0.5, D = v(x, y + 1) >= 0.5, k = A * 8 + B * 4 + C * 2 + D;
+    if (k === 0 || k === 15) continue;
+    const T = () => pt(`h${x},${y}`, x, y, x + 1, y), Bo = () => pt(`h${x},${y + 1}`, x, y + 1, x + 1, y + 1);
+    const L = () => pt(`v${x},${y}`, x, y, x, y + 1), R = () => pt(`v${x + 1},${y}`, x + 1, y, x + 1, y + 1);
+    const ctr = (v(x, y) + v(x + 1, y) + v(x + 1, y + 1) + v(x, y + 1)) / 4 >= 0.5;
+    switch (k) {
+      case 1: case 14: link(L(), Bo()); break; case 2: case 13: link(Bo(), R()); break; case 3: case 12: link(L(), R()); break;
+      case 4: case 11: link(T(), R()); break; case 6: case 9: link(T(), Bo()); break; case 7: case 8: link(L(), T()); break;
+      case 5: if (ctr) { link(L(), T()); link(Bo(), R()); } else { link(L(), Bo()); link(T(), R()); } break;
+      case 10: if (ctr) { link(L(), Bo()); link(T(), R()); } else { link(L(), T()); link(Bo(), R()); } break;
+    }
+  }
+  const seen = new Set(), loops = [];
+  for (const s0 of adj.keys()) {
+    if (seen.has(s0)) continue;
+    const loop = []; let prev = null, cur = s0;
+    while (cur && !seen.has(cur)) { seen.add(cur); loop.push(pts.get(cur)); const n = adj.get(cur); const nx = n[0] !== prev ? n[0] : n[1]; prev = cur; cur = nx; }
+    if (loop.length > 8) loops.push(loop);
+  }
+  // simplify (Ramer-Douglas-Peucker, a quarter pixel), into the icon's units
+  const rdp = (P, eps) => {
+    if (P.length < 3) return P;
+    const [x0, y0] = P[0], [x1, y1] = P.at(-1), L = Math.hypot(x1 - x0, y1 - y0) || 1e-9;
+    let im = 0, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = Math.abs((P[i][0] - x0) * (y1 - y0) - (P[i][1] - y0) * (x1 - x0)) / L; if (d > dm) { dm = d; im = i; } }
+    return dm > eps ? [...rdp(P.slice(0, im + 1), eps).slice(0, -1), ...rdp(P.slice(im), eps)] : [P[0], P.at(-1)];
+  };
+  const u = ICON2_VB / N, polys = loops.map((l) => { const h = l.length >> 1; return [...rdp(l.slice(0, h + 1), 0.25).slice(0, -1), ...rdp([...l.slice(h), l[0]], 0.25).slice(0, -1)]
+    .map(([x, y]) => new THREE.Vector2((x - S / 2) * u, (S / 2 - y) * u)); })   // y up, so no mirror later (a mirror turns the faces inside out).filter((p) => p.length > 2);
+  // nesting: an outline inside an even number of others is a solid, inside an odd number a hole
+  const inside = (pt, poly) => { let k = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const p = poly[i], q = poly[j]; if ((p.y > pt.y) !== (q.y > pt.y) && pt.x < ((q.x - p.x) * (pt.y - p.y)) / (q.y - p.y) + p.x) k = !k; } return k; };
+  const area = (p) => Math.abs(THREE.ShapeUtils.area(p));
+  const par = polys.map((p, i) => polys.map((q, j) => j).filter((j) => j !== i && area(polys[j]) > area(p) && inside(p[0], polys[j])));
+  const shapes = new Map();
+  polys.forEach((p, i) => { if (par[i].length % 2 === 0) shapes.set(i, new THREE.Shape(p)); });
+  polys.forEach((p, i) => { if (par[i].length % 2 === 1) { const o = par[i].reduce((m, j) => (area(polys[j]) < area(polys[m]) ? j : m)); shapes.get(o)?.holes.push(new THREE.Path(p)); } });
+  const geo = new THREE.ExtrudeGeometry([...shapes.values()], { depth: 0.11, bevelEnabled: true, bevelThickness: 0.035, bevelSize: 0.008, bevelSegments: 5, curveSegments: 4 });
+  geo.translate(0, 0, -0.055); geo.computeVertexNormals();
+  return geo;
+}
+// one of them ready for renderPiece: `key` is ico2_<name>
+export function addIcon2Piece(name, color) {
+  const key = `ico2_${name}`; if (PIECE.mesh?.[key]) return key;
+  PIECE.mesh ||= {};
+  const m = new THREE.Mesh(icon2Geometry(name), gloss(color, { roughness: 0.38, clearcoat: 0.6, clearcoatRoughness: 0.12, envMapIntensity: 0.3 }));
+  m.visible = false; PIECE.mesh[key] = m; scene.add(m);
+  return key;
+}
+
 // one piece (a speciality icon or a brand symbol) rendered alone, for 2-D layouts: returns a
 // square canvas `px` wide with the piece on transparency, turned by (rx, ry)
 const PIECE = {};
@@ -396,6 +460,9 @@ const PIECE = {};
 export function setRenderScale(k) { R.setSize(W * k, H * k, false); }
 export function renderPiece(name, rx = 0.2, ry = -0.35, px = 600) {
   if (!PIECE.mesh) PIECE.mesh = {};
+  // the first-round 3-D models of the specialities (the torch, the flask...) give way to the new icons
+  const NEW3D = { flask3d: 'flask', molecule3d: 'molecule', chef3d: 'chef', weld3d: 'weld' };
+  if (NEW3D[name]) name = addIcon2Piece(OLD2NEW[NEW3D[name]], ICON3D[NEW3D[name]]);
   let m = PIECE.mesh[name];
   if (!m && name.endsWith('3d')) { m = makeModel(name); PIECE.mesh[name] = m; scene.add(m); }
   if (!m) {
