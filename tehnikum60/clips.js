@@ -399,6 +399,43 @@ const final = {
   },
 };
 
+// two livelier takes on the new closing title, in the opening's own language (bold colour plates,
+// the chord ribbon), the logo still at the centre and no dedication line
+// A: the chord ribbon sweeps across the whole frame behind the logo; ИСТОРИЯ / ПРОДОЛЖАЕТСЯ! stack
+//    under it in colour plates, offset like the opening's ТЕХНОЛОГИИ / И ТРАДИЦИИ
+const finalA = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 400;
+    B.ribbon(ctx, cx, cy + 40, 2600, 150, -B.SLANT, ease(t, 0, 1.4, (q) => q));
+    symbolRing(ctx, cx, cy, 330, t, 0.35, 54);
+    logoDisc(ctx, IMG, cx, cy, 262, t, 0.15);
+    // kept inside the middle 1440 px (the hall's screens lose the sides)
+    const f = font(68), w1 = textW(ctx, 'ИСТОРИЯ', f, 34), w2 = textW(ctx, 'ПРОДОЛЖАЕТСЯ!', f, 34), x0 = cx - (w1 * 0.6 + w2) / 2;
+    textPlate(ctx, 'ИСТОРИЯ', x0, 790, f, C.blue, C.white, t, 1.3, { padX: 34, h: 100 });
+    textPlate(ctx, 'ПРОДОЛЖАЕТСЯ!', x0 + w1 * 0.6, 896, f, C.orange, C.white, t, 1.5, { padX: 34, h: 100 });
+  },
+};
+// B: continuation. The words sit in one line of plates and the chord runs on out of the last one,
+//    past the frame's edge: the story goes on
+const finalB = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 420;
+    symbolRing(ctx, cx, cy, 345, t, 0.25);
+    logoDisc(ctx, IMG, cx, cy, 276, t, 0.0);
+    const f = font(76), h = 112, w1 = textW(ctx, 'ИСТОРИЯ', f, 34), w2 = textW(ctx, 'ПРОДОЛЖАЕТСЯ', f, 34);
+    const x0 = cx - (w1 + w2 + 8) / 2, y = 860;
+    // the chord leaves the plates and runs out of the frame on the right
+    const k = ease(t, 2.0, 3.2, E.inOutCubic), x1 = x0 + w1 + w2 + 8;
+    if (k > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x1, y, (W - x1 + 40) * k, h); ctx.clip(); B.chord(ctx, x1 - 20, y, W - x1 + 80, h, 1); ctx.restore(); }
+    textPlate(ctx, 'ИСТОРИЯ', x0, y, f, C.blue, C.white, t, 1.3, { padX: 34, h });
+    textPlate(ctx, 'ПРОДОЛЖАЕТСЯ', x0 + w1 + 8, y, f, C.white, C.ink, t, 1.5, { padX: 34, h });
+  },
+};
+
 // ---------------------------------------------------------------- 12 the pass (scene 12)
 // «Михаил Богатыревич, технолог цеха слабой азотной кислоты ПАО «Дорогобуж»» as a badge in the
 // brandbook's corporate-badge layout (p. 53): it swings in on its lanyard and settles
@@ -534,7 +571,7 @@ export const CLIPS = {
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
-  zastavka, final, chart, propusk, perehod,
+  zastavka, final, final_a: finalA, final_b: finalB, chart, propusk, perehod,
   ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
   ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),
