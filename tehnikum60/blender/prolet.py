@@ -159,6 +159,11 @@ f_through = next(f for f in range(1, N + 1) if cam_at(f)[0][1] > LAST_Y)
 for o in [FIN, WORDS]:
     o.hide_render = True; o.keyframe_insert("hide_render", frame=f_through - 1)
     o.hide_render = False; o.keyframe_insert("hide_render", frame=f_through)
+# and past Misha nothing else: the flight's icons and stills are gone, the logo stands alone on the blue
+for o in bpy.data.objects:
+    if o.name.startswith(("icon", "still")):
+        o.hide_render = False; o.keyframe_insert("hide_render", frame=f_through - 1)
+        o.hide_render = True; o.keyframe_insert("hide_render", frame=f_through)
 print("logo from frame", f_through)
 w0, w1 = int(14.3 * FPS), int(15.0 * FPS)   # the words come in once the camera has nearly landed
 WORDS_FADE[0].default_value = 0.0; WORDS_FADE[0].keyframe_insert("default_value", frame=w0)
