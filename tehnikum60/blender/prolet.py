@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# The closing flythrough: the camera flies forward through 60 years, weaving round the film's own stills hanging in
-# space (archive first, then 2008, 2024, 2025, the specialities, the people, Misha last), the
+# The closing flythrough: the camera flies calmly forward through 60 years, the film's own stills hanging in
+# space all round the path (archive first, then 2008, 2024, 2025, the specialities, the people, Misha last), the
 # specialities' icons and the brand's symbols drifting among them, and it lands square on to the
 # approved closing frame (flat 2-D: the white logo on the blue). Everything is self-lit (emission),
 # so the colours are exactly the stills'; far things fade into the blue.
@@ -14,7 +14,7 @@ TEX = HERE / "prolet_src/tex"
 OUT = Path(sys.argv[1]); FRAMES = sys.argv[2] if len(sys.argv) > 2 else "750"
 SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 64
 RES_W = int(sys.argv[4]) if len(sys.argv) > 4 else 3840
-FPS, DUR = 50, 19.0   # the flight, the turn round Misha, the landing; the 5 s hold is added at encoding
+FPS, DUR = 50, 20.6   # the flight, the ease round Misha, the landing; the 5 s hold is added at encoding
 N = int(FPS * DUR)
 BLUE = (2 / 255, 94 / 255, 161 / 255)
 
@@ -33,7 +33,7 @@ sc.render.use_motion_blur = True; sc.render.motion_blur_shutter = 0.35
 wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
 wd.node_tree.nodes["Background"].inputs[0].default_value = lin(BLUE) + (1,)
 
-FADE_NEAR, FADE_FAR = 18.0, 46.0
+FADE_NEAR, FADE_FAR = 13.0, 32.0
 def plane_mat(name, img_path, fade=True, alpha=False, tint=0.0, fader=None):
     """emission of the image, mixed towards the blue with distance (and transparent where the image is)"""
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
@@ -67,29 +67,33 @@ def plane(name, w, h, loc, rot, m):
     bpy.ops.mesh.primitive_plane_add(size=1, location=loc, rotation=rot)
     o = bpy.context.active_object; o.name = name; o.scale = (w, h, 1); o.data.materials.append(m); return o
 
-# ---------------------------------------------------------------- a slalom (the client): the stills stand in the
-# way like walls, on the left and the right in turn; the camera flies on and weaves round each, never
-# through. Misha at the plant stands last, square across the path; the camera rounds him on the left,
-# and the logo is hidden there, behind and to the left: it turns and lands square on it.
+# ---------------------------------------------------------------- a calm flight (the client, round 3): one smooth
+# path straight on through the past, no weaving; the stills hang all round it (above, below, left, right,
+# at different depths), each turned a little towards the viewer, and float past. Misha at the plant is
+# last, square across the path; the camera eases left past him, the logo comes up behind him, and it
+# settles square on it. Speed and heading are continuous everywhere (one B-spline, one speed profile).
+from mathutils import Vector
+bpy.context.preferences.edit.keyframe_new_interpolation_type = "LINEAR"   # a key every frame: no overshoot
 ORDER = [4, 6, 7, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 40, 41, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
          32, 33, 34, 35, 36, 38, 39, 1]
 LAST_K = 37
 rnd = random.Random(60)
-Y0, STEP = 9.0, 4.2
-WAY = []                                        # the camera's waypoints (y, x, z), one beside each still
-side = 1
+Y0, STEP = 8.0, 2.1
+GOLD = math.pi * (3 - math.sqrt(5))
 for j, k in enumerate(ORDER):
-    if j and rnd.random() < 0.2: pass           # now and then two on the same side
-    else: side = -side if j else 1
     y = Y0 + j * STEP
-    x = side * rnd.uniform(2.3, 2.7); z = rnd.uniform(-0.6, 0.6)
-    plane(f"still{k:02d}", 3.2, 1.8, (x, y, z), (math.pi / 2, 0, side * 0.12), plane_mat(f"m{k}", HERE / "prolet_src/k" / f"k{k:02d}.jpg"))
-    WAY.append((y, -side * 0.7, -z * 0.2))
-Y_M = Y0 + len(ORDER) * STEP + 6.0              # Misha, square across the path, bigger
+    a = j * GOLD + rnd.uniform(-0.25, 0.25); R = rnd.uniform(3.0, 3.8)
+    x, z = R * 1.15 * math.cos(a), R * 0.72 * math.sin(a)
+    while not (abs(x) >= 3.0 or abs(z) >= 2.0): x, z = x * 1.05, z * 1.05   # clear of the camera's path
+    sz = rnd.uniform(0.92, 1.12)
+    q = Vector((0 - x, -10.0, 0 - z)).to_track_quat("Z", "Y")              # facing a point on the path ahead
+    e = q.to_euler(); e.rotate_axis("Z", rnd.uniform(-0.05, 0.05))            # a touch of tilt each
+    plane(f"still{k:02d}", 3.2 * sz, 1.8 * sz, (x, y, z), e, plane_mat(f"m{k}", HERE / "prolet_src/k" / f"k{k:02d}.jpg"))
+Y_LAST = Y0 + (len(ORDER) - 1) * STEP
+Y_M = Y_LAST + 14.0                              # Misha, square across the path, bigger
 plane(f"still{LAST_K:02d}", 3.2 * 2.0, 1.8 * 2.0, (0, Y_M, 0), (math.pi / 2, 0, 0), plane_mat(f"m{LAST_K}", HERE / "prolet_src/k" / f"k{LAST_K:02d}.jpg"))
-WAY.append((Y_M - 7.0, 0.0, 0.0))               # the camera centres on him before the turn
 
-# icons: the specialities (white) and the brand's symbols (their colours), few, spread out, quiet
+# icons: the specialities (white) and the brand's symbols (their colours), few, far out, quiet
 icons = sorted(TEX.glob("*_belyy.png")) + sorted(TEX.glob("*_cvet.png"))
 def spread(n, gen, min_d, tries=4000):
     pts = []
@@ -99,81 +103,90 @@ def spread(n, gen, min_d, tries=4000):
         if len(pts) >= n: break
     return pts
 def field_pt():
-    a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(3.4, 6.0)
-    return (math.cos(a) * r * 1.3, rnd.uniform(4, Y_M - 6), math.sin(a) * r * 0.75)
-for i, (x, y, z) in enumerate(spread(40, field_pt, 2.8)):
+    a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(4.6, 6.6)
+    return (math.cos(a) * r * 1.2, rnd.uniform(Y0 - 2, Y_LAST - 2), math.sin(a) * r * 0.75)
+for i, (x, y, z) in enumerate(spread(26, field_pt, 3.2)):
     sz = rnd.choice([0.55, 0.7, 0.85])
-    plane(f"icon{i}", sz, sz, (x, y, z), (math.pi / 2, 0, rnd.uniform(-0.5, 0.5)), plane_mat(f"im{i}", icons[i % len(icons)], alpha=True, tint=0.35))
+    plane(f"icon{i}", sz, sz, (x, y, z), (math.pi / 2, 0, rnd.uniform(-0.4, 0.4)), plane_mat(f"im{i}", icons[i % len(icons)], alpha=True, tint=0.35))
 
-# the destination, hidden left of and behind Misha, out of view until the camera turns to it
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); bpy.context.collection.objects.link(cam); sc.camera = cam
 cam.data.lens = 32; cam.data.sensor_width = 36
 D_STOP = 4.0
 fw = D_STOP * cam.data.sensor_width / cam.data.lens
-XL, YL = -4.4, Y_M + 6.0   # right behind Misha's left edge: hidden by him until the camera rounds him
-FIN = plane("final", fw, fw * 9 / 16, (XL, YL, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "logo_only.png", fade=False, alpha=True))
-WORDS_FADE = []
+XL, YL = -6.0, Y_M + 7.0   # behind Misha, to his left
+LOGO_FADE, WORDS_FADE = [], []
+FIN = plane("final", fw, fw * 9 / 16, (XL, YL, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "logo_only.png", fade=False, alpha=True, fader=LOGO_FADE))
 WORDS = plane("words", fw, fw * 9 / 16, (XL, YL - 0.01, 0), (math.pi / 2, 0, 0), plane_mat("mwords", TEX / "words_only.png", fade=False, alpha=True, fader=WORDS_FADE))
 
-# ---------------------------------------------------------------- the camera
-T_FLY, T_LAND = 15.6, 18.4                      # weave to Misha; round him and land
-def ease(u): return u * u * (3 - 2 * u)
-def way_xz(y):
-    """the weave: eased from waypoint to waypoint (no corners), starting on the axis"""
-    pts = [(-4.0, 0.0, 0.0)] + WAY
-    if y <= pts[0][0]: return 0.0, 0.0
-    for (y0, x0, z0), (y1, x1, z1) in zip(pts, pts[1:]):
-        if y <= y1:
-            u = ease((y - y0) / (y1 - y0)); return x0 + (x1 - x0) * u, z0 + (z1 - z0) * u
-    return 0.0, 0.0
-def bez(p0, p1, p2, p3, u):
-    v = 1 - u; return tuple(v ** 3 * a + 3 * v * v * u * b + 3 * v * u * u * c + u ** 3 * d for a, b, c, d in zip(p0, p1, p2, p3))
-Y_T = Y_M - 7.0                                 # where the turn begins
-def cam_xy(t):
-    if t <= T_FLY:
-        u = t / T_FLY; y = -4.0 + (Y_T + 4.0) * (u * u * (3 - 2 * u) * 0.25 + u * 0.75)   # a soft start, then steady
-        x, z = way_xz(y); return x, y, z
-    v = min(1.0, (t - T_FLY) / (T_LAND - T_FLY)); v = v * v * (3 - 2 * v)
-    x, y = bez((0, Y_T), (0, Y_M - 2.5), (XL, Y_M - 2.0), (XL, YL - D_STOP), v)
-    return x, y, 0.0
-def heading(t):
-    x1, y1, _ = cam_xy(t + 0.08); x0, y0, _ = cam_xy(max(0, t - 0.08))
-    return math.atan2(-(x1 - x0), max(1e-6, y1 - y0))
-def cam_at(f):
+# ---------------------------------------------------------------- the camera: one clamped cubic B-spline
+T_LAND = 20.0
+CP = [(0, -6, 0), (0, -2, 0)]
+yy = 8.0
+while yy < Y_M - 22:
+    CP.append((0.3 * math.sin(yy / 15.0), yy, 0.22 * math.sin(yy / 21.0 + 1.0))); yy += 12.0
+CP += [(0, Y_M - 18, 0), (0, Y_M - 12, 0), (-3.2, Y_M - 6.0, 0), (XL, Y_M - 1.5, 0), (XL, Y_M + 1.5, 0), (XL, YL - D_STOP, 0)]   # wide round him
+def bspline(P, n=20000):
+    P = [P[0]] * 2 + P + [P[-1]] * 2          # clamped: starts and ends on the end points
+    segs = len(P) - 3; out = []
+    for i in range(n + 1):
+        u = i / n * segs; s = min(int(u), segs - 1); t = u - s
+        b = ((1 - t) ** 3 / 6, (3 * t ** 3 - 6 * t * t + 4) / 6, (-3 * t ** 3 + 3 * t * t + 3 * t + 1) / 6, t ** 3 / 6)
+        out.append(tuple(sum(b[m] * P[s + m][c] for m in range(4)) for c in range(3)))
+    return out
+PATH = bspline(CP)
+ARC = [0.0]
+for p, q in zip(PATH, PATH[1:]): ARC.append(ARC[-1] + math.dist(p, q))
+L = ARC[-1]
+def smoother(u): u = max(0.0, min(1.0, u)); return u * u * u * (u * (u * 6 - 15) + 10)
+def accel(t): return smoother(t / 2.5) * (1 - smoother((t - (T_LAND - 4.5)) / 4.5))
+TS = [i / 1000 * T_LAND for i in range(1001)]
+S = [0.0]
+for t0, t1 in zip(TS, TS[1:]): S.append(S[-1] + (accel(t0) + accel(t1)) / 2 * (t1 - t0))
+def s_at(t):
+    t = max(0.0, min(T_LAND, t)); i = min(999, int(t / T_LAND * 1000)); u = (t - TS[i]) / (TS[i + 1] - TS[i])
+    return (S[i] + (S[i + 1] - S[i]) * u) / S[-1] * L
+import bisect
+def pos_s(s):
+    i = max(1, min(len(ARC) - 1, bisect.bisect_left(ARC, s))); a, b = ARC[i - 1], ARC[i]
+    u = 0 if b == a else (s - a) / (b - a); p, q = PATH[i - 1], PATH[i]
+    return tuple(p[c] + (q[c] - p[c]) * u for c in range(3))
+def head_s(s):
+    p, q = pos_s(max(0, s - 0.3)), pos_s(min(L, s + 0.3)); return math.atan2(-(q[0] - p[0]), max(1e-6, q[1] - p[1]))
+# the gaze: half the heading, smoothed over ~1 s, eased to square on as it lands
+GRID = [i / FPS / 4 for i in range(int((T_LAND + 3) * FPS * 4) + 1)]
+RAW = [head_s(s_at(t)) * 0.5 for t in GRID]
+def yaw_at(t):
+    sig = 0.5; w = tot = 0.0
+    for d in range(-int(3 * sig * FPS * 4), int(3 * sig * FPS * 4) + 1):
+        tt = t + d / FPS / 4; g = math.exp(-0.5 * (d / FPS / 4 / sig) ** 2)
+        i = max(0, min(len(RAW) - 1, round(min(tt, T_LAND) * FPS * 4) if tt > 0 else 0))
+        w += g * RAW[i]; tot += g
+    return w / tot * (1 - smoother((t - (T_LAND - 2.5)) / 2.5))
+for f in range(1, N + 1):
     t = (f - 1) / FPS
-    x, y, z = cam_xy(t)
-    # look where it is going, but calmly: the heading averaged over 0.8 s; in the weave only a third
-    # of it (a glance into each turn), in the turn round Misha all of it; square on once landed
-    hs = [heading(min(T_LAND, max(0, t + d))) for d in (-0.4, -0.2, 0, 0.2, 0.4)]
-    yaw = sum(hs) / len(hs)
-    # round Misha by sliding left, the gaze almost straight: he slides off to the right and the logo is
-    # uncovered from behind his edge
-    k = 0.35 if t < T_FLY else 0.35 * (1 - ease(min(1, (t - T_FLY) / 1.0)))
-    if t >= T_LAND: yaw = 0.0
-    return (x, y, z), yaw * k
-prev = None
-for f in list(range(1, N + 1, 2)) + [N]:
-    (x, y, z), yaw = cam_at(f)
-    roll = 0.0 if prev is None else max(-0.06, min(0.06, (yaw - prev) * 4.0))   # a slight bank into the turns
-    prev = yaw
-    cam.location = (x, y, z); cam.rotation_euler = (math.pi / 2, roll, yaw)
+    cam.location = pos_s(s_at(t)); cam.rotation_euler = (math.pi / 2, 0.0, yaw_at(t))
     cam.keyframe_insert("location", frame=f); cam.keyframe_insert("rotation_euler", frame=f)
-# the logo out of sight until the turn has begun (Misha hides it; this makes sure)
-for o in (FIN, WORDS):
-    o.hide_render = True; o.keyframe_insert("hide_render", frame=int((T_FLY + 0.3) * FPS))
-    o.hide_render = False; o.keyframe_insert("hide_render", frame=int((T_FLY + 0.3) * FPS) + 1)
-# the words come in as the camera settles on the logo
-w0, w1 = int((T_LAND - 0.4) * FPS), int((T_LAND + 0.3) * FPS)
-WORDS_FADE[0].default_value = 0.0; WORDS_FADE[0].keyframe_insert("default_value", frame=w0)
-WORDS_FADE[0].default_value = 1.0; WORDS_FADE[0].keyframe_insert("default_value", frame=w1)
+# the logo comes up as the camera starts round Misha; the words as it settles
+def t_at_y(yc):
+    for f in range(1, N + 1):
+        if pos_s(s_at((f - 1) / FPS))[1] >= yc: return (f - 1) / FPS
+    return T_LAND
+T_REV = t_at_y(Y_M - 11.0)
+for fd, a0, a1 in ((LOGO_FADE[0], T_REV, T_REV + 2.0), (WORDS_FADE[0], T_LAND - 0.6, T_LAND + 0.3)):
+    fd.default_value = 0.0; fd.keyframe_insert("default_value", frame=int(a0 * FPS) + 1)
+    fd.default_value = 1.0; fd.keyframe_insert("default_value", frame=int(a1 * FPS) + 1)
+w0, w1 = int((T_LAND - 0.6) * FPS) + 1, int((T_LAND + 0.3) * FPS) + 1
 WORDS.location.z = -0.06; WORDS.keyframe_insert("location", frame=w0)
 WORDS.location.z = 0.0; WORDS.keyframe_insert("location", frame=w1)
-print("turn from", int(T_FLY * FPS), "landed", int(T_LAND * FPS), "words", w0, w1)
+print("path", round(L, 1), "Y_M", Y_M, "reveal", round(T_REV, 2), "landed", T_LAND)
+CAM_TRACK = [(pos_s(s_at((f - 1) / FPS)), yaw_at((f - 1) / FPS)) for f in range(1, N + 1)]
+import json; OUT.mkdir(parents=True, exist_ok=True); (OUT / "cam_track.json").write_text(json.dumps(CAM_TRACK))
+if FRAMES == "track": sys.exit(0)
 
 OUT.mkdir(parents=True, exist_ok=True)
 frames = range(1, N + 1) if FRAMES == "all" else [int(x) for x in FRAMES.split(",")]
 import shutil
-F_STILL = int((18.4 + 0.35) * FPS) + 1   # from here the camera has landed and the words are in: every frame is the same
+F_STILL = int((T_LAND + 0.35) * FPS) + 1   # from here the camera has landed and the words are in: every frame is the same
 for f in frames:
     if FRAMES == "all" and (OUT / f"f_{f:05d}.png").exists(): continue   # resume an interrupted render
     if FRAMES == "all" and f > F_STILL and (OUT / f"f_{F_STILL:05d}.png").exists():
