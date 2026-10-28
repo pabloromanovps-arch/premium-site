@@ -28,7 +28,7 @@ sc.cycles.max_bounces = 0; sc.cycles.caustics_reflective = sc.cycles.caustics_re
 sc.render.resolution_x, sc.render.resolution_y = RES_W, RES_W * 9 // 16
 sc.render.fps = FPS; sc.frame_start, sc.frame_end = 1, N
 sc.view_settings.view_transform = "Standard"; sc.view_settings.look = "None"
-sc.render.use_motion_blur = True; sc.render.motion_blur_shutter = 0.4
+sc.render.use_motion_blur = True; sc.render.motion_blur_shutter = 0.5
 wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
 wd.node_tree.nodes["Background"].inputs[0].default_value = lin(BLUE) + (1,)
 
@@ -113,7 +113,10 @@ def cam_at(f):
     yM, yS = LAST_Y + 0.3, Y_END - D_STOP
     if u < 0.84: y = -2 + (yM + 2) * (u / 0.84) ** 1.08
     else: v = (u - 0.84) / 0.16; y = yM + (yS - yM) * (1 - (1 - v) ** 3)
-    return (0.0, y, 0.0), 0.0
+    # a light weave, as if easing round the stills: small, slow, dying away before the landing
+    k = 1 - (lambda q: q * q * (3 - 2 * q))(min(1, max(0, (u - 0.70) / 0.14)))
+    a = 2 * math.pi * u * 0.85
+    return (math.sin(a) * 0.32 * k, y, math.sin(a * 0.6 + 1.0) * 0.18 * k), math.sin(a) * -0.025 * k
 for f in list(range(1, N + 1, 5)) + [N]:
     loc, roll = cam_at(f)
     cam.location = loc; cam.rotation_euler = (math.pi / 2, roll, 0)
