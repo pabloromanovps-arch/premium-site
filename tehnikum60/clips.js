@@ -768,6 +768,8 @@ const finalL = { dur: 7, samples: (t) => (t < 3.6 ? 8 : 1), draw(ctx, t) {
   bigLogo(ctx, t - 0.3, JP.prof, -100, 0.58); wordsUnder(ctx, t, 2.5, 860, C.red);
 } };
 
+// the approved closing frame without its ground, for the flythrough (the 3-D icons are the ground there)
+const finalKAlpha = { dur: 7, samples: () => 1, draw(ctx, t) { bigLogo(ctx, t - 0.2, JP.prof); wordsUnder(ctx, t, 2.4, 860, C.orange); } };
 const finalJ2 = { dur: 7, samples: (t) => (t < 3.6 ? 8 : 1), draw(ctx, t) {
   const g = ctx.createRadialGradient(W / 2, 430, 80, W / 2, 500, 1150);
   g.addColorStop(0, '#FFFFFF'); g.addColorStop(1, '#DCE6EE'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -791,7 +793,7 @@ export const CLIPS = {
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
-  zastavka, final, final_a: finalA, final_b: finalB, final_c: finalC, final_d: finalD, final_e: finalE, final_f: finalF, final_g: finalG, final_h: finalH, final_i: finalI, final_j: finalJ, final_j2: finalJ2, final_k: finalK, final_l: finalL, chart, propusk, perehod,
+  zastavka, final, final_a: finalA, final_b: finalB, final_c: finalC, final_d: finalD, final_e: finalE, final_f: finalF, final_g: finalG, final_h: finalH, final_i: finalI, final_j: finalJ, final_j2: finalJ2, final_k: finalK, final_k_alpha: finalKAlpha, final_l: finalL, chart, propusk, perehod,
   ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
   ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),

@@ -33,7 +33,7 @@ wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
 wd.node_tree.nodes["Background"].inputs[0].default_value = lin(BLUE) + (1,)
 
 FADE_NEAR, FADE_FAR = 18.0, 46.0
-def plane_mat(name, img_path, fade=True, alpha=False):
+def plane_mat(name, img_path, fade=True, alpha=False, tint=0.0):
     """emission of the image, mixed towards the blue with distance (and transparent where the image is)"""
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
@@ -46,6 +46,9 @@ def plane_mat(name, img_path, fade=True, alpha=False):
         mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
         mix.inputs["B"].default_value = lin(BLUE) + (1,)
         nt.links.new(mr.outputs["Result"], mix.inputs["Factor"]); nt.links.new(col, mix.inputs["A"]); col = mix.outputs["Result"]
+    if tint:   # pushed towards the blue: a background element, quieter than the stills
+        mt = nt.nodes.new("ShaderNodeMix"); mt.data_type = "RGBA"; mt.inputs["Factor"].default_value = tint
+        mt.inputs["B"].default_value = lin(BLUE) + (1,); nt.links.new(col, mt.inputs["A"]); col = mt.outputs["Result"]
     em = nt.nodes.new("ShaderNodeEmission"); nt.links.new(col, em.inputs["Color"])
     if alpha:
         tr = nt.nodes.new("ShaderNodeBsdfTransparent"); mx = nt.nodes.new("ShaderNodeMixShader")
@@ -86,31 +89,51 @@ for j, k in enumerate(ORDER):
 icons = sorted(TEX.glob("*_belyy.png")) + sorted(TEX.glob("*_cvet.png"))
 Y_END = LAST_Y + 7.0
 DRIFT = []
-for i in range(70):
-    img = icons[i % len(icons)]
-    y = rnd.uniform(4, LAST_Y - 1); a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(2.2, 4.5)
-    o = plane(f"icon{i}", 0.85, 0.85, (math.cos(a) * r * 1.4, y, math.sin(a) * r * 0.8), (math.pi / 2, 0, rnd.uniform(-0.6, 0.6)),
-              plane_mat(f"im{i}", img, alpha=True))
-    DRIFT.append((o, rnd.uniform(-0.6, 0.6), rnd.uniform(0, 6.28)))
+def spread(n, gen, min_d, tries=4000):
+    # random points kept at least min_d apart: an even scatter, no clumps
+    pts = []
+    for _ in range(tries):
+        p = gen()
+        if all(sum((p[i] - q[i]) ** 2 for i in range(3)) >= min_d ** 2 for q in pts): pts.append(p)
+        if len(pts) >= n: break
+    return pts
+def tunnel_pt():
+    a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(2.3, 4.8)
+    return (math.cos(a) * r * 1.35, rnd.uniform(3, LAST_Y - 2), math.sin(a) * r * 0.85)
+for i, (x, y, z) in enumerate(spread(40, tunnel_pt, 2.6)):   # few, spread out: the stills lead
+    sz = rnd.choice([0.55, 0.7, 0.85, 1.0])
+    o = plane(f"icon{i}", sz, sz, (x, y, z), (math.pi / 2, 0, rnd.uniform(-0.5, 0.5)), plane_mat(f"im{i}", icons[i % len(icons)], alpha=True, tint=0.35))
 
 # the destination: the approved closing frame, exactly filling the view where the camera stops
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); bpy.context.collection.objects.link(cam); sc.camera = cam
 cam.data.lens = 32; cam.data.sensor_width = 36
 D_STOP = 4.0
 fw = D_STOP * cam.data.sensor_width / cam.data.lens
-FIN = plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "final.png", fade=False))
-# a few icons drift on behind and round the final frame's edges as the camera arrives
-for i in range(10):
-    a = i / 10 * 2 * math.pi
-    plane(f"edge{i}", 0.5, 0.5, (math.cos(a) * 3.4, Y_END - 1.5 - (i % 3), math.sin(a) * 2.0), (math.pi / 2, 0, a),
-          plane_mat(f"em{i}", icons[(i * 3) % len(icons)], alpha=True))
+FIN = plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "final_alpha.png", fade=False, alpha=True))
+STOP_BACK = 1.32   # the camera stops this much further back than a full-frame fit: the framing the client marked
+# the ground of the closing view: icons on a few depths behind the logo, spread over the whole view,
+# quiet (tinted towards the blue), clear of the logo and the words
+d_cam = D_STOP * STOP_BACK
+# an even scatter in screen space (so nothing overlaps on screen), each icon then put at its own depth
+pts = []
+for _ in range(30000):
+    sx, sy = rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5)
+    if abs(sx) < 0.33 and abs(sy) < 0.42: continue                     # clear of the logo and the words
+    if all((sx - p[0]) ** 2 + ((sy - p[1]) * 9 / 16) ** 2 > 0.115 ** 2 for p in pts): pts.append((sx, sy))
+    if len(pts) >= 26: break
+order = list(range(len(icons))); rnd.shuffle(order)
+for i, (sx, sy) in enumerate(pts):
+    dz = rnd.uniform(0.6, 4.0); d = d_cam + dz; vw = d * 36 / 32
+    sz = rnd.uniform(0.045, 0.06) * vw                                   # 4.5-6 % of the view's width: a quiet ground
+    o = plane(f"edge{i}", sz, sz, (sx * vw, Y_END + dz, sy * vw * 9 / 16), (math.pi / 2, 0, rnd.uniform(-0.4, 0.4)),
+              plane_mat(f"em{i}", icons[order[i % len(order)]], alpha=True, fade=False, tint=0.6))
 
 # camera: rises out of the blue, speeds through the years, slows and lands square on the frame
 def ease(u): return u * u * (3 - 2 * u)
 def cam_at(f):
     u = (f - 1) / (N - 1)
     # steady through the tunnel, through Misha at 84 % of the time, then a soft landing on the frame
-    yM, yS = LAST_Y + 0.3, Y_END - D_STOP
+    yM, yS = LAST_Y + 0.3, Y_END - D_STOP * STOP_BACK
     if u < 0.84: y = -2 + (yM + 2) * (u / 0.84) ** 1.08
     else: v = (u - 0.84) / 0.16; y = yM + (yS - yM) * (1 - (1 - v) ** 3)
     # a light weave, as if easing round the stills: small, slow, dying away before the landing
@@ -134,7 +157,8 @@ for o, spin, ph in DRIFT:
 OUT.mkdir(parents=True, exist_ok=True)
 frames = range(1, N + 1) if FRAMES == "all" else [int(x) for x in FRAMES.split(",")]
 for f in frames:
+    if FRAMES == "all" and (OUT / f"f_{f:05d}.png").exists(): continue   # resume an interrupted render
     sc.frame_set(f); sc.render.filepath = str(OUT / f"f_{f:05d}.png")
     bpy.ops.render.render(write_still=True)
     print("frame", f, flush=True)
-bpy.ops.wm.save_as_mainfile(filepath=str(OUT / "prolet.blend"))
+bpy.ops.wm.save_as_mainfile(filepath=str(OUT / "prolet.blend")) if FRAMES != "all" or True else None
