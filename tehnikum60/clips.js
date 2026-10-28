@@ -532,6 +532,101 @@ const finalE = {
   },
 };
 
+// round 3: concepts built to move
+function wordsUnder(ctx, t, t0, y = 850, c1 = C.blue) {
+  const f = font(66), w1 = textW(ctx, 'ИСТОРИЯ', f, 32), w2 = textW(ctx, 'ПРОДОЛЖАЕТСЯ!', f, 32), x0 = W / 2 - (w1 + w2 + 10) / 2;
+  textPlate(ctx, 'ИСТОРИЯ', x0, y, f, c1, C.white, t, t0, { padX: 32, h: 100 });
+  textPlate(ctx, 'ПРОДОЛЖАЕТСЯ!', x0 + w1 + 10, y, f, C.white, C.ink, t, t0 + 0.2, { padX: 32, h: 100 });
+}
+// F: one line. A ribbon of the brand colours flies in from the left, loops once round the logo
+//    (drawing its frame) and runs off to the top right: the story leaves the frame and goes on
+function ribbonPath(ctx, cx, cy, R) {
+  ctx.moveTo(-80, 980);
+  ctx.bezierCurveTo(300, 960, cx - R - 260, cy + R + 60, cx - R * 0.2, cy + R);
+  ctx.arc(cx, cy, R, Math.PI / 2 + 0.2, Math.PI / 2 + 0.2 + TAU_ * 0.97);
+  ctx.bezierCurveTo(cx + R + 200, cy - 60, 1600, 120, 2050, -60);
+}
+const finalF = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 420, R = 300, k = ease(t, 0, 2.4, E.inOutCubic);
+    logoDisc(ctx, IMG, cx, cy, 262, t, 1.0);
+    if (k > 0) {
+      const L = 5200, cols = [C.cyan, C.green, C.orange, C.red, C.blue];
+      cols.forEach((c, i) => {
+        ctx.save(); ctx.strokeStyle = c; ctx.lineWidth = 12; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        const lag = i * 0.035, kk = clamp((k - lag) / (1 - lag));
+        ctx.setLineDash([L * kk, L]);
+        ctx.translate(0, (i - 2) * 16); ctx.beginPath(); ribbonPath(ctx, cx, cy, R + (i - 2) * 2); ctx.stroke(); ctx.restore();
+      });
+    }
+    wordsUnder(ctx, t, 2.4);
+  },
+};
+// G: shutters. Eight slanted bands of the chord close over the frame, then part to the sides like
+//    blinds opening onto the logo, and stay as the frame's wings
+const finalG = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const bw = 150, sk = Math.tan(B.SLANT) * H, close = ease(t, 0, 0.7, E.outCubic), open = ease(t, 0.9, 2.0, E.inOutCubic);
+    logoDisc(ctx, IMG, W / 2, 420, 270, t, 1.1);
+    wordsUnder(ctx, t, 2.0);
+    B.CHORD.forEach((c, i) => {
+      const side = i < 4 ? -1 : 1, j = i < 4 ? i : 7 - i;
+      const shut = W / 2 + side * (bw * (j + 0.5)) - bw / 2;             // closed: the bands meet in the middle
+      const rest = side < 0 ? -bw * 1.2 + j * 58 : W - bw * 0.2 - j * 58 - bw + 120;   // open: stacked at the edge
+      const fromX = side < 0 ? -bw * 2 - sk : W + bw * 2;
+      const x = lerp(lerp(fromX, shut, close), rest, open);
+      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(x + sk, 0); ctx.lineTo(x + sk + bw, 0); ctx.lineTo(x + bw, H); ctx.lineTo(x, H); ctx.closePath(); ctx.fill();
+    });
+  },
+};
+// H: orbit. The industry symbols circle the logo on a tilted ellipse, passing behind it and in front
+const finalH = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 420, rx = 560, ry = 170, tilt = -0.18, k = ease(t, 0.2, 1.6, E.outCubic);
+    const pos = (i) => { const a = (i / 8) * TAU_ + t * 0.35; const x = Math.cos(a) * rx * k, y = Math.sin(a) * ry * k;
+      return { x: cx + x * Math.cos(tilt) - y * Math.sin(tilt), y: cy + x * Math.sin(tilt) + y * Math.cos(tilt), front: Math.sin(a) > 0, d: Math.sin(a) }; };
+    const draw = (front) => B.SYMBOLS.forEach((n, i) => { const p = pos(i); if (p.front !== front) return;
+      B.symbol(ctx, n, p.x, p.y, 70 + 30 * p.d, null, pop(t, 0.2 + i * 0.07)); });
+    // the orbit itself, a thin solid line, its back half behind the logo
+    ctx.save(); ctx.strokeStyle = C.grey; ctx.lineWidth = 3; ctx.translate(cx, cy); ctx.rotate(tilt);
+    ctx.beginPath(); ctx.ellipse(0, 0, rx * k, ry * k, 0, Math.PI, TAU_); ctx.stroke(); ctx.restore();
+    draw(false);
+    logoDisc(ctx, IMG, cx, cy, 255, t, 0.0);
+    ctx.save(); ctx.strokeStyle = C.grey; ctx.lineWidth = 3; ctx.translate(cx, cy); ctx.rotate(tilt);
+    ctx.beginPath(); ctx.ellipse(0, 0, rx * k, ry * k, 0, 0, Math.PI); ctx.stroke(); ctx.restore();
+    draw(true);
+    wordsUnder(ctx, t, 1.8, 850, C.green);
+  },
+};
+// I: the years. Cards with the film's years slide in one by one and fan out behind the logo like
+//    a hand of cards; the last card, 2026, is the logo itself
+const finalI = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 440;
+    const years = [['1965', C.grey], ['1966', C.slate], ['1967', C.blue], ['2008', C.cyan], ['2024', C.green], ['2025', C.orange]];
+    years.forEach(([y, col], i) => {
+      const k = pop(t, 0.15 + i * 0.16, { stiffness: 160, damping: 15 });
+      if (k <= 0) return;
+      const a = lerp(-1.1, 1.1, i / 5) * Math.min(1, k), r = 600;
+      ctx.save(); ctx.translate(cx, cy + 330); ctx.rotate(a); ctx.translate(0, -r);
+      const w = 210, h = 290;
+      ctx.fillStyle = col; ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.fillStyle = C.white; ctx.font = font(54); ctx.textAlign = 'center'; ctx.fillText(y, 0, -h / 2 + 76);
+      ctx.restore();
+    });
+    logoDisc(ctx, IMG, cx, cy, 250, t, 1.15);
+    wordsUnder(ctx, t, 1.9, 850, C.red);
+  },
+};
+
 // ---------------------------------------------------------------- 12 the pass (scene 12)
 // «Михаил Богатыревич, технолог цеха слабой азотной кислоты ПАО «Дорогобуж»» as a badge in the
 // brandbook's corporate-badge layout (p. 53): it swings in on its lanyard and settles
@@ -650,6 +745,29 @@ function fonClip(bg, tint, chordAlpha = 1) {
   };
 }
 
+// round 4: no white disc. The logo itself, large, on a background chosen so it reads (the client:
+// the teal must not melt into the picture): full-frame, opaque versions
+const FON_L = fonClip('#F2F4F6', 0.82), FON_B = fonClip(C.blue, 0.8);
+function bigLogo(ctx, t, pal, dy = -90, share = 0.6) {
+  ctx.save(); ctx.translate(0, dy); setLogoScale(share); drawLogo(ctx, t, pal, { glints: true }); ctx.restore();
+}
+// J: the opening's own light background, the logo in its teal, the words in colour plates
+const finalJ = { dur: 7, samples: (t) => (t < 3.6 ? 8 : 1), draw(ctx, t) {
+  FON_L.draw(ctx, t); bigLogo(ctx, t - 0.2, JP.light); wordsUnder(ctx, t, 2.4, 860, C.blue);
+} };
+// K: brand blue background, the logo in white with the chord running round its gear
+const finalK = { dur: 7, samples: (t) => (t < 3.6 ? 8 : 1), draw(ctx, t) {
+  FON_B.draw(ctx, t); bigLogo(ctx, t - 0.2, JP.prof); wordsUnder(ctx, t, 2.4, 860, C.orange);
+} };
+// L: deep night blue, a light behind the logo, the chord ribbon sweeping under it
+const finalL = { dur: 7, samples: (t) => (t < 3.6 ? 8 : 1), draw(ctx, t) {
+  const g = ctx.createRadialGradient(W / 2, 430, 60, W / 2, 430, 1100);
+  g.addColorStop(0, '#1B5FB4'); g.addColorStop(0.55, '#0B2F6B'); g.addColorStop(1, '#061C46');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  B.ribbon(ctx, W / 2, 760, 2600, 70, -B.SLANT * 0.6, ease(t, 0.1, 1.5, (q) => q));
+  bigLogo(ctx, t - 0.3, JP.prof, -100, 0.58); wordsUnder(ctx, t, 2.5, 860, C.red);
+} };
+
 export const CLIPS = {
   ...jubileeClips(),
   ...platesClips(),
@@ -667,7 +785,7 @@ export const CLIPS = {
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
-  zastavka, final, final_a: finalA, final_b: finalB, final_c: finalC, final_d: finalD, final_e: finalE, chart, propusk, perehod,
+  zastavka, final, final_a: finalA, final_b: finalB, final_c: finalC, final_d: finalD, final_e: finalE, final_f: finalF, final_g: finalG, final_h: finalH, final_i: finalI, final_j: finalJ, final_k: finalK, final_l: finalL, chart, propusk, perehod,
   ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
   ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),
