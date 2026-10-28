@@ -14,7 +14,7 @@ TEX = HERE / "prolet_src/tex"
 OUT = Path(sys.argv[1]); FRAMES = sys.argv[2] if len(sys.argv) > 2 else "750"
 SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 64
 RES_W = int(sys.argv[4]) if len(sys.argv) > 4 else 3840
-FPS, DUR = 50, 15.0
+FPS, DUR = 50, 15.4   # the flight and landing; the 7 s hold on the closing frame is added at encoding (a still)
 N = int(FPS * DUR)
 BLUE = (2 / 255, 94 / 255, 161 / 255)
 
@@ -33,7 +33,7 @@ wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
 wd.node_tree.nodes["Background"].inputs[0].default_value = lin(BLUE) + (1,)
 
 FADE_NEAR, FADE_FAR = 18.0, 46.0
-def plane_mat(name, img_path, fade=True, alpha=False, tint=0.0):
+def plane_mat(name, img_path, fade=True, alpha=False, tint=0.0, fader=None):
     """emission of the image, mixed towards the blue with distance (and transparent where the image is)"""
     m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
     out = nt.nodes.new("ShaderNodeOutputMaterial")
@@ -52,7 +52,11 @@ def plane_mat(name, img_path, fade=True, alpha=False, tint=0.0):
     em = nt.nodes.new("ShaderNodeEmission"); nt.links.new(col, em.inputs["Color"])
     if alpha:
         tr = nt.nodes.new("ShaderNodeBsdfTransparent"); mx = nt.nodes.new("ShaderNodeMixShader")
-        nt.links.new(tex.outputs["Alpha"], mx.inputs["Fac"]); nt.links.new(tr.outputs[0], mx.inputs[1]); nt.links.new(em.outputs[0], mx.inputs[2])
+        fac = tex.outputs["Alpha"]
+        if fader is not None:   # an opacity to keyframe: alpha x value
+            mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"; mul.inputs[1].default_value = 0.0
+            nt.links.new(fac, mul.inputs[0]); fac = mul.outputs[0]; fader.append(mul.inputs[1])
+        nt.links.new(fac, mx.inputs["Fac"]); nt.links.new(tr.outputs[0], mx.inputs[1]); nt.links.new(em.outputs[0], mx.inputs[2])
         nt.links.new(mx.outputs[0], out.inputs["Surface"])
     else:
         nt.links.new(em.outputs[0], out.inputs["Surface"])
@@ -109,8 +113,11 @@ cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); bpy.context.coll
 cam.data.lens = 32; cam.data.sensor_width = 36
 D_STOP = 4.0
 fw = D_STOP * cam.data.sensor_width / cam.data.lens
-FIN = plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "final_alpha.png", fade=False, alpha=True))
-STOP_BACK = 1.32   # the camera stops this much further back than a full-frame fit: the framing the client marked
+# the landing, clean (the client): the logo alone on the blue; the words a layer just in front, faded in after
+FIN = plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "logo_only.png", fade=False, alpha=True))
+WORDS_FADE = []
+WORDS = plane("words", fw, fw * 9 / 16, (0, Y_END - 0.01, 0), (math.pi / 2, 0, 0), plane_mat("mwords", TEX / "words_only.png", fade=False, alpha=True, fader=WORDS_FADE))
+STOP_BACK = 1.0   # lands on a full-frame fit; the smaller framing is drawn into the layers
 # the ground of the closing view: icons on a few depths behind the logo, spread over the whole view,
 # quiet (tinted towards the blue), clear of the logo and the words
 d_cam = D_STOP * STOP_BACK
@@ -120,7 +127,7 @@ for _ in range(30000):
     sx, sy = rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5)
     if abs(sx) < 0.33 and abs(sy) < 0.42: continue                     # clear of the logo and the words
     if all((sx - p[0]) ** 2 + ((sy - p[1]) * 9 / 16) ** 2 > 0.115 ** 2 for p in pts): pts.append((sx, sy))
-    if len(pts) >= 26: break
+    if len(pts) >= 0: break   # no icons round the logo: its own quiet pattern is the ground
 order = list(range(len(icons))); rnd.shuffle(order)
 for i, (sx, sy) in enumerate(pts):
     dz = rnd.uniform(0.6, 4.0); d = d_cam + dz; vw = d * 36 / 32
@@ -134,8 +141,11 @@ def cam_at(f):
     u = (f - 1) / (N - 1)
     # steady through the tunnel, through Misha at 84 % of the time, then a soft landing on the frame
     yM, yS = LAST_Y + 0.3, Y_END - D_STOP * STOP_BACK
-    if u < 0.84: y = -2 + (yM + 2) * (u / 0.84) ** 1.08
-    else: v = (u - 0.84) / 0.16; y = yM + (yS - yM) * (1 - (1 - v) ** 3)
+    # through Misha at 12.6 s, landed by 14.6 s (then still)
+    t = (f - 1) / FPS; ut = min(1.0, t / 12.6)
+    if t < 12.6: y = -2 + (yM + 2) * ut ** 1.08
+    else: v = min(1.0, (t - 12.6) / 2.0); y = yM + (yS - yM) * (1 - (1 - v) ** 3)
+    u = min(1.0, t / 14.6)
     # a light weave, as if easing round the stills: small, slow, dying away before the landing
     k = 1 - (lambda q: q * q * (3 - 2 * q))(min(1, max(0, (u - 0.70) / 0.14)))
     a = 2 * math.pi * u * 0.85
@@ -146,10 +156,15 @@ for f in list(range(1, N + 1, 5)) + [N]:
     cam.keyframe_insert("location", frame=f); cam.keyframe_insert("rotation_euler", frame=f)
 # the logo stays out of sight until the camera is through Misha
 f_through = next(f for f in range(1, N + 1) if cam_at(f)[0][1] > LAST_Y)
-for o in [FIN] + [x for x in bpy.data.objects if x.name.startswith("edge")]:
+for o in [FIN, WORDS]:
     o.hide_render = True; o.keyframe_insert("hide_render", frame=f_through - 1)
     o.hide_render = False; o.keyframe_insert("hide_render", frame=f_through)
 print("logo from frame", f_through)
+w0, w1 = int(14.3 * FPS), int(15.0 * FPS)   # the words come in once the camera has nearly landed
+WORDS_FADE[0].default_value = 0.0; WORDS_FADE[0].keyframe_insert("default_value", frame=w0)
+WORDS_FADE[0].default_value = 1.0; WORDS_FADE[0].keyframe_insert("default_value", frame=w1)
+WORDS.location.z = -0.06; WORDS.keyframe_insert("location", frame=w0)
+WORDS.location.z = 0.0; WORDS.keyframe_insert("location", frame=w1)
 for o, spin, ph in DRIFT:
     for f in (1, N):
         o.rotation_euler.y = ph + spin * (f / N) * 3; o.keyframe_insert("rotation_euler", frame=f)
