@@ -24,6 +24,7 @@ bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
 sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = False   # a denoiser smears the stills' detail; enough samples instead
 sc.cycles.filter_width = 1.2
+sc.render.use_persistent_data = True   # keep the scene (the 4K stills, the BVH) between frames: no reload per frame
 sc.cycles.max_bounces = 0; sc.cycles.caustics_reflective = sc.cycles.caustics_refractive = False
 sc.render.resolution_x, sc.render.resolution_y = RES_W, RES_W * 9 // 16
 sc.render.fps = FPS; sc.frame_start, sc.frame_end = 1, N
@@ -176,8 +177,12 @@ for o, spin, ph in DRIFT:
 
 OUT.mkdir(parents=True, exist_ok=True)
 frames = range(1, N + 1) if FRAMES == "all" else [int(x) for x in FRAMES.split(",")]
+import shutil
+F_STILL = int(15.0 * FPS) + 1   # from here the camera has landed and the words are in: every frame is the same
 for f in frames:
     if FRAMES == "all" and (OUT / f"f_{f:05d}.png").exists(): continue   # resume an interrupted render
+    if FRAMES == "all" and f > F_STILL and (OUT / f"f_{F_STILL:05d}.png").exists():
+        shutil.copy(OUT / f"f_{F_STILL:05d}.png", OUT / f"f_{f:05d}.png"); continue
     sc.frame_set(f); sc.render.filepath = str(OUT / f"f_{f:05d}.png")
     bpy.ops.render.render(write_still=True)
     print("frame", f, flush=True)
