@@ -382,24 +382,20 @@ function dateClip([year, lines, col]) {
 }
 
 // ---------------------------------------------------------------- 15 closing title (scene 15)
-// «Верхнеднепровскому технологическому техникуму — 60 лет. История продолжается!»
+// round 2 (the client): the jubilee logo alone in the centre, «История продолжается!» under it;
+// the line «Верхнеднепровскому технологическому техникуму — 60 лет» is gone
 const final = {
   dur: 7,
   samples: (t) => (t < 3.6 ? 8 : 1),
   draw(ctx, t, IMG) {
-    const cx = 470, cy = 540;
-    symbolRing(ctx, cx, cy, 372, t, 0.25);
-    logoDisc(ctx, IMG, cx, cy, 300, t, 0.0);
-    const x = 900, f = font(56);
-    [['ВЕРХНЕДНЕПРОВСКОМУ', C.blue], ['ТЕХНОЛОГИЧЕСКОМУ', C.red], ['ТЕХНИКУМУ', C.ink]].forEach(([str, col], i) =>
-      textPlate(ctx, str, x, 140 + i * 98, f, col, C.white, t, 0.4 + i * 0.13, { padX: 30, h: 90 }));
-    const m60 = solidText(ctx, '60', x - 8, 740, 300, ease(t, 0.95, 1.8, (q) => q), LOGO_GREEN);
-    textPlate(ctx, 'ЛЕТ', x + m60.w + 30, 556, font(96), C.ink, C.white, t, 1.4, { h: 140 });
-    const fs = font(44, MONT, 700), str = 'История продолжается!';
-    const mw = B.measure(ctx, str, fs).w;
-    B.plate(ctx, x, 788, mw + 130, 100, C.white, ease(t, 1.8, 2.3, (q) => q));
-    B.slash(ctx, x + 32, 816, 44, C.red, ease(t, 2.0, 2.25), 5);
-    B.riseText(ctx, str, x + 100, 856, fs, C.ink, ease(t, 2.05, 2.5));
+    const cx = W / 2, cy = 455;
+    symbolRing(ctx, cx, cy, 352, t, 0.25);
+    logoDisc(ctx, IMG, cx, cy, 284, t, 0.0);
+    const fs = font(48, MONT, 700), str = 'История продолжается!';
+    const pw = B.measure(ctx, str, fs).w + 140, px = W / 2 - pw / 2, py = 870;
+    B.plate(ctx, px, py, pw, 104, C.white, ease(t, 1.3, 1.8, (q) => q));
+    B.slash(ctx, px + 34, py + 30, 46, C.red, ease(t, 1.5, 1.75), 5);
+    B.riseText(ctx, str, px + 104, py + 70, fs, C.ink, ease(t, 1.55, 2.0));
   },
 };
 
