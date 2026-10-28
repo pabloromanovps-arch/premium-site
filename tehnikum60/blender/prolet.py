@@ -1,0 +1,124 @@
+# -*- coding: utf-8 -*-
+# The closing flythrough: the camera flies forward through 60 years, the film's own stills hanging in
+# space (archive first, then 2008, 2024, 2025, the specialities, the people, Misha last), the
+# specialities' icons and the brand's symbols drifting among them, and it lands square on to the
+# approved closing frame (flat 2-D: the white logo on the blue). Everything is self-lit (emission),
+# so the colours are exactly the stills'; far things fade into the blue.
+#   python3 tehnikum60/blender/prolet.py <out dir> <frames: "100,350,600,750" or "all"> [samples] [w]
+import math, random, sys
+from pathlib import Path
+import bpy
+
+HERE = Path(__file__).resolve().parents[1]
+TEX = HERE / "prolet_src/tex"
+OUT = Path(sys.argv[1]); FRAMES = sys.argv[2] if len(sys.argv) > 2 else "750"
+SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 24
+RES_W = int(sys.argv[4]) if len(sys.argv) > 4 else 1920
+FPS, DUR = 50, 15.0
+N = int(FPS * DUR)
+BLUE = (2 / 255, 94 / 255, 161 / 255)
+
+def lin(c): return tuple((x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) ** 2.4) for x in c)
+
+bpy.ops.wm.read_factory_settings(use_empty=True)
+sc = bpy.context.scene
+sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = True
+sc.cycles.max_bounces = 0; sc.cycles.caustics_reflective = sc.cycles.caustics_refractive = False
+sc.render.resolution_x, sc.render.resolution_y = RES_W, RES_W * 9 // 16
+sc.render.fps = FPS; sc.frame_start, sc.frame_end = 1, N
+sc.view_settings.view_transform = "Standard"; sc.view_settings.look = "None"
+sc.render.use_motion_blur = True; sc.render.motion_blur_shutter = 0.4
+wd = bpy.data.worlds.new("w"); sc.world = wd; wd.use_nodes = True
+wd.node_tree.nodes["Background"].inputs[0].default_value = lin(BLUE) + (1,)
+
+FADE_NEAR, FADE_FAR = 18.0, 46.0
+def plane_mat(name, img_path, fade=True, alpha=False):
+    """emission of the image, mixed towards the blue with distance (and transparent where the image is)"""
+    m = bpy.data.materials.new(name); m.use_nodes = True; nt = m.node_tree; nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    tex = nt.nodes.new("ShaderNodeTexImage"); tex.image = bpy.data.images.load(str(img_path)); tex.interpolation = "Cubic"
+    col = tex.outputs["Color"]
+    if fade:
+        cam = nt.nodes.new("ShaderNodeCameraData")
+        mr = nt.nodes.new("ShaderNodeMapRange"); mr.inputs["From Min"].default_value = FADE_NEAR; mr.inputs["From Max"].default_value = FADE_FAR
+        nt.links.new(cam.outputs["View Z Depth"], mr.inputs["Value"])
+        mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
+        mix.inputs["B"].default_value = lin(BLUE) + (1,)
+        nt.links.new(mr.outputs["Result"], mix.inputs["Factor"]); nt.links.new(col, mix.inputs["A"]); col = mix.outputs["Result"]
+    em = nt.nodes.new("ShaderNodeEmission"); nt.links.new(col, em.inputs["Color"])
+    if alpha:
+        tr = nt.nodes.new("ShaderNodeBsdfTransparent"); mx = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(tex.outputs["Alpha"], mx.inputs["Fac"]); nt.links.new(tr.outputs[0], mx.inputs[1]); nt.links.new(em.outputs[0], mx.inputs[2])
+        nt.links.new(mx.outputs[0], out.inputs["Surface"])
+    else:
+        nt.links.new(em.outputs[0], out.inputs["Surface"])
+    return m
+
+def plane(name, w, h, loc, rot, m):
+    bpy.ops.mesh.primitive_plane_add(size=1, location=loc, rotation=rot)
+    o = bpy.context.active_object; o.name = name; o.scale = (w, h, 1); o.data.materials.append(m); return o
+
+# ---------------------------------------------------------------- the path: the camera flies along +Y
+# order: the archive, 2008, 2024, 2025, the specialities, the people, Misha
+ORDER = [4, 6, 7, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+         32, 33, 34, 35, 36, 37, 38, 39, 1]
+rnd = random.Random(60)
+Y0, STEP = 10.0, 4.6
+for j, k in enumerate(ORDER):
+    y = Y0 + j * STEP
+    through = j % 6 == 5 or k == 1          # now and then a still right on the path: the camera flies through it
+    if through: x, z, rz, rx = 0.0, 0.0, 0.0, 0.0
+    else:
+        side = -1 if j % 2 == 0 else 1
+        x = side * rnd.uniform(2.2, 3.6); z = ((j // 2) % 3 - 1) * 1.35 + rnd.uniform(-0.35, 0.35)   # above, level, below in turn
+        rz = -side * rnd.uniform(0.25, 0.55); rx = rnd.uniform(-0.12, 0.12)
+    s = 1.0 if not through else 1.25
+    plane(f"still{k:02d}", 3.2 * s, 1.8 * s, (x, y, z), (math.pi / 2 + rx, 0, rz), plane_mat(f"m{k}", TEX / f"k{k:02d}.jpg"))
+
+# icons: the specialities (white) and the brand's symbols (their colours), drifting round the path
+icons = sorted(TEX.glob("*_belyy.png")) + sorted(TEX.glob("*_cvet.png"))
+Y_END = Y0 + len(ORDER) * STEP + 6
+DRIFT = []
+for i in range(70):
+    img = icons[i % len(icons)]
+    y = rnd.uniform(4, Y_END - 4); a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(2.0, 5.5)
+    o = plane(f"icon{i}", 0.85, 0.85, (math.cos(a) * r * 1.4, y, math.sin(a) * r * 0.8), (math.pi / 2, 0, rnd.uniform(-0.6, 0.6)),
+              plane_mat(f"im{i}", img, alpha=True))
+    DRIFT.append((o, rnd.uniform(-0.6, 0.6), rnd.uniform(0, 6.28)))
+
+# the destination: the approved closing frame, exactly filling the view where the camera stops
+cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); bpy.context.collection.objects.link(cam); sc.camera = cam
+cam.data.lens = 32; cam.data.sensor_width = 36
+D_STOP = 4.0
+fw = D_STOP * cam.data.sensor_width / cam.data.lens
+plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "final.png", fade=False))
+# a few icons drift on behind and round the final frame's edges as the camera arrives
+for i in range(10):
+    a = i / 10 * 2 * math.pi
+    plane(f"edge{i}", 0.5, 0.5, (math.cos(a) * 3.4, Y_END - 1.5 - (i % 3), math.sin(a) * 2.0), (math.pi / 2, 0, a),
+          plane_mat(f"em{i}", icons[(i * 3) % len(icons)], alpha=True))
+
+# camera: rises out of the blue, speeds through the years, slows and lands square on the frame
+def ease(u): return u * u * (3 - 2 * u)
+def cam_at(f):
+    u = (f - 1) / (N - 1)
+    # distance along the path: fast middle, long soft landing (the last 25 % of the time)
+    p = ease(min(1, u / 0.78)) * 0.93 + 0.07 * ease(max(0, (u - 0.7) / 0.3))
+    y = -2 + p * (Y_END - D_STOP + 2)
+    sway = (1 - ease(max(0, (u - 0.65) / 0.35)))
+    return (math.sin(u * 7.0) * 0.9 * sway, y, math.cos(u * 5.0) * 0.5 * sway), math.sin(u * 6.0) * 0.08 * sway
+for f in list(range(1, N + 1, 5)) + [N]:
+    loc, roll = cam_at(f)
+    cam.location = loc; cam.rotation_euler = (math.pi / 2, roll, 0)
+    cam.keyframe_insert("location", frame=f); cam.keyframe_insert("rotation_euler", frame=f)
+for o, spin, ph in DRIFT:
+    for f in (1, N):
+        o.rotation_euler.y = ph + spin * (f / N) * 3; o.keyframe_insert("rotation_euler", frame=f)
+
+OUT.mkdir(parents=True, exist_ok=True)
+frames = range(1, N + 1) if FRAMES == "all" else [int(x) for x in FRAMES.split(",")]
+for f in frames:
+    sc.frame_set(f); sc.render.filepath = str(OUT / f"f_{f:05d}.png")
+    bpy.ops.render.render(write_still=True)
+    print("frame", f, flush=True)
+bpy.ops.wm.save_as_mainfile(filepath=str(OUT / "prolet.blend"))
