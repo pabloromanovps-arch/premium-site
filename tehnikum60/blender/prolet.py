@@ -61,7 +61,7 @@ def plane(name, w, h, loc, rot, m):
 
 # ---------------------------------------------------------------- the path: the camera flies along +Y
 # order: the archive, 2008, 2024, 2025, the specialities, the people, Misha
-ORDER = [4, 6, 7, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+ORDER = [4, 6, 7, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 40, 41, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
          32, 33, 34, 35, 36, 38, 39, 1, 37]   # the client: Misha at the plant (37) is the last
 rnd = random.Random(60)
 # a tunnel: the stills stand round the camera's straight path on a ring (radius ~2.8), facing it and
