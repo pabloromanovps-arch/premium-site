@@ -436,6 +436,102 @@ const finalB = {
   },
 };
 
+// round 2, more ideas for the closing title
+const TAU_ = Math.PI * 2;
+function gear(ctx, x, y, r, teeth, rot, col, hole = 0.38) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.fillStyle = col; ctx.beginPath();
+  const d = r * 0.2;
+  for (let i = 0; i < teeth; i++) {
+    const a = (i / teeth) * TAU_, s = TAU_ / teeth;
+    [[a - s * 0.5, r - d], [a - s * 0.25, r - d], [a - s * 0.17, r], [a + s * 0.17, r], [a + s * 0.25, r - d]].forEach(([aa, rr], j) =>
+      (i === 0 && j === 0 ? ctx.moveTo : ctx.lineTo).call(ctx, Math.cos(aa) * rr, Math.sin(aa) * rr));
+  }
+  ctx.closePath(); ctx.moveTo(r * hole, 0); ctx.arc(0, 0, r * hole, 0, TAU_, true); ctx.fill('evenodd'); ctx.restore();
+}
+// C: a timeline. 1965 ... 2025 run in from the left as a chord line, the logo rises over 2026 at the
+//    centre, and the line goes on to the right as a dashed path with an arrow: the story continues
+const finalC = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const ly = 760, x0 = 250, xc = W / 2, x1 = 1690;
+    const kp = ease(t, 0, 1.2, E.inOutCubic);
+    if (kp > 0) { ctx.save(); ctx.beginPath(); ctx.rect(x0, ly - 8, (xc - x0) * kp, 16); ctx.clip(); B.chord(ctx, x0 - 20, ly - 8, xc - x0 + 40, 16, 1, undefined, 0); ctx.restore(); }
+    ['1965', '1966', '1967', '2008', '2024', '2025'].forEach((y, i) => {
+      const x = x0 + 20 + i * 108, k = pop(t, 0.2 + i * 0.12, { stiffness: 300, damping: 16 });
+      if (k <= 0) return;
+      ctx.save(); ctx.translate(x, ly); ctx.scale(k, k);
+      ctx.fillStyle = C.white; ctx.beginPath(); ctx.arc(0, 0, 11, 0, TAU_); ctx.fill();
+      ctx.font = font(26, MONT, 700); ctx.textAlign = 'center';
+      B.plate(ctx, -46, 26, 92, 40, C.white, 1); ctx.fillStyle = C.ink; ctx.fillText(y, 0, 56);
+      ctx.restore();
+    });
+    // the future: dashes drawing on to the right, an arrow at the end
+    const kf = ease(t, 2.2, 3.4, E.inOutCubic);
+    if (kf > 0) {
+      const xe = xc + 60 + (x1 - xc - 60) * kf;
+      ctx.save(); ctx.strokeStyle = C.white; ctx.lineWidth = 8; ctx.setLineDash([26, 18]); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(xc + 60, ly); ctx.lineTo(xe - 20, ly); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = C.white; ctx.beginPath(); ctx.moveTo(xe + 22, ly); ctx.lineTo(xe - 18, ly - 24); ctx.lineTo(xe - 18, ly + 24); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+    // 2026: the logo over its point on the line
+    const kd = pop(t, 1.1, { stiffness: 240, damping: 14 });
+    if (kd > 0) { ctx.save(); ctx.translate(xc, ly); ctx.scale(kd, kd); ctx.fillStyle = LOGO_GREEN; ctx.beginPath(); ctx.arc(0, 0, 22, 0, TAU_); ctx.fill();
+      ctx.fillStyle = C.white; ctx.beginPath(); ctx.arc(0, 0, 9, 0, TAU_); ctx.fill(); ctx.restore(); }
+    const kl = ease(t, 1.2, 1.7);
+    if (kl > 0) { ctx.fillStyle = C.white; ctx.fillRect(xc - 3, ly - 22 - 100 * kl, 6, 100 * kl); }
+    logoDisc(ctx, IMG, xc, 390, 250, t, 1.35);
+    const fs = font(44, MONT, 700), str = 'История продолжается!', pw = B.measure(ctx, str, fs).w + 130;
+    const px = xc - pw / 2, py = ly + 110;   // under the line, centred (inside the middle 1440 px)
+    B.plate(ctx, px, py, pw, 92, C.white, ease(t, 3.0, 3.5, (q) => q));
+    B.slash(ctx, px + 32, py + 26, 42, C.red, ease(t, 3.2, 3.45), 5);
+    B.riseText(ctx, str, px + 96, py + 62, fs, C.ink, ease(t, 3.25, 3.7));
+  },
+};
+// D: the mechanism keeps running. The logo's own gear meshes with gears in the brand colours that
+//    turn round it, and under them the words in colour plates
+const finalD = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 420, run = t * 0.5;
+    [[-370, -150, 150, 18, C.blue, 1], [-330, 190, 105, 13, C.orange, -1], [355, -175, 120, 15, C.green, -1], [380, 150, 165, 20, C.red, 1], [560, -10, 70, 9, C.slate, 1], [-560, 30, 80, 10, C.cyan, -1]]
+      .forEach(([dx, dy, r, n, col, dir], i) => {
+        const k = pop(t, 0.3 + i * 0.1, { stiffness: 200, damping: 14 });
+        if (k <= 0) return;
+        gear(ctx, cx + dx, cy + dy, r * k, n, dir * run * (150 / r) + i, col);
+      });
+    logoDisc(ctx, IMG, cx, cy, 260, t, 0.0);
+    const f = font(70), w1 = textW(ctx, 'ИСТОРИЯ', f, 34), w2 = textW(ctx, 'ПРОДОЛЖАЕТСЯ!', f, 34), x0 = cx - (w1 + w2 + 10) / 2;
+    textPlate(ctx, 'ИСТОРИЯ', x0, 840, f, C.blue, C.white, t, 1.4, { padX: 34, h: 106 });
+    textPlate(ctx, 'ПРОДОЛЖАЕТСЯ!', x0 + w1 + 10, 840, f, C.white, C.ink, t, 1.6, { padX: 34, h: 106 });
+  },
+};
+// E: a salute. The brand's symbols burst out of the logo like confetti, spin, and come to rest
+//    scattered round it; the words come last
+const finalE = {
+  dur: 7,
+  samples: (t) => (t < 3.6 ? 8 : 1),
+  draw(ctx, t, IMG) {
+    const cx = W / 2, cy = 430;
+    for (let i = 0; i < 26; i++) {
+      const a = (i / 26) * TAU_ + (M.hash01(i, 5) - 0.5) * 0.4, R = 330 + 230 * M.hash01(i, 6);
+      const tx = cx + Math.cos(a) * R * 1.35, ty = cy + Math.sin(a) * R * 0.82;
+      if (ty > 760 || ty < 70 || tx < 250 || tx > 1670) continue;   // clear of the words and the cropped sides
+      const k = clamp((t - 0.35 - M.hash01(i, 7) * 0.25) / 1.1), e = E.outCubic(k);
+      if (k <= 0) continue;
+      const n = B.SYMBOLS[i % 8], sz = 46 + 40 * M.hash01(i, 8);
+      const x = cx + (tx - cx) * e, y = cy + (ty - cy) * e - Math.sin(Math.PI * k) * 60;
+      B.symbol(ctx, n, x + Math.sin(t * 0.8 + i) * 6 * e, y + Math.cos(t * 0.7 + i) * 6 * e, sz, null, Math.min(1, k * 3), (1 - e) * 6 * (i % 2 ? 1 : -1) + Math.sin(t * 0.5 + i) * 0.1);
+    }
+    logoDisc(ctx, IMG, cx, cy, 270, t, 0.0);
+    const f = font(70), w1 = textW(ctx, 'ИСТОРИЯ', f, 34), w2 = textW(ctx, 'ПРОДОЛЖАЕТСЯ!', f, 34), x0 = cx - (w1 + w2 + 10) / 2;
+    textPlate(ctx, 'ИСТОРИЯ', x0, 840, f, C.red, C.white, t, 1.6, { padX: 34, h: 106 });
+    textPlate(ctx, 'ПРОДОЛЖАЕТСЯ!', x0 + w1 + 10, 840, f, C.white, C.ink, t, 1.8, { padX: 34, h: 106 });
+  },
+};
+
 // ---------------------------------------------------------------- 12 the pass (scene 12)
 // «Михаил Богатыревич, технолог цеха слабой азотной кислоты ПАО «Дорогобуж»» as a badge in the
 // brandbook's corporate-badge layout (p. 53): it swings in on its lanyard and settles
@@ -571,7 +667,7 @@ export const CLIPS = {
   fon_light: fonClip('#F2F4F6', 0.82),
   fon_blue: fonClip(C.blue, 0.8),
   fon_dark: fonClip(C.ink, 0.8),
-  zastavka, final, final_a: finalA, final_b: finalB, chart, propusk, perehod,
+  zastavka, final, final_a: finalA, final_b: finalB, final_c: finalC, final_d: finalD, final_e: finalE, chart, propusk, perehod,
   ...Object.fromEntries(Object.entries(STATS).map(([k, v]) => [k, statClip(v)])),
   ...Object.fromEntries(Object.entries(PROFS).map(([k, v]) => [k, profClip(v)])),
   ...Object.fromEntries(Object.entries({ ...NAMES, ...NAMES2 }).map(([k, v]) => [k, nameClip(v)])),
