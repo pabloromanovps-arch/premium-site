@@ -123,11 +123,11 @@ STOP_BACK = 1.0   # lands on a full-frame fit; the smaller framing is drawn into
 d_cam = D_STOP * STOP_BACK
 # an even scatter in screen space (so nothing overlaps on screen), each icon then put at its own depth
 pts = []
-for _ in range(30000):
+for _ in range(0):
     sx, sy = rnd.uniform(-0.5, 0.5), rnd.uniform(-0.5, 0.5)
     if abs(sx) < 0.33 and abs(sy) < 0.42: continue                     # clear of the logo and the words
     if all((sx - p[0]) ** 2 + ((sy - p[1]) * 9 / 16) ** 2 > 0.115 ** 2 for p in pts): pts.append((sx, sy))
-    if len(pts) >= 0: break   # no icons round the logo: its own quiet pattern is the ground
+    break   # no icons round the logo (the client): the logo stands alone on the blue
 order = list(range(len(icons))); rnd.shuffle(order)
 for i, (sx, sy) in enumerate(pts):
     dz = rnd.uniform(0.6, 4.0); d = d_cam + dz; vw = d * 36 / 32
