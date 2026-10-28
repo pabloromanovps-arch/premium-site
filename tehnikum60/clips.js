@@ -747,7 +747,7 @@ function fonClip(bg, tint, chordAlpha = 1) {
 
 // round 4: no white disc. The logo itself, large, on a background chosen so it reads (the client:
 // the teal must not melt into the picture): full-frame, opaque versions
-const FON_L = fonClip('#F2F4F6', 0.82), FON_B = fonClip(C.blue, 0.8);
+const FON_L = fonClip('#F2F4F6', 0.82), FON_B = fonClip(C.blue, 0.8, 0);   // K: approved, without the chord in the corner
 function bigLogo(ctx, t, pal, dy = -90, share = 0.6) {
   ctx.save(); ctx.translate(0, dy); setLogoScale(share); drawLogo(ctx, t, pal, { glints: true }); ctx.restore();
 }
