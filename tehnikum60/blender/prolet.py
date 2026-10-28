@@ -12,8 +12,8 @@ import bpy
 HERE = Path(__file__).resolve().parents[1]
 TEX = HERE / "prolet_src/tex"
 OUT = Path(sys.argv[1]); FRAMES = sys.argv[2] if len(sys.argv) > 2 else "750"
-SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 24
-RES_W = int(sys.argv[4]) if len(sys.argv) > 4 else 1920
+SAMPLES = int(sys.argv[3]) if len(sys.argv) > 3 else 64
+RES_W = int(sys.argv[4]) if len(sys.argv) > 4 else 3840
 FPS, DUR = 50, 15.0
 N = int(FPS * DUR)
 BLUE = (2 / 255, 94 / 255, 161 / 255)
@@ -22,7 +22,8 @@ def lin(c): return tuple((x / 12.92 if x <= 0.04045 else ((x + 0.055) / 1.055) *
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 sc = bpy.context.scene
-sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = True
+sc.render.engine = "CYCLES"; sc.cycles.device = "CPU"; sc.cycles.samples = SAMPLES; sc.cycles.use_denoising = False   # a denoiser smears the stills' detail; enough samples instead
+sc.cycles.filter_width = 1.2
 sc.cycles.max_bounces = 0; sc.cycles.caustics_reflective = sc.cycles.caustics_refractive = False
 sc.render.resolution_x, sc.render.resolution_y = RES_W, RES_W * 9 // 16
 sc.render.fps = FPS; sc.frame_start, sc.frame_end = 1, N
@@ -61,27 +62,33 @@ def plane(name, w, h, loc, rot, m):
 # ---------------------------------------------------------------- the path: the camera flies along +Y
 # order: the archive, 2008, 2024, 2025, the specialities, the people, Misha
 ORDER = [4, 6, 7, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-         32, 33, 34, 35, 36, 37, 38, 39, 1]
+         32, 33, 34, 35, 36, 38, 39, 1, 37]   # the client: Misha at the plant (37) is the last
 rnd = random.Random(60)
-Y0, STEP = 10.0, 4.6
+# a tunnel: the stills stand round the camera's straight path on a ring (radius ~2.8), facing it and
+# leaning in a little; every fourth stands right on the path and the camera flies through it.
+# Misha at the plant is the last, on the path, and hides the logo until the camera is through him.
+Y0, STEP = 8.0, 3.4
+LAST_K = 37
+LAST_Y = None
 for j, k in enumerate(ORDER):
     y = Y0 + j * STEP
-    through = j % 6 == 5 or k == 1          # now and then a still right on the path: the camera flies through it
-    if through: x, z, rz, rx = 0.0, 0.0, 0.0, 0.0
+    through = j % 4 == 3 or k == LAST_K
+    if through:
+        x, z, rz, rx, s = 0.0, 0.0, 0.0, 0.0, 1.35
+        if k == LAST_K: LAST_Y = y; s = 2.2          # Misha: big enough to fill the view as the camera nears
     else:
-        side = -1 if j % 2 == 0 else 1
-        x = side * rnd.uniform(2.2, 3.6); z = ((j // 2) % 3 - 1) * 1.35 + rnd.uniform(-0.35, 0.35)   # above, level, below in turn
-        rz = -side * rnd.uniform(0.25, 0.55); rx = rnd.uniform(-0.12, 0.12)
-    s = 1.0 if not through else 1.25
-    plane(f"still{k:02d}", 3.2 * s, 1.8 * s, (x, y, z), (math.pi / 2 + rx, 0, rz), plane_mat(f"m{k}", TEX / f"k{k:02d}.jpg"))
+        a = j * 2.399 + rnd.uniform(-0.3, 0.3); r = rnd.uniform(2.5, 3.1)
+        x, z = math.cos(a) * r * 1.25, math.sin(a) * r * 0.85
+        rz, rx, s = -x * 0.12, z * 0.12, 1.0     # lean in towards the path
+    plane(f"still{k:02d}", 3.2 * s, 1.8 * s, (x, y, z), (math.pi / 2 + rx, 0, rz), plane_mat(f"m{k}", HERE / "prolet_src/k" / f"k{k:02d}.jpg"))   # the 4K stills as they are
 
 # icons: the specialities (white) and the brand's symbols (their colours), drifting round the path
 icons = sorted(TEX.glob("*_belyy.png")) + sorted(TEX.glob("*_cvet.png"))
-Y_END = Y0 + len(ORDER) * STEP + 6
+Y_END = LAST_Y + 7.0
 DRIFT = []
 for i in range(70):
     img = icons[i % len(icons)]
-    y = rnd.uniform(4, Y_END - 4); a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(2.0, 5.5)
+    y = rnd.uniform(4, LAST_Y - 1); a = rnd.uniform(0, 2 * math.pi); r = rnd.uniform(2.2, 4.5)
     o = plane(f"icon{i}", 0.85, 0.85, (math.cos(a) * r * 1.4, y, math.sin(a) * r * 0.8), (math.pi / 2, 0, rnd.uniform(-0.6, 0.6)),
               plane_mat(f"im{i}", img, alpha=True))
     DRIFT.append((o, rnd.uniform(-0.6, 0.6), rnd.uniform(0, 6.28)))
@@ -91,7 +98,7 @@ cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam")); bpy.context.coll
 cam.data.lens = 32; cam.data.sensor_width = 36
 D_STOP = 4.0
 fw = D_STOP * cam.data.sensor_width / cam.data.lens
-plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "final.png", fade=False))
+FIN = plane("final", fw, fw * 9 / 16, (0, Y_END, 0), (math.pi / 2, 0, 0), plane_mat("mfinal", TEX / "final.png", fade=False))
 # a few icons drift on behind and round the final frame's edges as the camera arrives
 for i in range(10):
     a = i / 10 * 2 * math.pi
@@ -102,15 +109,21 @@ for i in range(10):
 def ease(u): return u * u * (3 - 2 * u)
 def cam_at(f):
     u = (f - 1) / (N - 1)
-    # distance along the path: fast middle, long soft landing (the last 25 % of the time)
-    p = ease(min(1, u / 0.78)) * 0.93 + 0.07 * ease(max(0, (u - 0.7) / 0.3))
-    y = -2 + p * (Y_END - D_STOP + 2)
-    sway = (1 - ease(max(0, (u - 0.65) / 0.35)))
-    return (math.sin(u * 7.0) * 0.9 * sway, y, math.cos(u * 5.0) * 0.5 * sway), math.sin(u * 6.0) * 0.08 * sway
+    # steady through the tunnel, through Misha at 84 % of the time, then a soft landing on the frame
+    yM, yS = LAST_Y + 0.3, Y_END - D_STOP
+    if u < 0.84: y = -2 + (yM + 2) * (u / 0.84) ** 1.08
+    else: v = (u - 0.84) / 0.16; y = yM + (yS - yM) * (1 - (1 - v) ** 3)
+    return (0.0, y, 0.0), 0.0
 for f in list(range(1, N + 1, 5)) + [N]:
     loc, roll = cam_at(f)
     cam.location = loc; cam.rotation_euler = (math.pi / 2, roll, 0)
     cam.keyframe_insert("location", frame=f); cam.keyframe_insert("rotation_euler", frame=f)
+# the logo stays out of sight until the camera is through Misha
+f_through = next(f for f in range(1, N + 1) if cam_at(f)[0][1] > LAST_Y)
+for o in [FIN] + [x for x in bpy.data.objects if x.name.startswith("edge")]:
+    o.hide_render = True; o.keyframe_insert("hide_render", frame=f_through - 1)
+    o.hide_render = False; o.keyframe_insert("hide_render", frame=f_through)
+print("logo from frame", f_through)
 for o, spin, ph in DRIFT:
     for f in (1, N):
         o.rotation_euler.y = ph + spin * (f / N) * 3; o.keyframe_insert("rotation_euler", frame=f)

@@ -75,6 +75,8 @@ window.seek = (t) => {
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   if (RENDER) cleanEdges();
 };
+// a still at the supersampled size (3840 x 2160 for 16x9): the last sample as drawn, before the filter-down
+window.bigPNG = (t) => { gctx.setTransform(SS, 0, 0, SS, 0, 0); gctx.clearRect(0, 0, W, H); CLIP.draw(gctx, t, IMG); return big.toDataURL('image/png'); };
 window.DURATION = CLIP.dur; window.FPS = FPS;
 window.filmReady = true;
 window.seek(0);
