@@ -69,12 +69,12 @@ def stabilised(path, t0, dur):
     STAB.mkdir(exist_ok=True)
     out = STAB / f"{Path(path).stem}_{t0:.1f}.mp4"
     if not out.exists():
-        trf = STAB / "t.trf"; span = ["-ss", f"{t0:.3f}", "-t", f"{dur + 0.6:.3f}", "-i", str(SRC / path)]
+        trf, tmp = STAB / "t.trf", STAB / "tmp.mp4"; span = ["-ss", f"{t0:.3f}", "-t", f"{dur + 0.6:.3f}", "-i", str(SRC / path)]
         ff = ["ffmpeg", "-v", "error", "-y"]
         subprocess.run(ff + span + ["-vf", f"vidstabdetect=shakiness=6:accuracy=12:result={trf}", "-f", "null", "-"], check=True)
         subprocess.run(ff + span + ["-vf", f"vidstabtransform=input={trf}:smoothing=24:optzoom=1:zoomspeed=0.1:interpol=bicubic,unsharp=5:5:0.4",
-                                    "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", str(out)], check=True)
-        trf.unlink()
+                                    "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", str(tmp)], check=True)
+        trf.unlink(); tmp.rename(out)                   # only a finished clip gets the cache name
     return out
 
 
@@ -140,7 +140,7 @@ def frame_of(shot, obj, t, dur):
         return apply_grade(img, obj.luts)
     if kind == "p":
         u = min(1.0, max(0.0, t / dur)); u = u * u * (3 - 2 * u) * 0.5 + u * 0.5          # soft start, steady drift
-        punch = 0.06 * (1 - ease_out(t / 0.35))                                          # lands a touch big, settles at once
+        punch = 0.0                       # clean cuts (the client's editor adds any accents himself)
         im = obj.img; z = (0.84 + 0.07 * u) * (1 + punch)
         cx = im.shape[1] / 2 + obj.dir * (u - 0.5) * (im.shape[1] - W / z) * 0.35
         cy = im.shape[0] / 2
@@ -161,7 +161,7 @@ for sh in SHOTS:
     end = END if sh[3] is None else BT[sh[3]]
     spans.append((prev, end)); prev = end
 # where the song changes section: a short burst of light across the cut
-SECTION_CUTS = [BT[b] for b in (96, 160, 224, 288, 320)] + [spans[-1][0]]
+SECTION_CUTS = []                     # clean version: no light bursts (were at beats 96, 160, 224, 288, 320)
 
 enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
                         "-i", "-", "-i", str(AUDIO), "-map", "0:v", "-map", "1:a",
