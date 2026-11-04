@@ -73,7 +73,7 @@ def stabilised(path, t0, dur):
         ff = ["ffmpeg", "-v", "error", "-y"]
         subprocess.run(ff + span + ["-vf", f"vidstabdetect=shakiness=6:accuracy=12:result={trf}", "-f", "null", "-"], check=True)
         subprocess.run(ff + span + ["-vf", f"vidstabtransform=input={trf}:smoothing=24:optzoom=1:zoomspeed=0.1:interpol=bicubic,unsharp=5:5:0.4",
-                                    "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "14", "-pix_fmt", "yuv420p", str(out)], check=True)
+                                    "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", str(out)], check=True)
         trf.unlink()
     return out
 
@@ -166,7 +166,7 @@ SECTION_CUTS = [BT[b] for b in (96, 160, 224, 288, 320)] + [spans[-1][0]]
 enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
                         "-i", "-", "-i", str(AUDIO), "-map", "0:v", "-map", "1:a",
                         "-af", f"afade=t=out:st={END - 1.5}:d=1.5", "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium",
-                        "-crf", "14" if W >= 1920 else "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k",
+                        "-crf", "17" if W >= 1920 else "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k",
                         "-movflags", "+faststart", OUT], stdin=subprocess.PIPE)
 objs = {}
 def obj_for(i):

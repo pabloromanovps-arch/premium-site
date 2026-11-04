@@ -1,6 +1,7 @@
-"""The VTT logo on white, kept whole and readable at every moment (the client: never split it): it
-opens out of a soft circle from the centre while settling to size, a glint runs across, and it stays.
-The last frame is the logo exactly as given.
+"""The VTT logo (a flat raster) taken apart into its pieces and put together on white: the grey gear
+turns into place, the blue-red gear arc draws on tooth by tooth, the open book comes forward, the name
+writes on line by line, the little book rises, and a glint runs across. The last frame is the logo
+exactly as given.
     from logo_vtt_anim import LogoAnim;  LogoAnim(path, scale).frame(t) -> BGR on white
 """
 import cv2
@@ -50,25 +51,44 @@ class LogoAnim:
                 cv2.warpAffine(rgb, M, (self.w, self.h), flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255)))
 
     def frame(self, t):
-        """the logo whole, never taken apart: it opens out of a soft circle from the centre while
-        settling from slightly small to its size, then a glint runs across it, and it stays"""
+        """built from its pieces (the client chose this): the grey gear turns into place, the gear arc
+        draws on tooth by tooth, the book comes forward, the name writes on line by line, the little book
+        rises, a glint runs across; from 2.5 s on it is the logo exactly as given"""
         out = np.full((self.h, self.w, 3), 255.0, np.float32)
-        u = ease_out(t / 1.3)
-        z = 0.93 + 0.07 * u
-        M = cv2.getRotationMatrix2D((self.w / 2, self.h / 2), 0, z)
-        ink = sum(self.L.values())
-        m = cv2.warpAffine(ink, M, (self.w, self.h), flags=cv2.INTER_LINEAR)
-        c = cv2.warpAffine(self.im, M, (self.w, self.h), flags=cv2.INTER_LINEAR, borderValue=(255, 255, 255))
-        yy, xx = np.mgrid[0:self.h, 0:self.w].astype(np.float32)
-        rr = np.hypot(xx - self.w / 2, yy - self.h / 2) / (0.5 * np.hypot(self.w, self.h))
-        reveal = np.clip((1.15 * ease_out(t / 1.1) - rr) / 0.18, 0, 1) * min(1.0, t / 0.4)
-        m = m * reveal
-        out = out * (1 - m[..., None]) + c * m[..., None]
-        g = (t - 1.6) / 0.9
+        def put(mask, rgb):
+            nonlocal out
+            out = out * (1 - mask[..., None]) + rgb * mask[..., None]
+        s = self.s
+        u = ease_out(t / 1.1)
+        if u > 0:
+            M = cv2.getRotationMatrix2D((GEAR_C[0] * s, GEAR_C[1] * s), -35 * (1 - u), 1.0)
+            m, c = self._warp(self.L["grey"], self.im, M); put(m * ease(t / 0.5), c)
+        u = ease((t - 0.25) / 1.2)
+        if u > 0:
+            front = np.pi - u * (np.pi + 0.35)
+            m = self.L["ring"] * np.clip((self.ang - front) / 0.25, 0, 1)
+            M = cv2.getRotationMatrix2D((C_RING[0] * s, C_RING[1] * s), 12 * (1 - u), 1.0)
+            m2, c = self._warp(m, self.im, M); put(m2, c)
+        u = ease_out((t - 0.55) / 0.95)
+        if u > 0:
+            M = cv2.getRotationMatrix2D((520 * s, 150 * s), 0, 0.9 + 0.1 * u)
+            m, c = self._warp(self.L["book"], self.im, M); put(m * ease((t - 0.55) / 0.5), c)
+        for k, (ya, yb) in enumerate([(298, 368), (368, 428), (428, 492)]):
+            u = ease((t - 1.0 - 0.3 * k) / 0.6)
+            if u <= 0: continue
+            x0, _, x1, _ = TEXT
+            front = x0 + (x1 - x0 + 60) * u
+            band = (self.yy >= ya) & (self.yy < yb)
+            put(self.L["text"] * band * np.clip((front - self.xx) / 40, 0, 1), self.im)
+        u = ease_out((t - 1.8) / 0.7)
+        if u > 0:
+            M = np.float32([[1, 0, 0], [0, 1, 18 * s * (1 - u)]])
+            m, c = self._warp(self.L["small"], self.im, M); put(m * u, c)
+        g = (t - 2.5) / 0.8
         if 0 < g < 1:
             d = (self.xx * 0.8 + self.yy * 0.6) / 1000.0
             band = np.exp(-((d - (-0.1 + 1.3 * g)) / 0.05) ** 2)
-            out = out + (255 - out) * (0.4 * band * m)[..., None]
+            out = out + (255 - out) * (0.45 * band * sum(self.L.values()))[..., None]
         return np.clip(out, 0, 255).astype(np.uint8)
 
 
