@@ -47,7 +47,7 @@ CR = {
 }
 CROP = {"v1_periph.mp4": (14, 0, 784, 508), "v3_villagexpo.mp4": (0, 0, 776, 544), "v4_trappes.mp4": (10, 0, 786, 536),
         "v5_grande_borne.mp4": (16, 0, 782, 508), "v7_front_de_seine.mp4": (14, 0, 784, 508)}
-have = lambda n: (SRC / "foto" / n).exists()
+have = lambda n: (SRC / "foto" / n).exists() and (SRC / "foto" / n).stat().st_size > 20000   # a real photo, not an error page
 
 # scenes: (title, title delay, [(kind, file, weight, extra)]) — weights share the scene's length
 def scenes():
