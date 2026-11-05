@@ -63,7 +63,7 @@ def scenes():
         (("1966 · выставка типового жилья", "Villagexpo", "Сен-Мишель-сюр-Орж", "left"), 0.6,
          [("v", "v3_villagexpo.mp4", 9.5, 0.0), ("p", "villagexpo_adobe.jpg", 4, None)]),
         (("Новые города · строительство", "Сен-Кантен-ан-Ивелин", "Saint-Quentin-en-Yvelines", "left"), 2.0,
-         [("v", "v4_trappes.mp4", 14, 0.5), ("p", "04_lac_sourderie.jpg", 4.3, "pan"), ("p", "cergy_grand_centre.jpg", 4.3, None)]),
+         [("v", "v4_trappes.mp4", 14, 1.3), ("p", "04_lac_sourderie.jpg", 4.3, "pan"), ("p", "cergy_grand_centre.jpg", 4.3, None)]),
         (("Квартал", "La Grande Borne", "Гриньи", "left"), 0.6, [("v", "v5_grande_borne.mp4", 6.2, 0.0),
          ("p", s5_still, 3.4, ("Новая постройка", "Les Choux", "новый район Кретей", "left") if "choux" in s5_still else None),
          ("p", "abraxas.jpg", 3.3, None)]),
@@ -277,6 +277,7 @@ subprocess.run(cmd + ["-filter_complex", fc + ";" + out_label + "loudnorm=I=-16:
 enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
                         "-i", str(amix), "-map", "0:v", "-map", "1:a", "-c:v", "libx264", "-preset", "medium", "-crf", "17",
                         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "256k", "-movflags", "+faststart", OUT], stdin=subprocess.PIPE)
+TITLES_AT = {}
 N = int(END * FPS)
 for n in range(N):
     t = n / FPS
@@ -288,26 +289,17 @@ for n in range(N):
         img = cv2.addWeighted(img, 1 - u, shot_frame(k + 1, t), u, 0)
     for j in [j for j in objs if j < k - 1]: del objs[j]
     img = look(img, n)
-    # the scene's title: in after its delay, held ~4.5 s (or to just before the scene's first shot ends)
-    first = next(i for i, x in enumerate(shots) if x["scene"] == s["scene"])
-    f0 = shots[first]
-    if f0["title"]:
-        ta = f0["scene_t"] + f0["tdel"]; life = min(4.8, f0["t0"] + f0["dur"] - 0.2 - ta)
-        if ta <= t < ta + life: img = draw_title(img, f0["title"], t - ta, life)
-    if s["kind"] == "p" and isinstance(s["extra"], tuple):              # a still's own title
-        ta = s["t0"] + 0.3; life = s["dur"] - 0.5
-        if ta <= t < ta + life: img = draw_title(img, s["extra"], t - ta, life)
-    # the credit: stills by their licence, the archive footage as INA's
-    cr = CR.get(s["name"]) if s["kind"] == "p" else "© INA"
-    if cr:
-        kk = min(1, max(0, (t - s["t0"]) / 0.4)) * min(1, max(0, (s["t0"] + s["dur"] - t) / 0.4))
-        if kk > 0:
-            sc = W / 1920; spr = sprite(cr, F_SMALL, int(18 * sc), 0.02)
-            img = put(img, spr, W - 40 * sc - (spr[0].shape[1] - 2 * spr[1]), H - 34 * sc, 0.7 * kk)
-    if MUSIC and t > END - 4.2:                                          # the music's credit, as its licence asks
-        sc = W / 1920; spr = sprite(MUSIC_CREDIT, F_SMALL, int(20 * sc), 0.02)
-        kk = min(1, (t - (END - 4.2)) / 0.6)
-        img = put(img, spr, (W - (spr[0].shape[1] - 2 * spr[1])) / 2, H - 70 * sc, 0.8 * kk)
+    # titles: the scene's own (after its delay) and any still's; each held up to ~7 s (the client: 3 s
+    # longer), but gone before the next title in the scene or the scene's end
+    if s["scene"] not in TITLES_AT:
+        sh_sc = [x for x in shots if x["scene"] == s["scene"]]
+        ev = ([(sh_sc[0]["scene_t"] + sh_sc[0]["tdel"], sh_sc[0]["title"])] if sh_sc[0]["title"] else []) + \
+             [(x["t0"] + 0.3, x["extra"]) for x in sh_sc if x["kind"] == "p" and isinstance(x["extra"], tuple)]
+        scene_end = max(x["t0"] + x["dur"] for x in sh_sc)
+        TITLES_AT[s["scene"]] = [(ta, spec, min(7.8, (ev[i + 1][0] - 0.2 if i + 1 < len(ev) else scene_end - 0.4) - ta))
+                                 for i, (ta, spec) in enumerate(ev)]
+    for ta, spec, life in TITLES_AT[s["scene"]]:
+        if ta <= t < ta + life: img = draw_title(img, spec, t - ta, life)
     if t < 0.8: img = (img.astype(np.float32) * (t / 0.8)).astype(np.uint8)                    # in from black
     if t > END - 1.5: img = (img.astype(np.float32) * max(0, (END - t) / 1.5)).astype(np.uint8)  # out to black
     enc.stdin.write(img.tobytes())
