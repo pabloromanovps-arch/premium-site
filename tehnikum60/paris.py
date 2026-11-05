@@ -16,6 +16,7 @@ OUT = sys.argv[1]
 W = int(sys.argv[2]) if len(sys.argv) > 2 else 1920
 H = W * 9 // 16
 MUSIC = sys.argv[3] if len(sys.argv) > 3 else None
+MUSIC_CREDIT = "Музыка: Эрик Сати, «Гимнопедия № 1», исп. Kevin MacLeod (incompetech.com), CC BY 4.0"
 FPS = 25
 XF = 0.6                     # dissolve between shots
 GAP, LEAD, TAIL = 1.0, 1.5, 4.5
@@ -264,9 +265,10 @@ fc = (f"[0]aresample=48000,asplit={n_p}" + "".join(f"[s{i}]" for i in range(n_p)
       + "".join(f"[p{i}]" for i in range(n_p)) + f"amix=inputs={n_p}:normalize=0:duration=longest,apad=whole_dur={END:.3f}[v]")
 cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(VOICE)]
 if MUSIC:
-    cmd += ["-stream_loop", "-1", "-i", MUSIC]
-    fc += (f";[1]atrim=0:{END:.3f},volume=0.32,afade=t=in:d=1.5,afade=t=out:st={END - 3:.3f}:d=3[m];"
-           f"[m][v]sidechaincompress=threshold=0.04:ratio=6:attack=80:release=600[md];[md][v]amix=inputs=2:normalize=0[a]")
+    cmd += ["-i", MUSIC]
+    fc += (f";[v]asplit=2[v1][v2];[1]aresample=48000,aformat=channel_layouts=mono,atrim=0:{END:.3f},volume=0.32,"
+           f"afade=t=in:d=1.5,afade=t=out:st={END - 3:.3f}:d=3[m];"
+           f"[m][v1]sidechaincompress=threshold=0.04:ratio=6:attack=80:release=600[md];[md][v2]amix=inputs=2:normalize=0[a]")
     out_label = "[a]"
 else:
     out_label = "[v]"
@@ -302,6 +304,10 @@ for n in range(N):
         if kk > 0:
             sc = W / 1920; spr = sprite(cr, F_SMALL, int(18 * sc), 0.02)
             img = put(img, spr, W - 40 * sc - (spr[0].shape[1] - 2 * spr[1]), H - 34 * sc, 0.7 * kk)
+    if MUSIC and t > END - 4.2:                                          # the music's credit, as its licence asks
+        sc = W / 1920; spr = sprite(MUSIC_CREDIT, F_SMALL, int(20 * sc), 0.02)
+        kk = min(1, (t - (END - 4.2)) / 0.6)
+        img = put(img, spr, (W - (spr[0].shape[1] - 2 * spr[1])) / 2, H - 70 * sc, 0.8 * kk)
     if t < 0.8: img = (img.astype(np.float32) * (t / 0.8)).astype(np.uint8)                    # in from black
     if t > END - 1.5: img = (img.astype(np.float32) * max(0, (END - t) / 1.5)).astype(np.uint8)  # out to black
     enc.stdin.write(img.tobytes())
