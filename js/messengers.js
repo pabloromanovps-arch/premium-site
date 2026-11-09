@@ -13,7 +13,9 @@
   const sessions = { get: (k) => readSess()[k], set: (k, v) => { const all = readSess(); all[k] = v; writeSess(all); } };
   const sim = Flora.simInstance;
 
+  const ADS = (Flora.profile.get().avito || {}).items || {};
   const PHONES = [
+    { ch: "avito", title: "Авито: сообщения", sub: "покупатель пишет по объявлению", ava: "А", chatId: "u2i-demo-1" },
     { ch: "telegram", title: "Стебель — цветы", sub: "бот в Telegram", ava: "С", chatId: 555001 },
     { ch: "vk", title: "Стебель | Цветы Москва", sub: "сообщество ВКонтакте", ava: "С", chatId: 2000000001 },
     { ch: "max", title: "Стебель", sub: "бот в MAX", ava: "С", chatId: 9001 },
@@ -32,6 +34,7 @@
     <section class="phone" data-ch="${p.ch}" aria-label="${CH.NAMES[p.ch]}">
       <div class="phone-head"><span class="ava" aria-hidden="true">${p.ava}</span><div><h2>${p.title}</h2><p>${p.sub}</p></div>
         <button class="reset" type="button" data-reset>Начать заново</button></div>
+      ${p.ch === "avito" ? `<label class="ad">Объявление <select data-ad>${Object.entries(ADS).map(([id, a]) => `<option value="${id}">${esc(a.title)}</option>`).join("")}</select></label>` : ""}
       <div class="feed" aria-live="polite"></div>
       <div class="suggest" hidden></div>
       <form class="composer"><label class="sr-only" for="in-${p.ch}">Сообщение в ${CH.NAMES[p.ch]}</label>
@@ -47,6 +50,11 @@
 
   // Сборка входящих событий в формате каждой платформы
   const updates = {
+    avito: {
+      start: null, // в Авито разговор всегда начинает покупатель
+      text: (p, text) => ({ id: "evt-" + Date.now(), version: "v3.0.0", timestamp: Math.floor(Date.now() / 1000), payload: { type: "message", value: { id: "m" + Date.now(), chat_id: p.chatId, user_id: 777, author_id: 555, created: Math.floor(Date.now() / 1000), type: "text", chat_type: "u2i", content: { text }, item_id: Number(p.itemId) } } }),
+      press: (p, btn) => updates.avito.text(p, btn.digit),
+    },
     telegram: {
       start: (p) => ({ update_id: Date.now(), message: { message_id: 1, chat: { id: p.chatId, type: "private" }, text: "/start" } }),
       text: (p, text) => ({ update_id: Date.now(), message: { message_id: 1, chat: { id: p.chatId, type: "private" }, text } }),
@@ -77,7 +85,9 @@
     if (ch === "max" && b.attachments) return b.attachments[0].payload.buttons.flat().map((x) => ({ label: x.text, value: x.payload }));
     return [];
   }
-  const textOf = (ch, call) => (ch === "vk" ? call.body.message : call.body.text);
+  const textOf = (ch, call) => (ch === "vk" ? call.body.message : ch === "avito" ? call.body.message.text : call.body.text);
+  // В Авито кнопок нет: варианты приходят списком «1 — …», клиент отвечает цифрой. Подсказки-цифры — для удобства на стенде.
+  const avitoChoices = (text) => (String(text).split("Ответьте цифрой:")[1] || "").split("\n").map((l) => l.match(/^(\d+) — (.+)$/)).filter(Boolean).map((m) => ({ digit: m[1], label: `${m[1]} — ${m[2]}` }));
 
   PHONES.forEach((p) => {
     const el = document.querySelector(`.phone[data-ch="${p.ch}"]`);
@@ -85,6 +95,16 @@
     const suggest = el.querySelector(".suggest");
     const histKey = "hist:" + p.ch;
     let alice = sessions.get("alice-state:" + p.chatId);
+    if (p.ch === "avito") {
+      const sel = el.querySelector("[data-ad]");
+      p.itemId = sessions.get("avito-ad") || sel.value;
+      sel.value = p.itemId;
+      sel.addEventListener("change", () => {
+        p.itemId = sel.value;
+        sessions.set("avito-ad", p.itemId);
+        el.querySelector("[data-reset]").click();
+      });
+    }
     // Заявка из чата уносит с собой переписку — менеджер увидит её в CRM.
     const paneCtx = {
       now,
@@ -137,6 +157,20 @@
         suggest.hidden = r.buttons.length === 0;
         return;
       }
+      if (p.ch === "avito") {
+        const text = textOf("avito", calls[0]);
+        bubble(esc(text));
+        const choices = avitoChoices(text);
+        choices.forEach((c) => {
+          const b = document.createElement("button");
+          b.type = "button";
+          b.textContent = c.label;
+          b.addEventListener("click", () => send(() => updates.avito.press(p, c), c.digit));
+          suggest.appendChild(b);
+        });
+        suggest.hidden = choices.length === 0;
+        return;
+      }
       for (const call of calls) {
         if (/answer/i.test(call.method)) continue;
         const d = bubble(esc(textOf(p.ch, call)));
@@ -179,9 +213,25 @@
       showRaw(update, res.calls);
     }
 
+    // Авито: подсказка, с чего обычно начинают покупатели.
+    function avitoHint() {
+      const ad = ADS[p.itemId];
+      bubble(`<span class="hint">Вы — покупатель. Напишите продавцу по объявлению «${esc(ad ? ad.title : "")}», например:</span>`);
+      suggest.innerHTML = "";
+      ["Здравствуйте, ещё актуально?", "Добрый день! Можно доставку на завтра?", "А за МКАД доставляете?"].forEach((t) => {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.textContent = t;
+        b.addEventListener("click", () => send(() => updates.avito.text(p, t), t));
+        suggest.appendChild(b);
+      });
+      suggest.hidden = false;
+    }
+
     function restore() {
       feed.innerHTML = "";
       const h = sessions.get(histKey) || [];
+      if (!h.length && p.ch === "avito") return avitoHint();
       if (!h.length) return send(() => updates[p.ch].start(p));
       for (const e of h) e.me ? bubble(esc(e.me), true) : draw(e.calls);
     }
@@ -231,7 +281,7 @@
 
   // ---------- на телефоне: одно окно на весь экран ----------
   function show(ch) {
-    if (!ALL.some((x) => x.ch === ch)) ch = "telegram";
+    if (!ALL.some((x) => x.ch === ch)) ch = "avito";
     document.querySelectorAll(".phone").forEach((el) => el.classList.toggle("active", el.dataset.ch === ch));
     document.querySelectorAll("#phone-tabs button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.show === ch)));
   }

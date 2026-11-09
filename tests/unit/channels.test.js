@@ -187,3 +187,75 @@ test("контракт: каждый ответ бота укладываетс�
   assert.ok(seen.size > 200, `проверено состояний: ${seen.size}`);
   assert.ok(checked > 800);
 });
+
+// ---------- Авито ----------
+const avitoMsg = (text, extra = {}) => ({
+  id: "evt-" + Math.random(), version: "v3.0.0", timestamp: 1761030000,
+  payload: { type: "message", value: { id: "m1", chat_id: "u2i-abc", user_id: 777, author_id: 555, created: 1761030000, type: "text", chat_type: "u2i", content: { text }, item_id: 4012345601, ...extra } },
+});
+const avitoText = (r) => r.calls[0].body.message.text;
+
+test("Авито: первое сообщение по объявлению — бот знает букет и отвечает на «ещё актуально?»", async () => {
+  const d = deps();
+  const r = await ch.handle("avito", avitoMsg("Здравствуйте, ещё актуально?"), d);
+  assert.equal(r.calls.length, 1, "одно сообщение на ответ");
+  assert.equal(r.calls[0].path, "/messenger/v1/accounts/777/chats/u2i-abc/messages");
+  assert.match(avitoText(r), /по объявлению «Бордо»/);
+  assert.match(avitoText(r), /Да, в наличии/);
+  assert.match(avitoText(r), /Ответьте цифрой:\n1 — /);
+  assert.equal(r.state.draft.product, "bordo");
+});
+
+test("Авито: ответ цифрой выбирает вариант, заказ доходит до CRM с меткой Авито", async () => {
+  const d = deps();
+  let r = await ch.handle("avito", avitoMsg("Здравствуйте"), d);
+  assert.match(avitoText(r), /на какой день/i);
+  const pick = (label) => {
+    const line = avitoText(r).split("\n").find((l) => l.includes(label));
+    assert.ok(line, `нет варианта ${label}: ${avitoText(r)}`);
+    return line.split(" — ")[0];
+  };
+  r = await ch.handle("avito", avitoMsg(pick("Завтра")), d);
+  r = await ch.handle("avito", avitoMsg(pick("12:00–15:00")), d);
+  r = await ch.handle("avito", avitoMsg(pick("Заберу сам")), d);
+  for (const t of ["Игорь", "8 903 765 43 21"]) r = await ch.handle("avito", avitoMsg(t), d);
+  r = await ch.handle("avito", avitoMsg(pick("Всё верно")), d);
+  assert.match(avitoText(r), /Заказ СТ-1001 принят/);
+  const rec = d.store.get("1001");
+  assert.equal(rec.source, "avito");
+  assert.equal(rec.items[0].id, "bordo");
+});
+
+test("Авито: свои сообщения и картинки", async () => {
+  const d = deps();
+  assert.equal((await ch.handle("avito", avitoMsg("эхо", { author_id: 777 }), d)).kind, "ignore");
+  assert.equal((await ch.handle("avito", { payload: { type: "system" } }, d)).kind, "ignore");
+  const r = await ch.handle("avito", avitoMsg("", { type: "image", content: { image: {} } }), d);
+  assert.match(avitoText(r), /читаю только текст/);
+});
+
+test("Авито: неизвестное объявление — обычное приветствие с меню", async () => {
+  const d = deps();
+  const r = await ch.handle("avito", avitoMsg("Здравствуйте", { item_id: 1 }), d);
+  assert.match(avitoText(r), /Помогу выбрать букет/);
+  assert.match(avitoText(r), /1 — Подобрать букет/);
+});
+
+test("контракт Авито: каждый ответ бота — одно текстовое сообщение в пределах лимита", () => {
+  const store = S.createStore({ storage: S.memoryStorage(), now: () => NOW });
+  const ctx = { now: () => NOW, create: (i) => store.create(i), lookup: (id) => store.get(id) };
+  const queue = [bot.start(), bot.startWithProduct("bordo", ctx)];
+  const seen = new Set();
+  const problems = new Set();
+  while (queue.length && seen.size < 1500) {
+    const res = queue.shift();
+    const key = JSON.stringify([res.state.step, res.state.draft]);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    for (const e of ch.checkLimits("avito", ch.ADAPTERS.avito.render("u2i-1", res.messages, { accountId: "1" }))) problems.add(e);
+    if (Object.keys(res.state.draft || {}).length > 9) continue;
+    for (const o of res.messages.flatMap((m) => m.options || [])) queue.push(bot.reply(res.state, { text: o.label, value: o.value }, ctx));
+  }
+  assert.deepEqual([...problems], []);
+  assert.ok(seen.size > 100);
+});

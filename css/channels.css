@@ -4,6 +4,7 @@
 .phone-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--white); border-color: var(--ink); }
 
 .phone { --accent: #555; --bg: #f3f3f3; --mine: #dcf8c6; --btn: #fff; display: flex; flex-direction: column; height: 640px; border-radius: 22px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
+.phone[data-ch="avito"] { --accent: #00a046; --bg: #f2f4f2; --mine: #e2f3e8; }
 .phone[data-ch="telegram"] { --accent: #2a8bd1; --bg: #dfe9ef; --mine: #e1f7d0; }
 .phone[data-ch="vk"] { --accent: #2b6dd1; --bg: #edeef0; --mine: #cce4ff; }
 .phone[data-ch="max"] { --accent: #6a3ad6; --bg: #f1edfb; --mine: #e2d8fb; }
@@ -54,3 +55,7 @@
   .phone { display: none; height: calc(100vh - 150px); min-height: 460px; }
   .phone.active { display: flex; }
 }
+
+.ad { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--line); font-size: .82rem; color: var(--ink-soft); }
+.ad select { padding: 6px 8px; font-size: .85rem; }
+.bubble .hint { color: var(--ink-soft); }

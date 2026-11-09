@@ -158,3 +158,12 @@ test("переписка с ботом сохраняется в заявке, �
   assert.equal(rec.dialog[0].text.length, 300);
   assert.equal(s.create(order).dialog, undefined);
 });
+
+test("поиск: буквы с цифрами ищут по имени, а не по номеру или телефону", () => {
+  const s = fresh();
+  s.create({ ...order, name: "Нагрузка A1-17", phone: "+79160000001" });
+  s.create({ ...order, name: "Ольга", phone: "+79161170000" }); // СТ-1002, телефон содержит «117»
+  assert.deepEqual(s.list({ q: "Нагрузка A1-17" }).map((r) => r.customer.name), ["Нагрузка A1-17"]);
+  assert.equal(s.list({ q: "ст-1002" })[0].customer.name, "Ольга");
+  assert.equal(s.list({ q: "916 117" })[0].customer.name, "Ольга");
+});

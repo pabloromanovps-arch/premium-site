@@ -6,12 +6,15 @@
 //   POST /vk        — Callback API сообщества ВКонтакте
 //   POST /max       — вебхук бота MAX
 //   POST /alice     — навык Алисы (Яндекс Диалоги)
+//   POST /avito     — вебхук Авито Мессенджера (v3)
 //
 // Переменные окружения (секреты — через `wrangler secret put` или панель Cloudflare):
 //   TG_BOT_TOKEN, TG_SECRET           — токен клиентского бота и секрет вебхука (необязательно)
 //   TG_MANAGER_CHAT_ID                — куда слать заявки менеджеру (можно тем же ботом)
 //   VK_TOKEN, VK_CONFIRMATION, VK_SECRET — ключ сообщества, строка подтверждения и секрет Callback API
 //   MAX_TOKEN                         — токен бота MAX
+//   AVITO_CLIENT_ID, AVITO_CLIENT_SECRET — ключи приложения Авито (личный кабинет → API);
+//                                       токен доступа сервер получает и обновляет сам
 //   CRM_WEBHOOK_URL                   — входящий вебхук вашей CRM (amoCRM, Bitrix24 и т. п.)
 //   ALLOWED_ORIGIN                    — адрес сайта для CORS
 // Хранилище: KV-пространство SESSIONS (состояние диалогов и заявки из мессенджеров).
@@ -25,7 +28,7 @@ export const formatTelegram = messages.formatTelegram;
 
 export function checkPayload(o) {
   if (!o || typeof o !== "object") return "Пустое тело запроса";
-  if (typeof o.id !== "string" || !/^(СТ|ЗВ)-\d+$/.test(o.id)) return "Некорректный номер заявки";
+  if (typeof o.id !== "string" || !/^[A-Za-zА-ЯЁа-яё]{1,6}-(\d{4}-)?\d+$/.test(o.id)) return "Некорректный номер заявки";
   if (!o.customer || typeof o.customer.name !== "string" || !/^\+7\d{10}$/.test(o.customer.phone || "")) return "Нет имени или телефона клиента";
   if (o.kind === "order" && (!Array.isArray(o.items) || !o.items.length)) return "В заказе нет букетов";
   return null;
@@ -64,7 +67,26 @@ async function forward(order, env, fetchImpl) {
 }
 
 // Вызов API платформы по описанию из channels.render().
-function apiRequest(channel, call, env) {
+// Токен Авито живёт сутки: берём новый по client_credentials и держим в KV, пока не истечёт.
+async function avitoToken(env, fetchImpl) {
+  const db = kv(env);
+  const cached = await db.get("avito:token");
+  if (cached && cached.until > Date.now() + 60000) return cached.token;
+  const res = await fetchImpl("https://api.avito.ru/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ grant_type: "client_credentials", client_id: env.AVITO_CLIENT_ID || "", client_secret: env.AVITO_CLIENT_SECRET || "" }).toString(),
+  });
+  if (!res.ok) throw new Error("Авито не выдал токен: " + res.status);
+  const data = await res.json();
+  await db.put("avito:token", { token: data.access_token, until: Date.now() + (Number(data.expires_in) || 86400) * 1000 });
+  return data.access_token;
+}
+
+function apiRequest(channel, call, env, token) {
+  if (channel === "avito") {
+    return [`https://api.avito.ru${call.path}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(call.body) }];
+  }
   if (channel === "telegram") {
     return [`https://api.telegram.org/bot${env.TG_BOT_TOKEN}/${call.method}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(call.body) }];
   }
@@ -108,7 +130,8 @@ async function handleChannel(channel, request, env, fetchImpl) {
     for (const rec of created) await forward(rec, env, fetchImpl);
   }
   if (channel === "alice") return Response.json(result.calls[0].body);
-  for (const call of result.calls) await fetchImpl(...apiRequest(channel, call, env));
+  const token = channel === "avito" && result.calls.length ? await avitoToken(env, fetchImpl) : null;
+  for (const call of result.calls) await fetchImpl(...apiRequest(channel, call, env, token));
   return new Response(channel === "vk" ? "ok" : "", { status: 200 });
 }
 
@@ -120,7 +143,7 @@ export async function handle(request, env, fetchImpl = fetch) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(env) });
   if (request.method !== "POST") return reply(405, { ok: false, error: "Используйте POST" });
 
-  const channel = { "/telegram": "telegram", "/vk": "vk", "/max": "max", "/alice": "alice" }[path];
+  const channel = { "/telegram": "telegram", "/vk": "vk", "/max": "max", "/alice": "alice", "/avito": "avito" }[path];
   if (channel) return handleChannel(channel, request, env, fetchImpl);
 
   let order;

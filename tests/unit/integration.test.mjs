@@ -138,3 +138,25 @@ test("сервер: заказ в Telegram-боте уходит менедже�
   assert.match(toManager[0].body.text, /Новый заказ СТ-\d+ \(Telegram\)/);
   assert.ok(net.calls.some((c) => c.url === "https://crm.example/hook" && c.body.source === "telegram"));
 });
+
+test("сервер: Авито — берёт токен по ключам приложения и отвечает в чат объявления", async () => {
+  const calls = [];
+  const f = async (url, init) => {
+    calls.push({ url, init });
+    if (url === "https://api.avito.ru/token") return new Response(JSON.stringify({ access_token: "tok-1", expires_in: 86400 }));
+    return new Response("{}");
+  };
+  const env = { AVITO_CLIENT_ID: "id", AVITO_CLIENT_SECRET: "sec" };
+  const body = { payload: { type: "message", value: { chat_id: "u2i-9", user_id: 42, author_id: 7, type: "text", content: { text: "Здравствуйте, ещё актуально?" }, item_id: 4012345602 } } };
+  const res = await handle(at("/avito", body), env, f);
+  assert.equal(res.status, 200);
+  assert.equal(calls[0].url, "https://api.avito.ru/token");
+  assert.match(calls[0].init.body, /grant_type=client_credentials/);
+  const send = calls.find((c) => c.url.includes("/messenger/"));
+  assert.equal(send.url, "https://api.avito.ru/messenger/v1/accounts/42/chats/u2i-9/messages");
+  assert.equal(send.init.headers.Authorization, "Bearer tok-1");
+  assert.match(JSON.parse(send.init.body).message.text, /25 тюльпанов/);
+  // второе сообщение — токен из кэша, без нового запроса
+  await handle(at("/avito", { payload: { ...body.payload, value: { ...body.payload.value, content: { text: "1" } } } }), env, f);
+  assert.equal(calls.filter((c) => c.url === "https://api.avito.ru/token").length, 1);
+});

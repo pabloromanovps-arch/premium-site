@@ -1,4 +1,5 @@
-// Чат-бот «Стебля». Один и тот же для сайта, Telegram, ВКонтакте, MAX и Алисы.
+// Чат-бот магазина. Один и тот же для сайта, Авито, Telegram, ВКонтакте, MAX и Алисы.
+// Название, контакты, тон общения, частые вопросы и формат номеров берутся из профиля бизнеса (js/profile.js).
 // reply() не трогает DOM, сеть и хранилище: всё внешнее приходит через ctx.
 // ctx: { now(): Date, create(input): record, lookup(id): record|null }
 //
@@ -6,14 +7,17 @@
 // и спрашивает только то, чего не хватает для заказа.
 (function (root, factory) {
   const dep = (name, file) => (typeof require === "function" ? require(file) : root.Flora[name]);
-  const mod = factory(dep("catalog", "./catalog.js"), dep("validate", "./validate.js"), dep("cart", "./cart.js"), dep("store", "./store.js"));
+  const mod = factory(dep("catalog", "./catalog.js"), dep("validate", "./validate.js"), dep("cart", "./cart.js"), dep("store", "./store.js"), dep("profile", "./profile.js"));
   if (typeof module === "object" && module.exports) module.exports = mod;
   else (root.Flora = root.Flora || {}).bot = mod;
-})(typeof self !== "undefined" ? self : this, function (catalog, validate, cart, store) {
-  const PICKUP_ADDRESS = "Покровка, 12";
-  const PICKUP_HOURS = "ежедневно с 9:00 до 21:00";
+})(typeof self !== "undefined" ? self : this, function (catalog, validate, cart, store, profile) {
   const rub = cart.formatRub;
+  // Профиль бизнеса на время текущего ответа: меняется на странице «Настройка агента».
+  let P = profile.get();
+  const hoursText = () => `ежедневно с ${P.business.hours.from}:00 до ${P.business.hours.to}:00`;
+  const exampleId = () => profile.formatId("order", 1001, "2026", P);
 
+  // Тексты написаны для цветочного магазина; слово «флорист» заменяется на сотрудника из профиля.
   const MENU = [
     { label: "Подобрать букет", value: "order" },
     { label: "Доставка и оплата", value: "delivery" },
@@ -22,11 +26,34 @@
   ];
   const TO_MENU = { label: "В начало", value: "menu" };
 
-  const DELIVERY_TEXT =
-    `Возим по Москве в пределах МКАД, в двухчасовые интервалы с 9 до 21. Доставка ${rub(cart.DELIVERY_FEE)}, ` +
+  const deliveryText = () =>
+    `Возим по ${P.business.city === "Москва" ? "Москве в пределах МКАД" : P.business.city}, в двухчасовые интервалы с ${P.business.hours.from} до ${P.business.hours.to}. Доставка ${rub(cart.DELIVERY_FEE)}, ` +
     `а для заказов от ${rub(cart.FREE_DELIVERY_FROM)} — бесплатно. На сегодня успеваем, если до начала интервала больше 2 часов.\n` +
-    `Забрать самому можно на ${PICKUP_ADDRESS}, ${PICKUP_HOURS}.\n` +
+    `Забрать самому можно по адресу ${P.business.address}, ${hoursText()}.\n` +
     "Оплата картой по ссылке: флорист пришлёт её после того, как подтвердит заказ.";
+  const isOpen = (now) => { const h = validate.moscowNow(now).hour; return h >= P.business.hours.from && h < P.business.hours.to; };
+
+  // Последний штрих: сотрудник, тон «вы/ты», фирменный эмодзи и прощание из профиля.
+  function staffify(t) {
+    const b = P.business;
+    const cap = b.staff.charAt(0).toUpperCase() + b.staff.slice(1);
+    return String(t).replace(/флориста/g, b.staffGen).replace(/Флорист/g, cap).replace(/флорист/g, b.staff);
+  }
+  function polish(r) {
+    const tone = P.tone.address;
+    const messages = r.messages.map((msg) => {
+      let text = profile.voice(staffify(msg.text), tone);
+      if (msg.warm) {
+        if (P.tone.signoff) text += (/[.!?]$/.test(text) ? " " : ". ") + P.tone.signoff;
+        if (P.tone.emoji) text += " " + P.tone.emoji;
+      }
+      const out = { ...msg, text };
+      delete out.warm;
+      if (msg.options) out.options = msg.options.map((o) => ({ ...o, label: profile.voice(staffify(o.label), tone) }));
+      return out;
+    });
+    return { state: r.state, messages };
+  }
 
   const FLOWERS = ["роз", "тюльпан", "пион", "ромаш", "сирен", "гортенз", "ранункул", "калл", "гвоздик", "василь", "эвкалипт", "дельфиниум"];
   const OCCASIONS = [
@@ -67,7 +94,8 @@
     const u = {};
     if (!t.trim()) return u;
 
-    const id = t.match(/(?:ст|зв)\s*-?\s*(\d{4,})/);
+    const prefixes = [P.orderId.order, P.orderId.callback].map((x) => String(x).toLowerCase().replace(/ё/g, "е").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+    const id = t.match(new RegExp(`(?:${prefixes})\\s*-?\\s*(?:\\d{4}\\s*-\\s*)?(\\d{3,})`));
     if (id) u.orderId = id[1];
 
     const ph = String(text).match(/(?:\+?[78][\s\-()]*)?(?:\d[\s\-()]*){9}\d/);
@@ -178,7 +206,7 @@
   function summary(d) {
     const p = catalog.byId(d.product);
     const t = cart.totals([{ ...p, qty: 1 }], d.fulfillment);
-    const where = d.fulfillment === "pickup" ? `Самовывоз: ${PICKUP_ADDRESS}` : `Доставка: ${d.address}`;
+    const where = d.fulfillment === "pickup" ? `Самовывоз: ${P.business.address}` : `Доставка: ${d.address}`;
     return [
       "Проверьте, всё ли верно:",
       `${p.name} — ${rub(p.price)}`,
@@ -292,11 +320,24 @@
     return { state: { ...state, step: "menu", draft: {} }, messages: [m(text, MENU)] };
   }
 
-  function start() {
-    return {
+  function start(opts = {}) {
+    P = opts.profile || profile.get();
+    const b = P.business;
+    return polish({
       state: { step: "menu", draft: {}, turn: 0, seen: {} },
-      messages: [m("Здравствуйте! Это «Стебель», цветочная мастерская на Покровке. Помогу выбрать букет, оформить доставку или узнать, где ваш заказ.\nМожно просто написать, что нужно — например: «пионы маме на завтра до 5000».", MENU)],
-    };
+      messages: [m(`${P.tone.greeting} Это «${b.name}», ${b.kind}. Помогу выбрать букет, оформить доставку или узнать, где ваш заказ.\nМожно просто написать, что нужно — например: «пионы маме на завтра до 5000».`, MENU, { warm: true })],
+    });
+  }
+
+  // Начало разговора по объявлению (Авито): товар уже известен, сразу к делу.
+  function startWithProduct(productId, ctx, opts = {}) {
+    P = opts.profile || profile.get();
+    const p = catalog.byId(productId);
+    if (!p) return start(opts);
+    const now = ctx && ctx.now ? ctx.now() : new Date();
+    const base = { step: "menu", draft: {}, turn: 0, seen: {} };
+    const r = ask(base, { product: p.id }, now, [`${P.tone.greeting} Это «${P.business.name}». Вы пишете по объявлению «${p.name}» — ${rub(p.price)}: ${p.composition.toLowerCase()}.`]);
+    return polish(r);
   }
 
   function statusReply(state, rec) {
@@ -305,7 +346,7 @@
       confirmed: "Скоро начнём собирать.",
       assembling: "Флорист как раз собирает букет.",
       delivering: "Курьер уже в пути.",
-      ready: `Можно забирать: ${PICKUP_ADDRESS}, ${PICKUP_HOURS}.`,
+      ready: `Можно забирать: ${P.business.address}, ${hoursText()}.`,
       done: "Спасибо, что выбрали нас!",
       cancelled: "Если это ошибка — нажмите «Позвать флориста», разберёмся.",
     }[rec.status] || "";
@@ -320,19 +361,19 @@
         return ask(state, d, now, notes);
       }
       case "delivery":
-        return menu(state, DELIVERY_TEXT);
+        return menu(state, deliveryText());
       case "status":
         if (u.orderId) {
           const rec = state.ctx.lookup(u.orderId);
           if (rec && rec.kind === "order") return statusReply(state, rec);
         }
-        return { state: { ...state, step: "status", draft: {} }, messages: [m("Напишите номер заказа — он в SMS и выглядит как СТ-1001.", [TO_MENU])] };
+        return { state: { ...state, step: "status", draft: {} }, messages: [m(`Напишите номер заказа — он в SMS и выглядит как ${exampleId()}.`, [TO_MENU])] };
       case "callback":
         return { state: { ...state, step: "cb_name", draft: {} }, messages: [m("Флорист перезвонит и всё подскажет. Как к вам обращаться?", [TO_MENU])] };
       case "greet":
-        return menu(state, "Здравствуйте! Чем помочь? Можно выбрать кнопкой или написать своими словами.");
+        return { state: { ...state, step: "menu", draft: {} }, messages: [m(`${P.tone.greeting} Чем помочь? Можно выбрать кнопкой или написать своими словами.`, MENU)] };
       case "thanks":
-        return menu(state, "Пожалуйста! Если что-то ещё понадобится — пишите.");
+        return { state: { ...state, step: "menu", draft: {} }, messages: [m("Пожалуйста! Если что-то ещё понадобится — пишите.", MENU, { warm: true })] };
       default:
         return menu(state, pick(state, "v6", [
           "Не совсем понял. Я умею подбирать букеты, рассказывать о доставке и искать заказы. Что из этого нужно?",
@@ -376,7 +417,7 @@
     // свободный текст: сначала общее понимание, потом поле, о котором спрашивали
     if (u.intent === "delivery" && step !== "address") {
       const r = ask(state, d, now);
-      return { state: r.state, messages: [m(DELIVERY_TEXT)].concat(r.messages) };
+      return { state: r.state, messages: [m(deliveryText())].concat(r.messages) };
     }
     const r = absorb(d, u, now);
     d = r.d;
@@ -438,10 +479,27 @@
       return ask(state, nd, now, [Object.values(check.errors)[0]]);
     }
     const rec = state.ctx.create({ ...check.value, kind: "order", source: state.ctx.source || "chat" });
-    return menu(state, `Готово! Заказ ${rec.id} принят. Флорист позвонит в течение 15 минут, подтвердит детали и пришлёт ссылку на оплату.\nЧтобы узнать статус, напишите здесь номер заказа.`);
+    const when = isOpen(now)
+      ? "Флорист позвонит в течение 15 минут, подтвердит детали и пришлёт ссылку на оплату."
+      : `Сейчас мы закрыты, но заказ уже у нас. В ${P.business.hours.from}:00 флорист первым делом позвонит, подтвердит детали и пришлёт ссылку на оплату.`;
+    return { state: { ...state, step: "menu", draft: {} }, messages: [m(`Готово! Заказ ${rec.id} принят. ${when}\nЧтобы узнать статус, напишите здесь номер заказа.`, MENU, { warm: true })] };
   }
 
   function reply(state, input, ctx) {
+    P = (ctx && ctx.profile) || profile.get();
+    return polish(replyRaw(state, input, ctx));
+  }
+
+  // Ответ из базы знаний и возврат к тому, на чём остановились.
+  function faqReply(state, f, now) {
+    if (state.step === "menu") {
+      return { state: { ...state, step: "menu", draft: {} }, messages: [m(`${f.a} Чем ещё помочь?`, MENU)] };
+    }
+    const r = ask(state, state.draft, now);
+    return { state: r.state, messages: [m(f.a)].concat(r.messages) };
+  }
+
+  function replyRaw(state, input, ctx) {
     const text = String((input && input.text) || "").trim();
     const value = input && input.value;
     const now = ctx.now ? ctx.now() : new Date();
@@ -456,6 +514,13 @@
     if (["order", "delivery", "status", "callback"].includes(value)) return strip(enter(value, withCtx, now));
 
     const step = base.step;
+    // Частые вопросы из базы знаний: «ещё актуально?», «можно картой?», «доставляете за МКАД?»
+    if (!value && !["address", "name", "phone", "cb_name", "cb_phone", "status"].includes(step)) {
+      const f = profile.answerFaq(text, P);
+      const u = understand(text, now);
+      const strong = ["order", "status", "callback", "delivery"].includes(u.intent) && !/\?/.test(text);
+      if (f && !strong && (/\?/.test(text) || step === "menu")) return strip(faqReply(withCtx, f, now));
+    }
     if (step === "menu") {
       const u = understand(text, now);
       return strip(enter(u.intent, withCtx, now, u));
@@ -466,7 +531,7 @@
       const id = u.orderId || (text.match(/\d{4,}/) || [])[0];
       const rec = id ? ctx.lookup(id) : null;
       if (!rec || rec.kind !== "order") {
-        return strip({ state: withCtx, messages: [m(`Заказ «${text || "—"}» не нашёлся. Проверьте номер в SMS: он выглядит как СТ-1001.`, [TO_MENU, { label: "Позвать флориста", value: "callback" }])] });
+        return strip({ state: withCtx, messages: [m(`Заказ «${text || "—"}» не нашёлся. Проверьте номер в SMS: он выглядит как ${exampleId()}.`, [TO_MENU, { label: "Позвать флориста", value: "callback" }])] });
       }
       return strip(statusReply(withCtx, rec));
     }
@@ -499,8 +564,10 @@
 
   function callbackDone(state, d) {
     const rec = state.ctx.create({ kind: "callback", source: state.ctx.source || "chat", name: d.name, phone: d.phone, topic: "Консультация флориста" });
-    return menu(state, `Спасибо, ${d.name}! Заявка ${rec.id} у флориста — он перезвонит на ${validate.formatPhone(d.phone)} в течение 15 минут (мы работаем с 9 до 21).`);
+    const now = state.ctx.now ? state.ctx.now() : new Date();
+    const when = isOpen(now) ? "в течение 15 минут" : `утром, как только откроемся в ${P.business.hours.from}:00`;
+    return { state: { ...state, step: "menu", draft: {} }, messages: [m(`Спасибо, ${d.name}! Заявка ${rec.id} у флориста — он перезвонит на ${validate.formatPhone(d.phone)} ${when}.`, MENU, { warm: true })] };
   }
 
-  return { MENU, DELIVERY_TEXT, PICKUP_ADDRESS, start, reply, understand, candidates };
+  return { MENU, deliveryText: () => deliveryText(), start, startWithProduct, reply, understand, candidates };
 });

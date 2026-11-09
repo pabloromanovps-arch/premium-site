@@ -5,7 +5,7 @@
 (function () {
   const { sync } = Flora;
   const KEYS = { crm: "stebel.crm.v1", outbox: "stebel.outbox.v1", cleared: "stebel.outbox.cleared" };
-  const PAGES = { start: "start.html", shop: "shop.html", channels: "channels.html", crm: "crm.html", lab: "lab.html", pay: "pay.html" };
+  const PAGES = { start: "start.html", agent: "agent.html", autopilot: "autopilot.html", shop: "shop.html", channels: "channels.html", crm: "crm.html", setup: "setup.html", lab: "lab.html", pay: "pay.html" };
   const DOC_LIMIT = 240000;
   const $ = (id) => document.getElementById(id);
   const frame = $("frame");
@@ -146,4 +146,12 @@
     }, fail);
   }
   connect();
+
+  // Claude для страницы «Настройка агента»: доступен только на claude.ai, через оболочку.
+  window.STEBEL_AI = async (prompt) => {
+    if (!window.claude || typeof window.claude.use !== "function") throw { code: "unavailable" };
+    const sample = await window.claude.use("sample");
+    if (!sample) throw { code: "unavailable" };
+    return sample.json(prompt, { modelTier: "default", cache: false });
+  };
 })();

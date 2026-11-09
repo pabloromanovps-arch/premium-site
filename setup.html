@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
+  <title>Настройка агента — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/setup.css">
+</head>
+<body>
+  <header class="tool-top">
+    <p class="logo">Стебель <span>стенд</span></p>
+    <nav aria-label="Разделы стенда">
+      <a href="shop.html">Магазин</a>
+      <a href="channels.html">Мессенджеры</a>
+      <a href="crm.html">CRM</a>
+      <a href="setup.html" aria-current="page">Настройка агента</a>
+    </nav>
+  </header>
+
+  <main class="tool">
+    <h1>Настройка агента</h1>
+    <p class="intro">Агент учится у ваших сотрудников. Вставьте выгрузку переписок с клиентами, шаблоны сообщений и частые вопросы — агент соберёт базу знаний: как вы обращаетесь к клиентам, как здороваетесь и прощаетесь, как выглядят номера заказов, что отвечаете на типичные вопросы. Всё можно поправить руками и сразу проверить, как агент будет отвечать.</p>
+
+    <section class="panel" aria-labelledby="t-src">
+      <h2 id="t-src">1. Откуда агент учится</h2>
+      <p class="sub">Формат переписок — строки «Имя: текст». Разговоры разделяйте пустой строкой или «---». Подойдёт выгрузка из Авито, Telegram, WhatsApp или CRM.</p>
+      <div class="row samples">
+        <span>Подставить пример:</span>
+        <button class="btn btn-quiet btn-small" type="button" data-sample="stebel">Переписки «Стебля»</button>
+        <button class="btn btn-quiet btn-small" type="button" data-sample="flora">Другая лавка: «Флора», на «ты»</button>
+        <button class="btn btn-quiet btn-small" type="button" id="clear-src">Очистить</button>
+      </div>
+      <div class="src-grid">
+        <label class="wide">Переписки сотрудников с клиентами
+          <textarea id="src-chats" rows="12" placeholder="Клиент: Здравствуйте, ещё актуально?&#10;Менеджер: Добрый день! Да, в наличии…"></textarea>
+        </label>
+        <label>Как в переписках подписаны сотрудники
+          <input id="src-staff" placeholder="Менеджер, Флорист">
+        </label>
+        <label>Контакты и условия
+          <textarea id="src-contacts" rows="3" placeholder="Название, адрес, часы работы, телефон"></textarea>
+        </label>
+        <label>Шаблоны сообщений клиентам
+          <textarea id="src-templates" rows="7" placeholder="Заказ принят: …&#10;&#10;Подтверждение: …"></textarea>
+        </label>
+        <label>Частые вопросы и ответы
+          <textarea id="src-faq" rows="7" placeholder="Можно ли вернуть букет?&#10;Да, в течение суток…"></textarea>
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn" type="button" id="analyze">Собрать базу знаний</button>
+        <button class="btn btn-ghost" type="button" id="ai" hidden>Уточнить с помощью Claude</button>
+        <span id="ai-status" role="status"></span>
+      </div>
+    </section>
+
+    <div id="result" hidden>
+      <h2 class="step">2. Что агент понял</h2>
+      <p class="sub" id="r-summary"></p>
+      <div class="cards">
+        <section class="panel" aria-labelledby="t-tone">
+          <h3 id="t-tone">Тон общения</h3>
+          <div class="fields">
+            <label>Обращение <select id="f-address"><option value="вы">на «вы»</option><option value="ты">на «ты»</option></select></label>
+            <label>Фирменный эмодзи <input id="f-emoji" maxlength="4" placeholder="нет"></label>
+            <label>Приветствие <input id="f-greeting"></label>
+            <label>Прощание <input id="f-signoff" placeholder="нет"></label>
+          </div>
+          <p class="why" id="why-tone"></p>
+          <p class="chips" id="phrases"></p>
+        </section>
+
+        <section class="panel" aria-labelledby="t-biz">
+          <h3 id="t-biz">Магазин и контакты</h3>
+          <div class="fields">
+            <label>Название <input id="f-name"></label>
+            <label>Адрес <input id="f-addr"></label>
+            <label>Телефон <input id="f-phone"></label>
+            <label class="pair">Работаем <span>с <input id="f-from" type="number" min="0" max="23"> до <input id="f-to" type="number" min="1" max="24"></span></label>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="t-ids">
+          <h3 id="t-ids">Номера заказов</h3>
+          <div class="fields">
+            <label>Буквы перед номером <input id="f-prefix" maxlength="4"></label>
+            <label class="check"><input type="checkbox" id="f-year"> Год в номере</label>
+          </div>
+          <p class="why" id="why-ids"></p>
+        </section>
+
+        <section class="panel" aria-labelledby="t-fill">
+          <h3 id="t-fill">Чего агент не будет повторять</h3>
+          <p class="sub">Слова-паразиты и канцелярит, найденные в ответах сотрудников. Смысл ответов агент берёт, а манеру — нет.</p>
+          <ul class="fillers" id="fillers"></ul>
+        </section>
+
+        <section class="panel wide" aria-labelledby="t-tpl">
+          <h3 id="t-tpl">Шаблоны сообщений клиентам</h3>
+          <p class="sub">Переменные в фигурных скобках агент подставит сам: {id} — номер заказа, {sum} — сумма, {slot} — время, {link} — ссылка на оплату, {shop} — название.</p>
+          <div class="templates" id="templates"></div>
+        </section>
+
+        <section class="panel wide" aria-labelledby="t-faq">
+          <h3 id="t-faq">Частые вопросы</h3>
+          <p class="sub">Агент отвечает на них сам, в любом канале, а потом возвращается к оформлению заказа.</p>
+          <div class="faq" id="faq"></div>
+        </section>
+      </div>
+
+      <h2 class="step">3. Проверка</h2>
+      <div class="cards">
+        <section class="panel" aria-labelledby="t-q">
+          <h3 id="t-q">Качество текстов</h3>
+          <ul class="quality" id="quality"></ul>
+        </section>
+        <section class="panel try" aria-labelledby="t-try">
+          <h3 id="t-try">Как агент ответит</h3>
+          <p class="sub">Это разговор с ботом уже с новыми настройками. В CRM заказы отсюда не попадают.</p>
+          <ol class="try-log" id="try-log" aria-live="polite"></ol>
+          <p class="chips" id="try-chips"></p>
+          <form class="try-form" id="try-form">
+            <label class="sr-only" for="try-text">Сообщение агенту</label>
+            <input id="try-text" autocomplete="off" placeholder="Напишите как клиент">
+            <button class="btn btn-small" type="submit">Отправить</button>
+          </form>
+        </section>
+      </div>
+
+      <h2 class="step">4. Готово</h2>
+      <section class="panel">
+        <div class="row">
+          <button class="btn" type="button" id="apply">Применить на стенде</button>
+          <button class="btn btn-quiet" type="button" id="download">Скачать профиль</button>
+          <button class="btn btn-quiet" type="button" id="restore">Вернуть «Стебель»</button>
+          <span id="apply-status" role="status"></span>
+        </div>
+        <p class="sub" style="margin-top:10px">После применения бот во всех каналах, SMS и номера заказов в CRM работают по этим настройкам. Профиль в файле — то, что переносится в настоящий бизнес при внедрении.</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/kb.js"></script>
+  <script src="js/kb-samples.js"></script>
+  <script src="js/setup.js"></script>
+</body>
+</html>

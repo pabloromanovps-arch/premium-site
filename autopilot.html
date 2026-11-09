@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
+  <title>Автопилот — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/autopilot.css">
+</head>
+<body>
+  <header class="tool-top">
+    <p class="logo">Стебель <span>стенд</span></p>
+    <nav aria-label="Разделы стенда">
+      <a href="shop.html">Магазин</a>
+      <a href="channels.html">Мессенджеры</a>
+      <a href="crm.html">CRM</a>
+      <a href="autopilot.html" aria-current="page">Автопилот</a>
+    </nav>
+  </header>
+
+  <main class="tool">
+    <h1>Автопилот</h1>
+    <p class="intro">Магазин работает сам. Виртуальные покупатели пишут в Авито, Telegram, ВКонтакте, MAX, Алису и на сайт; бот отвечает, менеджеры и курьеры ведут заказы, а ИИ-агент подхватывает всё, что люди упустили. Выберите ситуацию, нажмите «Запустить» и наблюдайте.</p>
+
+    <section class="panel controls" aria-label="Управление симуляцией">
+      <div class="modes" id="modes" role="radiogroup" aria-label="Ситуация"></div>
+      <div class="row run-row">
+        <div class="speed" role="group" aria-label="Скорость">
+          <span>Скорость</span>
+          <button type="button" data-speed="60" aria-pressed="false">1 мин в секунду</button>
+          <button type="button" data-speed="600" aria-pressed="true">10 мин в секунду</button>
+          <button type="button" data-speed="3000" aria-pressed="false">50 мин в секунду</button>
+        </div>
+        <label class="check"><input type="checkbox" id="fresh" checked> Начать с пустой CRM</label>
+        <div class="buttons">
+          <button class="btn" type="button" id="start">Запустить</button>
+          <button class="btn btn-ghost" type="button" id="pause" disabled>Пауза</button>
+          <button class="btn btn-quiet" type="button" id="reset">Сбросить</button>
+        </div>
+      </div>
+      <p class="clock" id="clock" role="status">Симуляция не запущена</p>
+    </section>
+
+    <section class="kpis" aria-label="Итоги">
+      <div><p class="num" id="k-clients">0</p><p>покупателей написали</p></div>
+      <div><p class="num" id="k-orders">0</p><p id="k-orders-l">заказов оформлено</p></div>
+      <div><p class="num" id="k-revenue">0 ₽</p><p>оплачено</p></div>
+      <div class="hl"><p class="num" id="k-saved">0</p><p>заказов спас ИИ-агент: подтвердил сам, вернул в разговор, дождался оплаты</p></div>
+      <div><p class="num" id="k-night">0</p><p>заявок пришло, когда магазин был закрыт</p></div>
+      <div><p class="num">&lt; 1 с</p><p>отвечает бот — в любое время, в любом канале</p></div>
+    </section>
+
+    <div class="live">
+      <section class="panel" aria-labelledby="t-chats">
+        <h2 id="t-chats">Живые разговоры</h2>
+        <div class="chats" id="chats"><p class="empty-log">Здесь появятся переписки покупателей с ботом.</p></div>
+      </section>
+      <section class="panel" aria-labelledby="t-funnel">
+        <h2 id="t-funnel">Воронка</h2>
+        <ul class="funnel" id="funnel"></ul>
+        <p class="sub" style="margin-top:12px">Заказы попадают в настоящую CRM стенда. <a href="crm.html" target="_blank" rel="noopener">Откройте CRM в соседней вкладке</a> — карточки будут двигаться сами.</p>
+        <h2 style="margin-top:18px">Что сделал агент</h2>
+        <ul class="agent-sum" id="agent-sum"></ul>
+      </section>
+      <section class="panel" aria-labelledby="t-feed">
+        <h2 id="t-feed">Лента событий</h2>
+        <ol class="feed-list" id="feed"></ol>
+      </section>
+    </div>
+    <p class="summary-banner" id="summary" hidden role="status"></p>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/messages.js"></script>
+  <script src="js/sim.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/channels.js"></script>
+  <script src="js/agent.js"></script>
+  <script src="js/autopilot.js"></script>
+  <script src="js/autopilot-ui.js"></script>
+</body>
+</html>

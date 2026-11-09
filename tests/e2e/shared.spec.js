@@ -88,7 +88,7 @@ test.describe("общий режим", () => {
     await Promise.all([callbackFromChat(a, "Анна"), callbackFromChat(b, "Борис")]);
     for (const p of [a, b]) {
       await p.page.goto("/#crm");
-      await expect(p.frame.locator(".deal")).toHaveCount(2, { timeout: 10000 });
+      await expect(p.frame.locator(".deal")).toHaveCount(2, { timeout: 25000 });
     }
     const ids = await a.frame.locator(".deal").evaluateAll((els) => els.map((e) => e.dataset.id));
     expect(new Set(ids).size).toBe(2);

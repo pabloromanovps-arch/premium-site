@@ -98,6 +98,9 @@
     }).filter((x) => x != null).sort((a, b) => a - b);
     $("a-speed").textContent = waits.length ? `${Math.max(1, Math.round(waits[Math.floor(waits.length / 2)]))} мин` : "—";
     $("a-paid").textContent = cart.formatRub(all.filter((r) => r.kind === "order" && r.payment === "paid").reduce((s, r) => s + r.totals.total, 0));
+    const ag = Flora.agent.summary(all);
+    $("a-agent").textContent = ag.touched;
+    $("a-rescued").textContent = ag.autoConfirmed + ag.paidAfterReminder;
     const counts = Object.keys(S.SOURCE).filter((k) => k !== "crm").map((k) => [k, all.filter((r) => r.source === k).length]).sort((a, b) => b[1] - a[1]);
     const max = Math.max(1, ...counts.map((c) => c[1]));
     $("a-bars").innerHTML = counts.map(([k, n]) => `<li title="${S.SOURCE[k]}: ${n} заявок"><span>${S.SOURCE[k]}</span><span class="track"><span class="fill" style="width:${(n / max) * 100}%"></span></span><span class="val">${n}</span></li>`).join("");
@@ -194,7 +197,7 @@
     $("d-history").innerHTML = r.history.slice().reverse().map((h) => {
       const body = h.type === "status" ? `Этап: ${S.STATUS[h.status]}`
         : h.type === "sync" || h.type === "payment" ? `<span class="${h.ok ? "" : "bad"}">${esc(h.text)}</span>` : esc(h.text);
-      return `<li>${body}<br><time>${when(h.at)}</time> <span class="by">${esc(h.by)}</span></li>`;
+      return `<li${h.type === "agent" ? ' class="agent"' : ""}>${body}<br><time>${when(h.at)}</time> <span class="by">${esc(h.by)}</span></li>`;
     }).join("");
   }
 
@@ -293,6 +296,20 @@
   // заказы из магазина и мессенджеров в соседних вкладках появляются сразу
   addEventListener("storage", (e) => { if (e.key === store.storageKey || e.key === null) render(); });
   setInterval(render, 60000);
+
+  // ИИ-агент: каждые 15 секунд проверяет заявки и подхватывает то, что упустили люди.
+  function agentTick() {
+    const sim = Flora.simInstance;
+    const notify = {
+      manager: (text, r) => sim && sim.outbox.push({ channel: "telegram", ref: r.id, text }),
+      client: (text, r) => sim && sim.outbox.push({ channel: "sms", ref: r.id, to: r.customer.phone, text }),
+    };
+    try {
+      if (Flora.agent.tick({ store, now: now(), notify }).length) render();
+    } catch (e) { /* агент не должен мешать работе CRM */ }
+  }
+  agentTick();
+  setInterval(agentTick, 15000);
 
   render();
 })();

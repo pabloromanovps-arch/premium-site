@@ -5,17 +5,19 @@
 // MAX Bot API, Яндекс Диалоги). Перед запуском в бой сверяйте с актуальной документацией.
 (function (root, factory) {
   const dep = (name, file) => (typeof require === "function" ? require(file) : root.Flora[name]);
-  const mod = factory(dep("bot", "./bot.js"), dep("cart", "./cart.js"));
+  const mod = factory(dep("bot", "./bot.js"), dep("cart", "./cart.js"), dep("profile", "./profile.js"));
   if (typeof module === "object" && module.exports) module.exports = mod;
   else (root.Flora = root.Flora || {}).channels = mod;
-})(typeof self !== "undefined" ? self : this, function (bot, cart) {
+})(typeof self !== "undefined" ? self : this, function (bot, cart, profile) {
   const LIMITS = {
+    // Авито: точный предел длины в документации не нашёл — держимся консервативно и шлём одно сообщение на ответ.
+    avito: { text: 1000, options: 9 },
     telegram: { text: 4096, callbackBytes: 64, buttonText: 64, rows: 100 },
     vk: { text: 4096, buttonText: 40, payloadChars: 255, rows: 6, buttons: 10 },
     max: { text: 4000, buttonText: 64, payloadBytes: 1024, rows: 30, buttons: 210 },
     alice: { text: 1024, tts: 1024, buttonText: 64, buttons: 8 },
   };
-  const NAMES = { site: "Чат на сайте", telegram: "Telegram", vk: "ВКонтакте", max: "MAX", alice: "Алиса" };
+  const NAMES = { site: "Чат на сайте", avito: "Авито", telegram: "Telegram", vk: "ВКонтакте", max: "MAX", alice: "Алиса" };
 
   const bytes = (s) => (typeof TextEncoder !== "undefined" ? new TextEncoder().encode(s).length : Buffer.byteLength(s));
   const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
@@ -175,7 +177,35 @@
     render: (chatId, messages) => [{ method: "show", body: { messages } }],
   };
 
-  const ADAPTERS = { site, telegram, vk, max, alice };
+  // ---------- Авито (Мессенджер API, вебхук v3) ----------
+  // Кнопок в чатах Авито нет: варианты нумеруются, клиент отвечает цифрой.
+  const avito = {
+    parse(u) {
+      const v = u && u.payload && u.payload.value;
+      if (!v || u.payload.type !== "message") return { kind: "ignore" };
+      if (String(v.author_id) === String(v.user_id)) return { kind: "ignore" }; // наше собственное сообщение
+      const base = { kind: "message", chatId: String(v.chat_id), accountId: String(v.user_id), itemId: v.item_id != null ? String(v.item_id) : "" };
+      if (v.type !== "text") return { ...base, text: "", unsupported: v.type || "unknown" };
+      return { ...base, text: String((v.content && v.content.text) || "").trim() };
+    },
+    render(chatId, messages, inb) {
+      const { index, options } = lastOptions(messages);
+      const parts = messages.map((msg, i) => {
+        let t = withCards(msg);
+        if (i === index && options.length) t += "\n\nОтветьте цифрой:\n" + options.slice(0, LIMITS.avito.options).map((o, n) => `${n + 1} — ${o.label}`).join("\n");
+        return t;
+      });
+      // Одно сообщение на ответ: несколько подряд в Авито выглядят как спам.
+      return [{
+        method: "POST",
+        path: `/messenger/v1/accounts/${(inb && inb.accountId) || "{account}"}/chats/${chatId}/messages`,
+        body: { message: { text: clip(parts.join("\n\n"), LIMITS.avito.text) }, type: "text" },
+      }];
+    },
+  };
+
+  const ADAPTERS = { site, avito, telegram, vk, max, alice };
+  const GREETING_ONLY = /^(здравствуйте|добрый\s+\S+|доброе\s+\S+|привет|здрасте|алло)[!.,\s]*$/i;
 
   // Полный цикл: событие платформы → бот → вызовы API.
   // deps: { sessions: { get(key), set(key, state) } (могут быть async), ctx: { now, create, lookup } }
@@ -189,8 +219,31 @@
     const saved = channel === "alice" ? inb.state : await deps.sessions.get(key);
     const ctx = { ...deps.ctx, source: channel === "site" ? "chat" : channel };
     let result;
-    if (inb.start || (!saved && !inb.text && !inb.value)) result = bot.start();
+    if (channel === "avito") {
+      // Ответ цифрой — выбор из последнего списка вариантов.
+      const opts = (saved && saved._opts) || [];
+      const n = /^\d{1,2}$/.test(inb.text) ? Number(inb.text) : 0;
+      if (n >= 1 && n <= opts.length) { inb.value = opts[n - 1].value; inb.text = opts[n - 1].label; }
+    }
+    if (inb.unsupported) {
+      result = { state: saved || bot.start().state, messages: [{ text: "Я пока читаю только текст. Напишите, пожалуйста, словами — сразу помогу.", options: (saved && saved._opts) || undefined }] };
+    } else if (channel === "avito" && !saved) {
+      // Первое сообщение по объявлению: товар известен заранее.
+      const prof = (deps.ctx && deps.ctx.profile) || profile.get();
+      const items = deps.avitoItems || (prof.avito && prof.avito.items) || {};
+      const pid = items[inb.itemId] && (items[inb.itemId].product || items[inb.itemId]);
+      const first = pid ? bot.startWithProduct(pid, ctx) : bot.start();
+      if (!inb.text || GREETING_ONLY.test(inb.text)) result = first;
+      else {
+        const r = bot.reply(first.state, { text: inb.text }, ctx);
+        result = { state: r.state, messages: (pid ? [first.messages[0]] : []).concat(r.messages) };
+      }
+    } else if (inb.start || (!saved && !inb.text && !inb.value)) result = bot.start();
     else result = bot.reply(saved || bot.start().state, { text: inb.text, value: inb.value }, ctx);
+    if (channel === "avito") {
+      const last = result.messages.filter((x) => x.options).pop();
+      result.state = { ...result.state, _opts: last ? last.options.slice(0, LIMITS.avito.options).map((o) => ({ label: o.label, value: o.value })) : [] };
+    }
 
     const calls = a.render(inb.chatId, result.messages, inb);
     if (channel === "alice") calls[0].body.session_state = { bot: result.state };
@@ -203,6 +256,16 @@
     const L = LIMITS[channel];
     const errs = [];
     if (!L) return errs;
+    if (channel === "avito") {
+      for (const c of calls) {
+        const t = c.body && c.body.message && c.body.message.text;
+        if (!t || t.length > L.text) errs.push(`Авито: длина текста ${t ? t.length : 0}`);
+        if (c.body.type !== "text") errs.push("Авито: тип сообщения не text");
+        if (!/^\/messenger\/v1\/accounts\/[^/]+\/chats\/[^/]+\/messages$/.test(c.path)) errs.push("Авито: неверный адрес " + c.path);
+      }
+      if (calls.length !== 1) errs.push(`Авито: ${calls.length} сообщений вместо одного`);
+      return errs;
+    }
     for (const c of calls) {
       const b = c.body;
       if (channel === "telegram" && c.method === "sendMessage") {

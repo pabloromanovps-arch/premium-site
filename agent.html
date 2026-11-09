@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
+  <title>ИИ-агент продаж — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/agent.css">
+</head>
+<body>
+  <header class="tool-top">
+    <p class="logo">Стебель <span>стенд</span></p>
+    <nav aria-label="Разделы стенда">
+      <a href="agent.html" aria-current="page">Об агенте</a>
+      <a href="autopilot.html">Автопилот</a>
+      <a href="crm.html">CRM</a>
+      <a href="setup.html">Настройка агента</a>
+    </nav>
+  </header>
+
+  <main class="tool agent-page">
+    <section class="lead-block">
+      <h1>Заявки не ждут, пока менеджер освободится</h1>
+      <p class="lead">ИИ-агент отвечает покупателям за секунды — в Авито, Telegram, MAX, ВКонтакте, на сайте и в Алисе. Оформляет заказ, отправляет ссылку на оплату, следит, чтобы ни одна заявка не остыла, и передаёт человеку то, где нужен человек. Говорит голосом ваших сотрудников — вежливо, коротко, без «ваш запрос очень важен для нас».</p>
+      <div class="row">
+        <a class="btn" href="autopilot.html">Посмотреть, как магазин работает сам</a>
+        <a class="btn btn-ghost" href="setup.html">Настроить под свой бизнес</a>
+      </div>
+      <p class="note">«Стебель» — тестовый стенд на примере цветочной мастерской. Тот же агент настраивается под любой бизнес, где заявки приходят в чаты.</p>
+    </section>
+
+    <section class="section-block" aria-labelledby="t-cases">
+      <h2 id="t-cases">Что меняется в обычный день</h2>
+      <table class="cases">
+        <thead><tr><th scope="col">Ситуация</th><th scope="col">Как бывает сейчас</th><th scope="col">Как с агентом</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">23:40, покупатель пишет на Авито «Ещё актуально?»</th><td>Ответ утром. К этому времени человек купил у соседнего продавца.</td><td>Ответ через секунду: да, в наличии, на какой день? Заказ оформлен ночью, утром менеджеру остаётся подтвердить.</td></tr>
+          <tr><th scope="row">Менеджер на звонке, в чатах три новых заявки</th><td>Кто-то ждёт 40 минут и уходит.</td><td>Бот ведёт все разговоры сразу. Через 15 минут без ответа агент напоминает менеджеру, через 30 — подтверждает заказ сам.</td></tr>
+          <tr><th scope="row">Покупатель выбрал букет и замолчал</th><td>Диалог теряется в ленте.</td><td>Через полчаса агент мягко напоминает, что осталось только время или адрес. Часть покупателей возвращается и оформляет.</td></tr>
+          <tr><th scope="row">Заказ подтверждён, оплаты нет</th><td>Менеджер забывает проверить, курьер едет без оплаты.</td><td>Через час агент вежливо напоминает и присылает ссылку ещё раз.</td></tr>
+          <tr><th scope="row">«Доставляете в Химки?», «можно картой?», «пришлёте фото?»</th><td>Одни и те же ответы двадцать раз в день.</td><td>Агент отвечает из базы знаний магазина и возвращается к оформлению заказа.</td></tr>
+          <tr><th scope="row">Свадьба, корпоратив, 30 букетов</th><td>Бот-скрипт пытается продать готовый букет.</td><td>Агент понимает, что это задача для человека, и передаёт флористу с контактами.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section-block" aria-labelledby="t-tasks">
+      <h2 id="t-tasks">Какие задачи агент забирает</h2>
+      <div class="tasks">
+        <div>
+          <h3>Продажи</h3>
+          <ul>
+            <li>Отвечает в каждом канале за секунды, круглосуточно</li>
+            <li>Понимает живую речь: «пионы маме на завтра вечером до 5000» — одной фразой</li>
+            <li>Подбирает варианты под повод и бюджет, честно говорит, если чего-то нет</li>
+            <li>Оформляет заказ и отправляет ссылку на оплату</li>
+            <li>Разговор на Авито начинает с того объявления, по которому написали</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Контроль</h3>
+          <ul>
+            <li>Каждая заявка — в CRM, с перепиской и каналом</li>
+            <li>Напоминает менеджеру о заявке без ответа</li>
+            <li>Подтверждает сам, если человек не успел</li>
+            <li>Дожимает неоплаченные заказы и брошенные разговоры</li>
+            <li>Ночью сообщает покупателю, когда ему перезвонят</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Сервис</h3>
+          <ul>
+            <li>Отвечает на частые вопросы из базы знаний</li>
+            <li>Сообщает статус заказа по номеру</li>
+            <li>SMS на каждом этапе: принят, оплачен, курьер в пути</li>
+            <li>После доставки просит оценку</li>
+            <li>Передаёт человеку сложные случаи вовремя</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Знания</h3>
+          <ul>
+            <li>Учится по перепискам ваших сотрудников</li>
+            <li>Перенимает тон: «вы» или «ты», приветствие, прощание, фирменный эмодзи</li>
+            <li>Повторяет смысл, а не слова-паразиты</li>
+            <li>Шаблоны SMS и формат номеров заказов — ваши</li>
+            <li>Показывает, сколько заявок и денег спас</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block" aria-labelledby="t-why">
+      <h2 id="t-why">Почему это нужно сейчас</h2>
+      <ul class="why-list">
+        <li><b>Покупатели пишут, а не звонят.</b> Вопрос в чате ждёт ответа за минуты, а не до утра.</li>
+        <li><b>Каналов стало больше.</b> Авито, Telegram, MAX, ВКонтакте, сайт — и в каждом нужен ответ. Вручную это несколько открытых вкладок и пропущенные сообщения.</li>
+        <li><b>Скрипты раздражают.</b> От ботов с кнопками «1, 2, 3» люди уходят. Ждут нормального разговора — короткого, вежливого, по делу.</li>
+        <li><b>Заявка остывает за час.</b> Самые дорогие потери — не те, кому отказали, а те, кому не ответили вовремя.</li>
+      </ul>
+    </section>
+
+    <section class="section-block" aria-labelledby="t-talk">
+      <h2 id="t-talk">Как агент разговаривает</h2>
+      <p class="sub">Это не макет: ответы ниже прямо сейчас пишет бот стенда.</p>
+      <div class="talks" id="talks"></div>
+      <p class="principles">Коротко и по делу. Вежливо, без канцелярита и слов-паразитов — каждый ответ проходит проверку. Запоминает, что уже сказано, и не спрашивает дважды. Не притворяется человеком и вовремя зовёт его.</p>
+    </section>
+
+    <section class="section-block" aria-labelledby="t-steps">
+      <h2 id="t-steps">Как проходит внедрение</h2>
+      <ol class="steps-list">
+        <li><b>Подключаем каналы.</b> Авито, Telegram, MAX, ВКонтакте, сайт, Алиса — что используете вы.</li>
+        <li><b>Собираем базу знаний.</b> Из ваших переписок, шаблонов и прайса — как на странице «Настройка агента».</li>
+        <li><b>Настраиваем сценарии.</b> Что продаём, как доставляем, когда звать человека, какие SMS отправлять.</li>
+        <li><b>Проверяем на стенде.</b> Ваша команда пишет агенту как покупатели и смотрит заявки в CRM — до того, как их увидят клиенты.</li>
+        <li><b>Запускаем с человеком рядом.</b> Первые недели менеджер видит каждое действие агента и может поправить.</li>
+        <li><b>Смотрим цифры и дообучаем.</b> Каждую неделю: сколько заявок, сколько спас агент, где он ошибся.</li>
+      </ol>
+    </section>
+
+    <section class="section-block calc" aria-labelledby="t-calc">
+      <h2 id="t-calc">Сколько это может принести</h2>
+      <p class="sub">Оценка на ваших цифрах. Допущения открыты — поменяйте их, если знаете свои. Точные цифры покажут первые недели работы на вашем потоке.</p>
+      <div class="calc-grid">
+        <form id="calc" class="calc-form">
+          <fieldset>
+            <legend>Ваш бизнес</legend>
+            <label>Заявок в месяц <input type="number" name="leads" value="300" min="0"></label>
+            <label>Средний чек, ₽ <input type="number" name="check" value="4500" min="0"></label>
+            <label>Заявок вне рабочего времени или без быстрого ответа, % <input type="number" name="late" value="25" min="0" max="100"></label>
+            <label>Из них сейчас теряется, % <input type="number" name="lost" value="40" min="0" max="100"></label>
+            <label>Подтверждённых, но не оплаченных заказов, % <input type="number" name="unpaid" value="10" min="0" max="100"></label>
+            <label>Минут менеджера на одну заявку <input type="number" name="minutes" value="6" min="0"></label>
+          </fieldset>
+          <fieldset>
+            <legend>Допущения об агенте</legend>
+            <label>Из потерянных агент сохраняет, % <input type="number" name="save" value="60" min="0" max="100"></label>
+            <label>Неоплаченных возвращает напоминанием, % <input type="number" name="back" value="40" min="0" max="100"></label>
+            <label>Рутины по заявке берёт на себя, % <input type="number" name="auto" value="50" min="0" max="100"></label>
+          </fieldset>
+        </form>
+        <div class="calc-out" aria-live="polite">
+          <div><p class="num" id="c-orders">0</p><p>дополнительных заказов в месяц</p></div>
+          <div><p class="num" id="c-money">0 ₽</p><p>дополнительной выручки в месяц</p></div>
+          <div><p class="num" id="c-hours">0 ч</p><p>времени менеджеров в месяц освобождается</p></div>
+          <p class="formula" id="c-formula"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-block final">
+      <h2>Посмотрите сами</h2>
+      <div class="row">
+        <a class="btn" href="autopilot.html">Запустить автопилот</a>
+        <a class="btn btn-ghost" href="channels.html">Написать агенту в Авито или Telegram</a>
+        <a class="btn btn-ghost" href="crm.html">Открыть CRM</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/agent-page.js"></script>
+</body>
+</html>

@@ -2,14 +2,28 @@
 // Заказы из мессенджеров создаются настоящими разговорами с ботом, поэтому в карточках — правдоподобные переписки.
 (function (root, factory) {
   const dep = (name, file) => (typeof require === "function" ? require(file) : root.Flora[name]);
-  const mod = factory(dep("bot", "./bot.js"), dep("store", "./store.js"), dep("catalog", "./catalog.js"), dep("validate", "./validate.js"));
+  const mod = factory(dep("bot", "./bot.js"), dep("store", "./store.js"), dep("catalog", "./catalog.js"), dep("validate", "./validate.js"), dep("profile", "./profile.js"));
   if (typeof module === "object" && module.exports) module.exports = mod;
   else (root.Flora = root.Flora || {}).demo = mod;
-})(typeof self !== "undefined" ? self : this, function (bot, S, catalog, validate) {
+})(typeof self !== "undefined" ? self : this, function (bot, S, catalog, validate, profile) {
   const DEMO_MARK = "демо";
 
   // h — сколько часов назад клиент написал; steps — что делал менеджер потом (минуты после заявки).
   const CUSTOMERS = [
+    // Авито — главный канал: покупатели пишут по конкретному объявлению.
+    { ch: "avito", item: "4012345601", name: "Алина", phone: "+79161212121", h: 5, say: "Здравствуйте, ещё актуально?", answers: { fulfillment: "delivery", address: "Мичуринский проспект, 21, кв. 40" },
+      client: "Можно упаковать только в крафт, без плёнки?", steps: [["confirmed", 8], ["pay", 20], ["assembling", 200]] },
+    { ch: "avito", item: "4012345602", name: "Георгий", phone: "+79031313131", h: 13, say: "Добрый день! Доставите завтра днём?", answers: { fulfillment: "delivery", address: "Нахимовский проспект, 52, офис 210" },
+      steps: [["confirmed", 5], ["pay", 11], ["assembling", 500], ["delivering", 560], ["done", 640]], mgr: "Доставили в офис, оставили на ресепшене." },
+    { ch: "avito", item: "4012345603", name: "Светлана", phone: "+79251414141", h: 1.6, say: "Здравствуйте, а за МКАД доставляете?", answers: { fulfillment: "delivery", address: "Химки, ул. Молодёжная, 14, кв. 7" },
+      client: "Это Химки — посчитайте, пожалуйста, доставку.", steps: [["confirmed", 9]] },
+    { ch: "avito", item: "4012345602", name: "Денис", phone: "+79267373737", h: 8, say: "Сколько стоит доставка на Юго-Запад?", answers: { fulfillment: "delivery", address: "Ленинский проспект, 123, кв. 64" },
+      client: "Жена работает до 18, лучше вечером.", steps: [["confirmed", 22], ["pay", 70]] },
+    { ch: "avito", item: "4012345603", name: "Ирина", phone: "+79168181818", h: 3.2, callback: "Здравствуйте! Можно похожий букет на свадьбу, но в белых тонах?",
+      steps: [["called", 14]], mgr: "Собираем образцы в белом, пришлём фото в Авито до вечера." },
+    { ch: "avito", item: "4012345604", name: "Павел Р.", phone: "+79161515252", h: 0.4, say: "Здравствуйте, ещё актуально?", answers: { fulfillment: "pickup" }, steps: [] },
+    { ch: "avito", item: "4012345601", name: "Марина", phone: "+79037171717", h: 23, say: "можно завтра к 19?", answers: { fulfillment: "delivery", address: "ул. Вавилова, 48, кв. 15" },
+      steps: [["confirmed", 4], ["pay", 9], ["assembling", 120], ["delivering", 160], ["done", 230]], mgr: "Клиентка оставила отзыв на Авито — 5 звёзд." },
     { ch: "telegram", name: "Ксения Орлова", phone: "+79161110101", h: 26, say: "пионы маме на завтра вечером до 5000", answers: { fulfillment: "delivery", address: "Ленинский проспект, 32, кв. 81" },
       client: "Мама не знает про сюрприз — позвоните получателю за час, но не говорите, от кого.", steps: [["confirmed", 6], ["pay", 14], ["assembling", 600], ["delivering", 1020], ["done", 1130]], mgr: "Вручили лично, мама очень рада." },
     { ch: "vk", name: "Дмитрий", phone: "+79265550202", h: 9.5, say: "розы к 18, заберу сам", answers: { product: "kompliment" },
@@ -51,7 +65,9 @@
       const text = m.text + (m.cards ? "\n" + m.cards.map((x) => `${x.name} — ${x.price} ₽`).join("\n") : "");
       if (text.trim()) dialog.push({ from: "bot", text });
     });
-    let r = bot.start();
+    const items = ((profile && profile.get().avito) || {}).items || {};
+    const pid = c.item && items[c.item] ? items[c.item].product : null;
+    let r = pid ? bot.startWithProduct(pid, ctx) : bot.start();
     sayBot(r);
     const send = (text, value) => {
       dialog.push({ from: "client", text });

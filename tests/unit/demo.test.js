@@ -17,7 +17,10 @@ for (const [label, time] of [["днём", "2026-10-21T09:00:00Z"], ["поздн�
     assert.equal(recs.length, total);
     assert.equal(new Set(recs.map((r) => r.id)).size, total);
     assert.equal(new Set(recs.map((r) => r.customer.name)).size, total, "все клиенты разные");
-    assert.deepEqual([...new Set(recs.map((r) => r.source))].sort(), ["alice", "chat", "max", "site", "telegram", "vk"]);
+    assert.deepEqual([...new Set(recs.map((r) => r.source))].sort(), ["alice", "avito", "chat", "max", "site", "telegram", "vk"]);
+    const bySource = (k) => recs.filter((r) => r.source === k).length;
+    assert.ok(["site", "telegram", "chat", "vk", "max", "alice"].every((k) => bySource("avito") > bySource(k)), "Авито — главный канал");
+    assert.ok(recs.filter((r) => r.source === "avito").every((r) => r.dialog.some((d) => /по объявлению/.test(d.text))), "разговоры с Авито начинаются с объявления");
     const products = new Set(recs.filter((r) => r.kind === "order").flatMap((r) => r.items.map((i) => i.id)));
     assert.ok(products.size >= 7, `букетов: ${products.size}`);
     const statuses = new Set(recs.map((r) => r.status));

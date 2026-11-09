@@ -1,0 +1,68 @@
+.agent-page { max-width: 1120px; }
+.lead-block { padding: 12px 0 8px; }
+.lead-block h1 { font-size: clamp(2.3rem, 5.5vw, 4rem); max-width: 16ch; line-height: 1.05; }
+.lead-block .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 62ch; margin: 18px 0 22px; }
+.lead-block .note { color: var(--ink-soft); font-size: .9rem; margin-top: 14px; max-width: 70ch; }
+
+.section-block { margin-top: 48px; }
+.section-block h2 { font-size: clamp(1.7rem, 3.5vw, 2.4rem); margin-bottom: 14px; }
+.section-block .sub { color: var(--ink-soft); margin: -4px 0 14px; max-width: 70ch; }
+
+.cases { width: 100%; border-collapse: collapse; background: var(--white); border-radius: 14px; overflow: hidden; }
+.cases th, .cases td { text-align: left; vertical-align: top; padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: .95rem; }
+.cases thead th { font-size: .85rem; color: var(--ink-soft); font-weight: 600; }
+.cases tbody th { font-weight: 600; width: 28%; }
+.cases td:nth-child(2) { color: var(--ink-soft); width: 30%; }
+.cases td:last-child { background: #f1f7f0; }
+
+.tasks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+.tasks > div { background: var(--white); border-radius: 14px; padding: 16px 18px; }
+.tasks h3 { font-family: var(--text); font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.tasks ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--ink-soft); font-size: .93rem; }
+
+.why-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; }
+.why-list li { padding-top: 12px; border-top: 2px solid var(--stem); color: var(--ink-soft); }
+.why-list b { display: block; color: var(--ink); margin-bottom: 4px; }
+
+.talks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.talk { background: var(--white); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.talk .ch { font-size: .78rem; font-weight: 700; color: var(--ink-soft); }
+.talk p { padding: 7px 10px; border-radius: 12px; font-size: .88rem; white-space: pre-line; max-width: 92%; }
+.talk .c { background: #e2f3e8; align-self: flex-end; }
+.talk .b { background: #f3eff5; align-self: flex-start; }
+.principles { margin-top: 14px; max-width: 75ch; }
+
+.steps-list { margin: 0; padding-left: 22px; display: grid; gap: 10px; max-width: 80ch; }
+.steps-list li { padding-left: 6px; color: var(--ink-soft); }
+.steps-list b { color: var(--ink); }
+
+.calc-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.calc-form { display: grid; gap: 12px; }
+.calc-form fieldset { border: 0; margin: 0; padding: 16px; background: var(--white); border-radius: 14px; display: grid; gap: 10px; }
+.calc-form legend { font-weight: 700; padding: 0; margin-bottom: 4px; float: left; width: 100%; }
+.calc-form label { display: grid; grid-template-columns: 1fr 110px; align-items: center; gap: 10px; font-size: .9rem; }
+.calc-out { display: grid; gap: 10px; position: sticky; top: 16px; }
+.calc-out > div { background: var(--ink); color: var(--white); border-radius: 14px; padding: 16px 18px; }
+.calc-out .num { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.calc-out > div p:not(.num) { color: #d9cde1; font-size: .9rem; }
+.formula { color: var(--ink-soft); font-size: .85rem; line-height: 1.5; }
+
+.final { margin-bottom: 24px; }
+
+@media (max-width: 1000px) {
+  .tasks { grid-template-columns: 1fr 1fr; }
+  .talks { grid-template-columns: 1fr; }
+  .calc-grid { grid-template-columns: 1fr; }
+  .calc-out { position: static; }
+}
+@media (max-width: 700px) {
+  .tasks, .why-list { grid-template-columns: 1fr; }
+  .cases thead { display: none; }
+  .cases, .cases tbody, .cases tr, .cases th, .cases td { display: block; width: auto !important; }
+  .cases tr { border-bottom: 1px solid var(--line); }
+  .cases th, .cases td { border: 0; padding: 8px 14px; }
+  .cases tbody th { padding-top: 14px; }
+  .cases td:nth-child(2)::before { content: "Сейчас: "; font-weight: 600; }
+  .cases td:last-child::before { content: "С агентом: "; font-weight: 600; }
+  .calc-form label { grid-template-columns: 1fr 90px; }
+}

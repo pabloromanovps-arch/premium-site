@@ -59,7 +59,7 @@
       // Два разных заказа получили один номер: общий оставляем, свой перенумеровываем.
       seq += 1;
       const id = r.id.replace(/\d+$/, String(seq));
-      byId.set(id, { ...r, id, history: (r.history || []).concat({ at: lastAt(r), type: "comment", by: "Система", text: `Номер изменён с ${r.id}: такой номер уже был у заказа другого участника стенда.` }) });
+      byId.set(id, { ...r, id, no: seq, history: (r.history || []).concat({ at: lastAt(r), type: "comment", by: "Система", text: `Номер изменён с ${r.id}: такой номер уже был у заказа другого участника стенда.` }) });
       renumbered.push({ from: r.id, to: id });
     }
 

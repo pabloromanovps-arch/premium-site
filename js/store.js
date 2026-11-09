@@ -1,10 +1,12 @@
 // Мини-CRM: хранилище заявок, статусы и синхронизация с внешним сервисом.
 (function (root, factory) {
   const cart = typeof require === "function" ? require("./cart.js") : root.Flora.cart;
-  const mod = factory(root, cart);
+  // Профиль задаёт формат номеров (СТ-1001, ЦВ-2026-1001…). Без него — формат по умолчанию.
+  const profile = typeof require === "function" ? require("./profile.js") : root.Flora.profile;
+  const mod = factory(root, cart, profile);
   if (typeof module === "object" && module.exports) module.exports = mod;
   else (root.Flora = root.Flora || {}).store = mod;
-})(typeof self !== "undefined" ? self : this, function (root, cart) {
+})(typeof self !== "undefined" ? self : this, function (root, cart, profile) {
   const STATUS = {
     new: "Новый",
     confirmed: "Подтверждён",
@@ -18,7 +20,7 @@
   const KIND = { order: "Заказ", callback: "Звонок" };
   const PAYMENT = { unpaid: "Не оплачен", paid: "Оплачен" };
   const PAYABLE = ["confirmed", "assembling", "delivering", "ready"];
-  const SOURCE = { site: "Сайт", chat: "Чат на сайте", telegram: "Telegram", vk: "ВКонтакте", max: "MAX", alice: "Алиса", crm: "CRM" };
+  const SOURCE = { site: "Сайт", chat: "Чат на сайте", avito: "Авито", telegram: "Telegram", vk: "ВКонтакте", max: "MAX", alice: "Алиса", crm: "CRM" };
   const STORAGE_KEY = "stebel.crm.v1";
 
   function nextStatuses(rec) {
@@ -66,6 +68,12 @@
   }
 
   const digits = (s) => String(s || "").replace(/\D/g, "");
+  // Номер можно написать полностью («СТ-1001», «ЦВ-2026-1001») или только последние цифры («1001»).
+  const sameId = (r, id) => {
+    const d = digits(id);
+    if (!d) return false;
+    return digits(r.id) === d || (r.no != null && String(r.no) === d) || String(r.id).replace(/^.*\D/, "") === d;
+  };
   const clone = (x) => JSON.parse(JSON.stringify(x));
 
   function createStore(opts = {}) {
@@ -88,7 +96,7 @@
 
     function mutate(id, fn) {
       const db = load();
-      const rec = db.items.find((r) => digits(r.id) === digits(id));
+      const rec = db.items.find((r) => sameId(r, id));
       if (!rec) throw new Error(`Заявка ${id} не найдена.`);
       fn(rec);
       save(db);
@@ -102,11 +110,13 @@
       const source = SOURCE[input.source] ? input.source : "site";
       const at = now().toISOString();
       const rec = {
-        id: (kind === "order" ? "СТ-" : "ЗВ-") + db.seq,
+        id: profile ? profile.formatId(kind, db.seq, at) : (kind === "order" ? "СТ-" : "ЗВ-") + db.seq,
+        no: db.seq,
         kind, source, status: "new", createdAt: at,
         customer: { name: String(input.name || "").trim(), phone: input.phone },
         history: [{ at, type: "status", status: "new", by: SOURCE[source] }],
       };
+      if (input.tag) rec.tag = String(input.tag); // например, «autopilot» — заявки из симуляции
       if (kind === "order") {
         Object.assign(rec, {
           fulfillment: input.fulfillment, address: input.address || "",
@@ -145,13 +155,15 @@
     function get(id) {
       const d = digits(id);
       if (!d) return null;
-      const rec = load().items.find((r) => digits(r.id) === d);
+      const rec = load().items.find((r) => sameId(r, id));
       return rec ? clone(rec) : null;
     }
 
     function list(filter = {}) {
       const q = String(filter.q || "").trim().toLowerCase();
-      const qd = digits(q);
+      // По цифрам ищем, только если запрос похож на номер заказа или телефон («СТ-1001», «916 123»),
+      // иначе «Нагрузка 17» находила бы чужие заявки с «17» в номере.
+      const qd = /^[^\d]{0,4}[\d\s()+-]{3,}$/.test(q) ? digits(q) : "";
       return load().items
         .filter((r) => !filter.status || r.status === filter.status)
         .filter((r) => !filter.source || r.source === filter.source)
@@ -192,6 +204,11 @@
       return rec;
     }
 
+    // Отметка ИИ-агента: что он сделал по заявке. code — чтобы одно действие не повторялось.
+    function agentNote(id, code, text) {
+      return mutate(id, (r) => r.history.push({ at: now().toISOString(), type: "agent", code, text, by: "ИИ-агент" }));
+    }
+
     function addComment(id, text, by = "Менеджер") {
       const t = String(text || "").trim();
       if (!t) throw new Error("Напишите текст комментария.");
@@ -229,7 +246,7 @@
       addComment(d.id, "Нужен закрывающий документ на юрлицо.");
     }
 
-    return { create, get, list, setStatus, pay, addComment, reset, purge, seedDemo, flush: () => Promise.all(pending), storageKey: key };
+    return { create, get, list, setStatus, pay, addComment, agentNote, reset, purge, seedDemo, flush: () => Promise.all(pending), storageKey: key };
   }
 
   // Хранилище для страниц сайта. Если в js/config.js задан webhookUrl — заявки уходят на настоящий сервер,

@@ -67,11 +67,10 @@ test("пустая CRM, живые примеры, эффект автомати
   await noHorizontalScroll(page);
 
   await page.getByRole("button", { name: "Заполнить примерами" }).click();
-  await expect(page.locator(".deal")).toHaveCount(17);
-  await expect(page.locator("#stat-new")).toHaveText("4");
-  await expect(page.locator("#a-bot")).toHaveText("11 из 17");
+  await expect(page.locator(".deal")).toHaveCount(24);
+  await expect(page.locator("#a-bot")).toHaveText("18 из 24");
+  await expect(page.locator("#a-bars li").first()).toContainText("Авито");
   await expect(page.locator("#a-paid")).not.toHaveText("0 ₽");
-  await expect(page.locator("#a-bars li").first()).toContainText("Сайт");
   await noHorizontalScroll(page);
 
   // в карточке — переписка с ботом, просьба клиента и комментарий менеджера
@@ -93,9 +92,10 @@ test("пустая CRM, живые примеры, эффект автомати
   await page.locator("#filters select[name=source]").selectOption("");
 
   await page.getByRole("button", { name: "Список" }).click();
-  await expect(page.locator("#rows tr")).toHaveCount(17);
-  await page.locator("#filters select[name=status]").selectOption("assembling");
-  await expect(page.locator("#rows tr")).toHaveCount(2);
+  await expect(page.locator("#rows tr")).toHaveCount(24);
+  await page.locator("#filters select[name=source]").selectOption("avito");
+  await expect(page.locator("#rows tr")).toHaveCount(7);
+  await page.locator("#filters select[name=source]").selectOption("");
   await page.locator("#filters select[name=status]").selectOption("");
   await page.getByRole("button", { name: "Воронка" }).click();
 

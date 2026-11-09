@@ -59,6 +59,7 @@ body:not(.list-view) .list-only { display: none; }
 
 .src { display: inline-block; font-size: .74rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; background: #eee; color: #444; white-space: nowrap; }
 .src[data-src="site"], .src[data-src="chat"] { background: #f6e1ea; color: #8f1d48; }
+.src[data-src="avito"] { background: #dff3e6; color: #17703b; }
 .src[data-src="telegram"] { background: #ddeefb; color: #1b5d8f; }
 .src[data-src="vk"] { background: #e0e8f7; color: #2a4f9c; }
 .src[data-src="max"] { background: #ece3fb; color: #5a2fa0; }
@@ -157,3 +158,5 @@ body:not(.list-view) .list-only { display: none; }
 @media (max-width: 480px) {
   .auto-tiles { grid-template-columns: 1fr; }
 }
+.history .agent { border-left-color: #6b3fb0; }
+.history .agent .by { color: #6b3fb0; font-weight: 600; }

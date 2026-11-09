@@ -1,0 +1,167 @@
+// Профиль бизнеса: всё, чем один магазин отличается от другого.
+// Название, контакты, тон общения, шаблоны сообщений, формат номеров заказов, частые вопросы и правила агента.
+// Профиль собирается на странице «Настройка агента» из переписок и шаблонов сотрудников.
+(function (root, factory) {
+  const mod = factory(root);
+  if (typeof module === "object" && module.exports) module.exports = mod;
+  else (root.Flora = root.Flora || {}).profile = mod;
+})(typeof self !== "undefined" ? self : this, function (root) {
+  const KEY = "stebel.profile.v1";
+
+  const DEFAULT = {
+    business: {
+      name: "Стебель",
+      kind: "цветочная мастерская",
+      city: "Москва",
+      address: "Покровка, 12",
+      hours: { from: 9, to: 21 },
+      phone: "+7 495 000-00-00",
+      staff: "флорист",
+      staffGen: "флориста",
+    },
+    tone: {
+      address: "вы", // «вы» или «ты»
+      emoji: "", // один фирменный эмодзи или пусто
+      greeting: "Здравствуйте!",
+      signoff: "",
+      phrases: [],
+    },
+    orderId: { order: "СТ", callback: "ЗВ", withYear: false },
+    // Объявления на Авито → товары каталога: по номеру объявления бот понимает, о чём спрашивают.
+    avito: {
+      items: {
+        "4012345601": { product: "bordo", title: "Букет «Бордо»: розы, калла, амарант" },
+        "4012345602": { product: "tulip", title: "25 тюльпанов, доставка по Москве" },
+        "4012345603": { product: "dacha", title: "Букет «Утро на даче» с пионовидными розами" },
+        "4012345604": { product: "kompliment", title: "Маленький букет из 3 роз" },
+      },
+    },
+    templates: {
+      created: "«{shop}»: заказ {id} принят. {staff_cap} позвонит в течение 15 минут.",
+      night: "«{shop}»: заказ {id} принят. Мы откроемся в {open}:00 — {staff} сразу позвонит и подтвердит детали.",
+      confirmed: "«{shop}»: заказ {id} подтверждён, к оплате {sum}. Оплатить: {link}",
+      pay_reminder: "«{shop}»: напоминаем про оплату заказа {id} — {sum}. Если удобнее другим способом, просто ответьте на это сообщение. Оплатить: {link}",
+      paid: "«{shop}»: оплата {sum} по заказу {id} получена. Спасибо!",
+      payment_failed: "«{shop}»: оплата по заказу {id} не прошла. Попробуйте ещё раз: {link}",
+      delivering: "«{shop}»: курьер везёт заказ {id}, интервал {slot}.",
+      ready: "«{shop}»: заказ {id} готов, забрать можно по адресу {address} до {close}:00.",
+      done: "«{shop}»: заказ {id} выполнен. Будем рады видеть вас снова!",
+      review: "«{shop}»: как вам букет по заказу {id}? Ответьте цифрой от 1 до 5 — это правда помогает нам становиться лучше.",
+      cancelled: "«{shop}»: заказ {id} отменён. Если это ошибка, позвоните {phone}.",
+    },
+    faq: [
+      { q: "Можно оплатить картой или наличными?", keywords: ["оплат", "карт", "наличн", "наличк", "сбп"], a: "Оплатить можно картой или через СБП по ссылке, которую пришлём после подтверждения заказа. При самовывозе — ещё и картой на месте." },
+      { q: "Доставляете за МКАД?", keywords: ["мкад", "область", "химк", "мытищ", "балаших", "подмосков"], a: "Да, в ближайшее Подмосковье тоже возим. Стоимость зависит от адреса — напишите его, и флорист посчитает." },
+      { q: "Пришлёте фото букета перед доставкой?", keywords: ["фото", "фотограф", "покажите", "посмотреть"], a: "Конечно. Перед тем как отдать курьеру, пришлём фото готового букета." },
+      { q: "Можно доставить анонимно?", keywords: ["аноним", "не говорить", "сюрприз", "тайно"], a: "Да, курьер не скажет, от кого букет. Если хотите, приложим открытку без подписи." },
+      { q: "Сколько простоит букет и как ухаживать?", keywords: ["простоит", "ухаж", "вянут", "завянет"], a: "Обычно 5–7 дней, розы и хризантемы дольше. Подрезайте стебли наискосок и меняйте воду каждый день — с букетом положим памятку." },
+      { q: "Открытка бесплатная?", keywords: ["открытк"], a: "Да, открытку с вашим текстом положим бесплатно — напишите текст при оформлении." },
+      { q: "Ещё актуально? Есть в наличии?", keywords: ["актуальн", "в наличии", "есть ли", "еще есть"], a: "Да, в наличии — цветы привозим каждое утро." },
+      { q: "Что если букет не понравится?", keywords: ["не понрав", "вернуть", "возврат", "заменить"], a: "Если что-то не так, напишите в течение суток — заменим букет или вернём деньги." },
+    ],
+    agent: {
+      enabled: true,
+      slaRemindMin: 15, // через сколько минут напомнить менеджеру о заявке без ответа
+      autoConfirm: true, // подтверждать самому, если менеджер не ответил
+      autoConfirmMin: 30,
+      payReminderMin: 60, // напоминание об оплате
+      followUpMin: 30, // напомнить клиенту, бросившему диалог
+      reviewAfterMin: 120, // попросить отзыв после выполнения
+    },
+    // Слова-паразиты и канцелярит: агент их не пишет, а в переписках сотрудников подсвечивает.
+    stopWords: ["как бы", "короче", "в общем-то", "собственно говоря", "на самом деле", "вообще-то", "это самое", "так сказать", "в настоящее время", "осуществить", "осуществляется", "данный", "данного", "в случае если", "ваш звонок очень важен", "ваш запрос очень важен", "приносим извинения за доставленные неудобства", "уважаемый клиент"],
+  };
+
+  const clone = (x) => JSON.parse(JSON.stringify(x));
+  function merge(base, patch) {
+    if (!patch || typeof patch !== "object" || Array.isArray(patch)) return patch === undefined ? base : patch;
+    const out = Array.isArray(base) ? [] : { ...base };
+    for (const k of Object.keys(patch)) {
+      out[k] = base && typeof base[k] === "object" && !Array.isArray(base[k]) && patch[k] && typeof patch[k] === "object" && !Array.isArray(patch[k])
+        ? merge(base[k], patch[k]) : patch[k];
+    }
+    return out;
+  }
+
+  const storage = () => { try { return root.localStorage || null; } catch (e) { return null; } };
+  let override = null; // для тестов и превью на странице настройки
+
+  function get() {
+    if (override) return override;
+    let saved = null;
+    const s = storage();
+    if (s) { try { saved = JSON.parse(s.getItem(KEY)); } catch (e) { saved = null; } }
+    return merge(clone(DEFAULT), saved || {});
+  }
+  function save(p) { const s = storage(); if (s) s.setItem(KEY, JSON.stringify(p)); }
+  function reset() { const s = storage(); if (s) s.removeItem(KEY); }
+  function use(p) { override = p ? merge(clone(DEFAULT), p) : null; }
+
+  // ---------- тон «ты» ----------
+  // Бот пишет на «вы»; для бизнесов, где с клиентами на «ты», фразы переводятся по словарю.
+  const TY = [
+    ["Как к вам обращаться", "Как тебя зовут"], ["Как вас зовут", "Как тебя зовут"],
+    ["Здравствуйте", "Привет"], ["Подскажите", "Подскажи"], ["подскажите", "подскажи"],
+    ["Напишите", "Напиши"], ["напишите", "напиши"], ["Выберите", "Выбери"], ["выберите", "выбери"],
+    ["Нажмите", "Нажми"], ["нажмите", "нажми"], ["Оставьте", "Оставь"], ["оставьте", "оставь"],
+    ["Проверьте", "Проверь"], ["проверьте", "проверь"], ["Посмотрите", "Посмотри"], ["посмотрите", "посмотри"],
+    ["Попробуйте", "Попробуй"], ["попробуйте", "попробуй"], ["Опишите", "Опиши"], ["опишите", "опиши"],
+    ["Ответьте", "Ответь"], ["ответьте", "ответь"], ["Позвоните", "Позвони"], ["позвоните", "позвони"],
+    ["Подрезайте", "Подрезай"], ["меняйте", "меняй"], ["Уточните", "Уточни"], ["уточните", "уточни"],
+    ["заберёте", "заберёшь"], ["хотите", "хочешь"], ["Хотите", "Хочешь"], ["можете", "можешь"],
+    ["пишите", "пиши"], ["Пишите", "Пиши"],
+    ["вашего", "твоего"], ["вашему", "твоему"], ["вашим", "твоим"], ["вашей", "твоей"], ["ваши", "твои"],
+    ["ваша", "твоя"], ["ваше", "твоё"], ["ваш", "твой"], ["Ваш", "Твой"],
+    ["вами", "тобой"], ["вам", "тебе"], ["Вам", "Тебе"], ["вас", "тебя"], ["Вас", "Тебя"],
+  ];
+  const wordRe = (w) => new RegExp(`(^|[^А-Яа-яЁё])${w}(?=[^А-Яа-яЁё]|$)`, "g");
+  const TY_RE = TY.map(([a, b]) => [wordRe(a), b]);
+  function voice(text, tone) {
+    if (tone !== "ты") return text;
+    let t = text;
+    for (const [re, b] of TY_RE) t = t.replace(re, (m0, pre) => pre + b);
+    return t;
+  }
+
+  // ---------- шаблоны ----------
+  function fill(tpl, vars) {
+    return String(tpl || "").replace(/\{(\w+)\}/g, (m0, k) => (vars[k] !== undefined && vars[k] !== null ? String(vars[k]) : m0));
+  }
+  function vars(p, extra) {
+    const b = p.business;
+    return {
+      shop: b.name, address: b.address, phone: b.phone, staff: b.staff,
+      staff_cap: b.staff.charAt(0).toUpperCase() + b.staff.slice(1),
+      open: b.hours.from, close: b.hours.to, ...extra,
+    };
+  }
+
+  // ---------- проверка качества текста ----------
+  function lint(text, p = get()) {
+    const t = String(text || "").toLowerCase().replace(/ё/g, "е");
+    const words = [...new Set([...DEFAULT.stopWords, ...(p.stopWords || [])])];
+    return words.filter((w) => wordRe(w.toLowerCase().replace(/ё/g, "е").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(t));
+  }
+
+  // ---------- частые вопросы ----------
+  // Возвращает лучший ответ из базы знаний или null. Нужно совпадение хотя бы одного ключевого слова
+  // и признак вопроса, чтобы не перебивать оформление заказа.
+  function answerFaq(text, p = get()) {
+    const t = String(text || "").toLowerCase().replace(/ё/g, "е");
+    if (!t.trim()) return null;
+    let best = null;
+    for (const f of p.faq || []) {
+      const hits = (f.keywords || []).filter((k) => t.includes(String(k).toLowerCase().replace(/ё/g, "е"))).length;
+      if (hits && (!best || hits > best.hits)) best = { ...f, hits };
+    }
+    return best;
+  }
+
+  // Номер заказа по формату бизнеса.
+  function formatId(kind, seq, date, p = get()) {
+    const prefix = kind === "callback" ? p.orderId.callback : p.orderId.order;
+    return p.orderId.withYear ? `${prefix}-${String(date || new Date().toISOString()).slice(0, 4)}-${seq}` : `${prefix}-${seq}`;
+  }
+
+  return { KEY, DEFAULT, get, save, reset, use, merge, voice, fill, vars, lint, answerFaq, formatId };
+});
