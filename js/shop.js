@@ -10,7 +10,7 @@
   function loadCart() {
     try {
       const v = JSON.parse(localStorage.getItem(CART_KEY));
-      return Array.isArray(v) ? v.filter((i) => catalog.byId(i.id)) : [];
+      return Array.isArray(v) ? v.filter((i) => catalog.byId(i.id) && !((Flora.profile && Flora.profile.get().soldOut) || []).includes(i.id)) : [];
     } catch (e) {
       return [];
     }
@@ -19,7 +19,8 @@
     try { localStorage.setItem(CART_KEY, JSON.stringify(items)); } catch (e) { /* без сохранения корзины */ }
   }
 
-  // каталог
+  // каталог; чего нет в наличии — видно сразу, без сюрпризов в корзине
+  const soldOut = (Flora.profile && Flora.profile.get().soldOut) || [];
   $("hero-art").innerHTML = flowers.bouquetSVG(catalog.byId("prazdnik"));
   $("catalog-grid").innerHTML = catalog.products.map((p) => `
     <article class="product" data-product="${p.id}">
@@ -28,7 +29,7 @@
       <p class="comp">${p.composition}</p>
       <div class="buy">
         <span class="price">${cart.formatRub(p.price)}</span>
-        <button class="btn btn-small" type="button" data-add="${p.id}">В корзину</button>
+        ${soldOut.includes(p.id) ? `<button class="btn btn-small" type="button" disabled title="Закончились, привезём с утренней поставкой">Закончились</button>` : `<button class="btn btn-small" type="button" data-add="${p.id}">В корзину</button>`}
       </div>
     </article>`).join("");
 

@@ -160,3 +160,47 @@ test("сервер: Авито — берёт токен по ключам пр�
   await handle(at("/avito", { payload: { ...body.payload, value: { ...body.payload.value, content: { text: "1" } } } }), env, f);
   assert.equal(calls.filter((c) => c.url === "https://api.avito.ru/token").length, 1);
 });
+
+// ---------- нейросеть на сервере ----------
+const llmBody = { provider: "claude", system: "Ты продавец.", messages: [{ role: "user", content: "ЧЕРНОВИК: Здравствуйте!" }] };
+const hdr = (h, k) => (h && typeof h.get === "function" ? h.get(k) : h && (h[k] || h[k.toLowerCase()]));
+
+test("сервер /llm: Claude через официальный SDK — модель, низкое усилие, резервная модель при отказе", async () => {
+  const calls = [];
+  const f = async (url, init) => {
+    calls.push({ url: String(url), init, body: JSON.parse(init.body) });
+    return new Response(JSON.stringify({ id: "msg_1", type: "message", role: "assistant", model: "claude-opus-5-5", content: [{ type: "text", text: "{\"reply\":\"Добрый день!\"}" }], stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 } }), { headers: { "Content-Type": "application/json" } });
+  };
+  const res = await handle(at("/llm", llmBody), { ANTHROPIC_API_KEY: "sk-ant-test" }, f);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { text: "{\"reply\":\"Добрый день!\"}", model: "claude-opus-5-5" });
+  assert.match(calls[0].url, /^https:\/\/api\.anthropic\.com\/v1\/messages/);
+  assert.equal(calls[0].body.model, "claude-opus-5-5");
+  assert.equal(calls[0].body.fallbacks, "default");
+  assert.deepEqual(calls[0].body.output_config, { effort: "low" });
+  assert.match(hdr(calls[0].init.headers, "anthropic-beta"), /server-side-fallback-2026-07-01/);
+  assert.match(hdr(calls[0].init.headers, "authorization") || hdr(calls[0].init.headers, "x-api-key"), /sk-ant-test/);
+});
+
+test("сервер /llm: отказ модели — пустой текст, стенд ответит правилами", async () => {
+  const f = async () => new Response(JSON.stringify({ id: "m", type: "message", role: "assistant", model: "claude-opus-5-5", content: [], stop_reason: "refusal", stop_sequence: null, stop_details: { type: "refusal", category: null, explanation: "" }, usage: { input_tokens: 1, output_tokens: 0 } }), { headers: { "Content-Type": "application/json" } });
+  const res = await handle(at("/llm", llmBody), { ANTHROPIC_API_KEY: "k" }, f);
+  assert.deepEqual(await res.json(), { text: null, refusal: true });
+});
+
+test("сервер /llm: без ключа, с мусором и с чужого сайта — отказ без обращения к модели", async () => {
+  const net = fakeNet();
+  assert.equal((await handle(at("/llm", llmBody), {}, net.fetch)).status, 501);
+  assert.equal((await handle(at("/llm", { ...llmBody, messages: [{ role: "assistant", content: "x" }] }), { ANTHROPIC_API_KEY: "k" }, net.fetch)).status, 400);
+  assert.equal((await handle(at("/llm", llmBody, { Origin: "https://evil.example" }), { ANTHROPIC_API_KEY: "k", ALLOWED_ORIGIN: "https://ok.example" }, net.fetch)).status, 403);
+  assert.equal(net.calls.length, 0);
+});
+
+test("сервер /llm: OpenAI-совместимая модель с ключом сервера", async () => {
+  const calls = [];
+  const f = async (url, init) => { calls.push({ url, init }); return new Response(JSON.stringify({ choices: [{ message: { content: "{\"reply\":\"ok\"}" } }] })); };
+  const res = await handle(at("/llm", { ...llmBody, provider: "openai" }), { OPENAI_API_KEY: "sk-o", OPENAI_BASE_URL: "http://gpu.local:8000/v1", OPENAI_MODEL: "qwen" }, f);
+  assert.deepEqual(await res.json(), { text: "{\"reply\":\"ok\"}" });
+  assert.equal(calls[0].url, "http://gpu.local:8000/v1/chat/completions");
+  assert.equal(calls[0].init.headers.Authorization, "Bearer sk-o");
+});

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
+  <title>Нейросеть агента — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/setup.css">
+  <link rel="stylesheet" href="css/brain.css">
+</head>
+<body>
+  <header class="tool-top">
+    <p class="logo">Стебель <span>стенд</span></p>
+    <nav aria-label="Разделы стенда">
+      <a href="shop.html">Магазин</a>
+      <a href="channels.html">Мессенджеры</a>
+      <a href="crm.html">CRM</a>
+      <a href="brain.html" aria-current="page">Нейросеть</a>
+    </nav>
+  </header>
+
+  <main class="tool">
+    <h1>Нейросеть агента</h1>
+    <p class="intro">Агент может говорить живым языком: нейросеть ведёт разговор, а цены, наличие, номера заказов и ссылки на оплату берёт только из системы. Если модель ошиблась в факте, ответила не тем тоном или задумалась дольше лимита, клиент получит проверенный ответ бота. Клиент не останется без ответа и не увидит выдуманную цену.</p>
+
+    <section class="panel" aria-labelledby="t-prov">
+      <h2 id="t-prov">1. Какая модель ведёт диалог</h2>
+      <div class="providers" id="providers" role="radiogroup" aria-label="Модель"></div>
+      <div class="fields" id="prov-fields">
+        <label data-for="ollama openai server">Адрес <input id="f-url" autocomplete="off" spellcheck="false"></label>
+        <label data-for="ollama openai server">Модель <input id="f-model" autocomplete="off" spellcheck="false"></label>
+        <label data-for="openai">Ключ API (только для проверки) <input id="f-key" type="password" autocomplete="off"></label>
+        <label>Ждать ответа модели, сек <input id="f-timeout" type="number" min="2" max="60"></label>
+      </div>
+      <p class="why" id="prov-help"></p>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" type="button" id="save">Включить для всех чатов</button>
+        <span id="save-status" role="status"></span>
+      </div>
+    </section>
+
+    <h2 class="step">2. Проверка на разговоре</h2>
+    <p class="sub">Один и тот же разговор: слева ответы бота по правилам, справа — нейросети. Клиент просит ранункулюсы, а они закончились: агент должен мягко предложить похожий букет, не выдумывать цен и не давить.</p>
+    <div class="row" style="margin:10px 0 14px">
+      <button class="btn" type="button" id="run">Прогнать разговор</button>
+      <span id="run-status" role="status"></span>
+    </div>
+    <div class="compare" id="compare" aria-live="polite"></div>
+
+    <h2 class="step">3. Как это устроено</h2>
+    <section class="panel">
+      <ol class="how">
+        <li><b>Бот считает.</b> Он понимает, что хочет клиент, проверяет наличие, считает сумму и доставку, создаёт заказ в CRM, подбирает замену закончившемуся и одно уместное дополнение.</li>
+        <li><b>Нейросеть говорит.</b> Она получает переписку и черновик ответа и пересказывает его по-человечески, в тоне бизнеса: на «вы» или «ты», без канцелярита и слов-паразитов.</li>
+        <li><b>Система проверяет.</b> Номера заказов, суммы, ссылки, время и телефоны должны совпасть с черновиком. Лишняя цифра, чужое обращение, пустой или долгий ответ — и уходит текст бота.</li>
+        <li><b>Ключи на сервере.</b> Claude и OpenAI подключаются через ваш сервер (маршрут /llm), браузер ключей не видит. Локальные модели (Ollama, LM Studio) работают без интернета, переписка не покидает компьютер.</li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/bot.js"></script>
+  <script src="js/llm.js"></script>
+  <script src="js/brain-page.js"></script>
+</body>
+</html>

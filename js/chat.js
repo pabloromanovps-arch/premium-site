@@ -80,7 +80,11 @@
   function send(text, value) {
     say("me", text);
     options.innerHTML = "";
-    enqueue(() => apply(bot.reply(state, { text, value }, ctx)));
+    // Если выбрана нейросеть — она пишет ответ живым языком, факты остаются от бота.
+    const L = Flora.llm;
+    const cfg = L && L.settings();
+    if (cfg && cfg.provider !== "none") enqueue(async () => apply(await L.reply(state, { text, value }, ctx, { cfg, history: transcript.slice() })));
+    else enqueue(() => apply(bot.reply(state, { text, value }, ctx)));
   }
 
   function open() {

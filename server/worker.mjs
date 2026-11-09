@@ -7,6 +7,7 @@
 //   POST /max       — вебхук бота MAX
 //   POST /alice     — навык Алисы (Яндекс Диалоги)
 //   POST /avito     — вебхук Авито Мессенджера (v3)
+//   POST /llm       — нейросеть для живого диалога (Claude или OpenAI-совместимая модель); ключи — только здесь
 //
 // Переменные окружения (секреты — через `wrangler secret put` или панель Cloudflare):
 //   TG_BOT_TOKEN, TG_SECRET           — токен клиентского бота и секрет вебхука (необязательно)
@@ -15,11 +16,14 @@
 //   MAX_TOKEN                         — токен бота MAX
 //   AVITO_CLIENT_ID, AVITO_CLIENT_SECRET — ключи приложения Авито (личный кабинет → API);
 //                                       токен доступа сервер получает и обновляет сам
+//   ANTHROPIC_API_KEY, CLAUDE_MODEL   — ключ Claude API и модель (по умолчанию claude-opus-5-5)
+//   OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL — для OpenAI или любой совместимой модели
 //   CRM_WEBHOOK_URL                   — входящий вебхук вашей CRM (amoCRM, Bitrix24 и т. п.)
 //   ALLOWED_ORIGIN                    — адрес сайта для CORS
 // Хранилище: KV-пространство SESSIONS (состояние диалогов и заявки из мессенджеров).
 // Без него сервер работает, но после перезапуска забывает, на каком шаге был клиент.
 
+import Anthropic from "@anthropic-ai/sdk";
 import messages from "../js/messages.js";
 import channels from "../js/channels.js";
 import storeLib from "../js/store.js";
@@ -135,6 +139,53 @@ async function handleChannel(channel, request, env, fetchImpl) {
   return new Response(channel === "vk" ? "ok" : "", { status: 200 });
 }
 
+// Нейросеть для живого диалога. Браузер присылает разговор и черновик ответа бота, получает текст.
+// Проверку фактов делает js/llm.js на стороне стенда; здесь — только вызов модели с ключом сервера.
+async function handleLlm(request, env, fetchImpl) {
+  const headers = { ...cors(env), "Content-Type": "application/json; charset=utf-8" };
+  const reply = (status, body) => new Response(JSON.stringify(body), { status, headers });
+  if (env.ALLOWED_ORIGIN && request.headers.get("Origin") !== env.ALLOWED_ORIGIN) return reply(403, { error: "Чужой сайт" });
+  let body;
+  try { body = await request.json(); } catch (e) { return reply(400, { error: "Тело запроса не JSON" }); }
+  const msgs = Array.isArray(body.messages) ? body.messages : [];
+  const valid = msgs.length > 0 && msgs.length <= 20 && msgs.every((m) => (m.role === "user" || m.role === "assistant") && typeof m.content === "string" && m.content.length <= 4000) && msgs[0].role === "user";
+  if (!valid || typeof body.system !== "string" || body.system.length > 6000) return reply(400, { error: "Неверный разговор" });
+
+  if (body.provider === "openai") {
+    if (!env.OPENAI_API_KEY) return reply(501, { error: "OpenAI не настроен на сервере" });
+    const res = await fetchImpl(`${(env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${env.OPENAI_API_KEY}` },
+      body: JSON.stringify({ model: env.OPENAI_MODEL, response_format: { type: "json_object" }, messages: [{ role: "system", content: body.system }, ...msgs] }),
+    });
+    if (!res.ok) return reply(502, { error: `Модель ответила ${res.status}` });
+    return reply(200, { text: (await res.json()).choices[0].message.content });
+  }
+
+  if (!env.ANTHROPIC_API_KEY) return reply(501, { error: "Claude не настроен на сервере" });
+  const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY, fetch: fetchImpl, maxRetries: 1 });
+  try {
+    // Короткая реплика в чате — низкое усилие; при отказе основной модели запрос подхватит резервная.
+    const response = await client.beta.messages.create({
+      model: env.CLAUDE_MODEL || "claude-opus-5-5",
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low" },
+      system: body.system,
+      messages: msgs,
+    });
+    if (response.stop_reason === "refusal") return reply(200, { text: null, refusal: true });
+    const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
+    return reply(200, { text, model: response.model });
+  } catch (e) {
+    if (e instanceof Anthropic.RateLimitError) return reply(429, { error: "Слишком много запросов к Claude" });
+    if (e instanceof Anthropic.AuthenticationError) return reply(502, { error: "Неверный ключ Claude на сервере" });
+    if (e instanceof Anthropic.APIError) return reply(502, { error: `Claude ответил ${e.status}` });
+    return reply(502, { error: "Claude недоступен" });
+  }
+}
+
 export async function handle(request, env, fetchImpl = fetch) {
   const path = new URL(request.url).pathname.replace(/\/+$/, "") || "/";
   const headers = { ...cors(env), "Content-Type": "application/json; charset=utf-8" };
@@ -143,6 +194,7 @@ export async function handle(request, env, fetchImpl = fetch) {
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(env) });
   if (request.method !== "POST") return reply(405, { ok: false, error: "Используйте POST" });
 
+  if (path === "/llm") return handleLlm(request, env, fetchImpl);
   const channel = { "/telegram": "telegram", "/vk": "vk", "/max": "max", "/alice": "alice", "/avito": "avito" }[path];
   if (channel) return handleChannel(channel, request, env, fetchImpl);
 

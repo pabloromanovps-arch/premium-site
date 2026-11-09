@@ -125,6 +125,8 @@
           totals: cart.totals(input.items, input.fulfillment),
           payment: "unpaid",
         });
+        // Что агент предлагал дополнительно и приняли ли — для аналитики допродаж.
+        if (Array.isArray(input.offers) && input.offers.length) rec.offers = input.offers.map((o) => ({ id: String(o.id), accepted: !!o.accepted }));
       } else {
         rec.topic = input.topic || "";
       }

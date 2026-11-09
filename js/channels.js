@@ -208,7 +208,8 @@
   const GREETING_ONLY = /^(здравствуйте|добрый\s+\S+|доброе\s+\S+|привет|здрасте|алло)[!.,\s]*$/i;
 
   // Полный цикл: событие платформы → бот → вызовы API.
-  // deps: { sessions: { get(key), set(key, state) } (могут быть async), ctx: { now, create, lookup } }
+  // deps: { sessions: { get(key), set(key, state) } (могут быть async), ctx: { now, create, lookup },
+  //         rewrite?: async (result, ctx) => result — нейросеть переписывает ответ }
   async function handle(channel, update, deps) {
     const a = ADAPTERS[channel];
     if (!a) throw new Error("Неизвестный канал: " + channel);
@@ -240,6 +241,8 @@
       }
     } else if (inb.start || (!saved && !inb.text && !inb.value)) result = bot.start();
     else result = bot.reply(saved || bot.start().state, { text: inb.text, value: inb.value }, ctx);
+    // Живой язык от нейросети (если подключена): факты, кнопки и карточки остаются от бота.
+    if (deps.rewrite && !inb.unsupported) result = await deps.rewrite(result, ctx);
     if (channel === "avito") {
       const last = result.messages.filter((x) => x.options).pop();
       result.state = { ...result.state, _opts: last ? last.options.slice(0, LIMITS.avito.options).map((o) => ({ label: o.label, value: o.value })) : [] };

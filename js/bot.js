@@ -158,26 +158,68 @@
     if (/статус|где\s+(мой\s+)?заказ|отслед|когда привез/.test(t) || u.orderId) u.intent = "status";
     else if (/перезвон|позвон|флорист|оператор|человек|менеджер|живой/.test(t)) u.intent = "callback";
     else if (/(сколько|стоимост|цена).{0,20}доставк|условия|как\s+(оплат|доставля)|оплат|где вы|адрес магазин|режим работ|до скольки/.test(t)) u.intent = "delivery";
-    else if (/^(привет|здравств|добр\S* (день|утро|вечер)|хай|доброго)/.test(t)) u.intent = "greet";
-    else if (/спасиб|благодар/.test(t)) u.intent = "thanks";
     if (!u.intent && (/букет|цвет|заказ|купить|хочу|подбер|подар/.test(t) || u.product || u.flowers || u.maxPrice || u.minPrice || u.occasion)) u.intent = "order";
+    // «Здравствуйте! Есть пионы?» — это заказ, а не просто приветствие.
+    if (!u.intent && /^(привет|здравств|добр\S* (день|утро|вечер)|хай|доброго)/.test(t)) u.intent = "greet";
+    else if (!u.intent && /спасиб|благодар/.test(t)) u.intent = "thanks";
     return u;
   }
 
   // ---------- подбор ----------
 
+  // Наличие: чего сегодня нет, бот не предлагает, а на прямой вопрос честно говорит и предлагает похожее.
+  const isSoldOut = (p) => !!p && (P.soldOut || []).includes(p.id);
+  const available = () => catalog.products.filter((p) => !isSoldOut(p));
+  function similar(p, n = 3) {
+    const score = (x) => Math.abs(x.price - p.price) / p.price - 0.25 * x.colors.filter((c) => p.colors.includes(c)).length;
+    return available().filter((x) => x.id !== p.id).sort((a, b) => score(a) - score(b)).slice(0, n);
+  }
+  const soldOutLine = (p) => `«${p.name}» сегодня закончились — привезём с утренней поставкой. Пока могу предложить похожие по настроению:`;
+
   function candidates(d) {
+    if (d.similarTo) {
+      const p = catalog.byId(d.similarTo);
+      if (p) return { list: similar(p), similar: p };
+    }
     const fits = (p) => (!d.maxPrice || p.price <= d.maxPrice) && (!d.minPrice || p.price >= d.minPrice) && (!d.band || catalog.BUDGETS[d.band].test(p));
     const has = (p) => !d.flowers || d.flowers.some((f) => (p.name + " " + p.composition).toLowerCase().includes(f));
-    const byPrice = catalog.products.filter(fits).sort((a, b) => a.price - b.price);
+    const byPrice = available().filter(fits).sort((a, b) => a.price - b.price);
     const exact = byPrice.filter(has);
     if (d.flowers && !exact.length) {
-      const pricier = catalog.products.filter(has).sort((a, b) => a.price - b.price);
+      const gone = catalog.products.filter((p) => isSoldOut(p) && has(p));
+      if (gone.length) return { list: similar(gone[0]), similar: gone[0] };
+      const pricier = available().filter(has).sort((a, b) => a.price - b.price);
       if (pricier.length) return { list: pricier.slice(0, 4), overBudget: true };
     }
     return { list: (exact.length ? exact : byPrice).slice(0, 4), flowerMiss: !!d.flowers && !exact.length };
   }
-  const hasCriteria = (d) => !!(d.maxPrice || d.minPrice || d.band || d.flowers || d.occasion || d.all);
+  const hasCriteria = (d) => !!(d.maxPrice || d.minPrice || d.band || d.flowers || d.occasion || d.all || d.similarTo);
+
+  // ---------- мягкие продажи ----------
+  // Состав заказа: букет и принятые дополнения.
+  function orderItems(d) {
+    const p = catalog.byId(d.product);
+    const add = (d.addons || []).map((id) => (P.addons || []).find((a) => a.id === id)).filter(Boolean);
+    return [{ id: p.id, name: p.name, price: p.price, qty: 1 }].concat(add.map((a) => ({ id: a.id, name: a.name, price: a.price, qty: 1 })));
+  }
+  // Одно уместное предложение при проверке заказа. Если оно делает доставку бесплатной — говорим об этом.
+  function offerFor(d) {
+    if (d.offer || !(P.sales && P.sales.softOffers)) return null;
+    const addons = (P.addons || []).filter((a) => a.price > 0 && !(d.addons || []).includes(a.id));
+    if (!addons.length) return null;
+    const t = cart.totals(orderItems(d), d.fulfillment);
+    if (d.fulfillment === "delivery" && t.delivery > 0) {
+      const fit = addons.filter((a) => a.price >= t.toFree).sort((a, b) => a.price - b.price)[0];
+      if (fit) {
+        const net = fit.price - t.delivery;
+        const gain = net > 0 ? `по сути ${fit.nom || fit.short} обойдётся в ${rub(net)}` : "и это даже дешевле, чем платить за доставку";
+        return { addon: fit, line: `Кстати, до бесплатной доставки не хватает ${rub(t.toFree)}: если добавить ${fit.acc} за ${rub(fit.price)}, доставка станет бесплатной — ${gain}.` };
+      }
+    }
+    const pref = ["birthday", "love", "mom", "sorry"].includes(d.occasion) ? "choco" : "vase";
+    const a = addons.find((x) => x.id === pref) || addons[0];
+    return { addon: a, line: `Кстати, к букету часто берут ${a.acc} за ${rub(a.price)} — ${a.pitch}` };
+  }
   const card = (p) => ({ id: p.id, name: p.name, price: p.price, composition: p.composition });
 
   // ---------- вопросы ----------
@@ -204,12 +246,12 @@
   }
 
   function summary(d) {
-    const p = catalog.byId(d.product);
-    const t = cart.totals([{ ...p, qty: 1 }], d.fulfillment);
+    const items = orderItems(d);
+    const t = cart.totals(items, d.fulfillment);
     const where = d.fulfillment === "pickup" ? `Самовывоз: ${P.business.address}` : `Доставка: ${d.address}`;
     return [
       "Проверьте, всё ли верно:",
-      `${p.name} — ${rub(p.price)}`,
+      ...items.map((i) => `${i.name} — ${rub(i.price)}`),
       `${validate.formatDate(d.date)}, ${validate.slotLabel(d.slot)}`,
       where,
       `${d.name}, ${validate.formatPhone(d.phone)}`,
@@ -233,10 +275,11 @@
           ]), Object.entries(catalog.BUDGETS).map(([v, b]) => ({ label: b.label, value: "b:" + v })).concat({ label: "Показать все", value: "all" })));
           break;
         }
-        const { list, flowerMiss, overBudget } = candidates(d);
+        const { list, flowerMiss, overBudget, similar: gone } = candidates(d);
         const occ = OCCASIONS.find((o) => o.id === d.occasion);
         const lines = [];
-        if (overBudget) lines.push("С этими цветами есть только букеты дороже названного бюджета:");
+        if (gone) lines.push(soldOutLine(gone));
+        else if (overBudget) lines.push("С этими цветами есть только букеты дороже названного бюджета:");
         else if (flowerMiss) lines.push("Таких цветов в готовых букетах сегодня нет — флорист может собрать на заказ. Из готовых могу предложить:");
         else if (occ) lines.push(occ.line);
         if (!list.length) {
@@ -282,9 +325,17 @@
       case "phone":
         push(m(`${d.name}, оставьте номер телефона — флорист позвонит подтвердить заказ.`));
         break;
-      case "confirm":
-        push(m(summary(d), [{ label: "Всё верно, оформить", value: "confirm" }, { label: "Изменить", value: "edit" }]));
+      case "confirm": {
+        const o = offerFor(d);
+        const opts = [{ label: "Всё верно, оформить", value: "confirm" }];
+        if (o) {
+          st.draft = { ...d, offer: o.addon.id };
+          opts.push({ label: `Добавить ${o.addon.short} (+${rub(o.addon.price)})`, value: "o:" + o.addon.id });
+        }
+        opts.push({ label: "Изменить", value: "edit" });
+        push(m(summary(d) + (o ? "\n\n" + o.line : ""), opts));
         break;
+      }
     }
     return { state: st, messages: out };
   }
@@ -297,7 +348,10 @@
     if (u.minPrice) { n.minPrice = u.minPrice; delete n.band; }
     if (u.flowers) n.flowers = u.flowers;
     if (u.occasion) n.occasion = u.occasion;
-    if (u.product) n.product = u.product;
+    if (u.product) {
+      const p = catalog.byId(u.product);
+      if (isSoldOut(p)) { n.similarTo = p.id; delete n.product; } else n.product = u.product;
+    }
     if (u.date) {
       const range = validate.dateRange(now);
       if (u.date < range.min || u.date > range.max) notes.push(`Принимаем заказы на ближайшие 30 дней, до ${validate.formatDate(range.max)}.`);
@@ -336,6 +390,7 @@
     if (!p) return start(opts);
     const now = ctx && ctx.now ? ctx.now() : new Date();
     const base = { step: "menu", draft: {}, turn: 0, seen: {} };
+    if (isSoldOut(p)) return polish(ask(base, { similarTo: p.id }, now, [`${P.tone.greeting} Это «${P.business.name}». Вы пишете по объявлению «${p.name}».`]));
     const r = ask(base, { product: p.id }, now, [`${P.tone.greeting} Это «${P.business.name}». Вы пишете по объявлению «${p.name}» — ${rub(p.price)}: ${p.composition.toLowerCase()}.`]);
     return polish(r);
   }
@@ -392,8 +447,14 @@
       const [k, v] = value.includes(":") ? value.split(/:(.*)/s) : [value, ""];
       if (k === "b") { d = { ...d, band: v }; delete d.maxPrice; delete d.minPrice; delete d.all; }
       else if (k === "all") { d = { ...d, all: true }; delete d.band; delete d.maxPrice; delete d.minPrice; delete d.flowers; }
+      else if (k === "p" && isSoldOut(catalog.byId(v))) { d.similarTo = v; delete d.product; }
+      else if (k === "o") {
+        const a = (P.addons || []).find((x) => x.id === v);
+        if (a && !(d.addons || []).includes(v)) { d.addons = (d.addons || []).concat(v); pre.push(`Добавили ${a.short} к заказу.`); }
+      }
       else if (k === "p" && catalog.byId(v)) {
         d.product = v;
+        delete d.similarTo;
         const p = catalog.byId(v);
         pre.push(`«${p.name}»: ${p.composition.toLowerCase()}. ${pick(state, "v7", ["Хороший выбор.", "Отличный вариант.", "Его часто берут."])}`);
       } else if (k === "d" && v === "custom") { d.dateCustom = true; delete d.date; }
@@ -426,7 +487,18 @@
     switch (step) {
       case "product": {
         const byName = catalog.products.find((p) => text.toLowerCase().includes(p.name.toLowerCase()));
-        if (byName) d.product = byName.id;
+        // «давайте первый», «второй вариант», «3» — номер из показанного списка
+        const t = text.toLowerCase();
+        const ordWord = t.match(/(?:^|[^а-я])(перв|втор|трет|четв[её]рт)/);
+        const ordNum = t.match(/^\D{0,20}?(?:№\s*)?([1-4])(?:\s*(?:-?й|вариант|букет))?[\s.!]*$/);
+        const ord = ordWord ? { перв: 1, втор: 2, трет: 3 }[ordWord[1]] || 4 : ordNum ? +ordNum[1] : 0;
+        const shown = ord && hasCriteria(state.draft) ? candidates(state.draft).list : [];
+        const chosen = byName || shown[ord - 1];
+        if (chosen && !isSoldOut(chosen)) {
+          d.product = chosen.id;
+          delete d.similarTo;
+          if (!byName) pre.push(`«${chosen.name}»: ${chosen.composition.toLowerCase()}. ${pick(state, "v7", ["Хороший выбор.", "Отличный вариант.", "Его часто берут."])}`);
+        }
         else if (!u.flowers && !u.maxPrice && !u.minPrice && !u.occasion && !u.date && !u.slot && !u.fulfillment) {
           pre.push("Не нашёл такого букета. Выберите из списка или опишите, что хочется — цветы, повод или бюджет.");
         }
@@ -463,6 +535,10 @@
         if (!d.phone) pre.push("Нужен номер из 10 цифр после +7 — например, +7 916 123-45-67.");
         break;
       case "confirm":
+        if (d.offer && !(d.addons || []).includes(d.offer)) {
+          const a = (P.addons || []).find((x) => x.id === d.offer);
+          if (a && new RegExp(a.short.slice(0, 4), "i").test(text) && !/^(нет|не надо|без)/i.test(text)) return handleOrderStep(state, step, "", "o:" + a.id, now);
+        }
         if (/^(да|верно|все верно|оформ|ок|подтвержд|давай)/i.test(text)) return confirm(state, d, now);
         if (/^(нет|измен|поменя)/i.test(text)) return handleOrderStep(state, step, "", "edit", now);
         break;
@@ -471,14 +547,14 @@
   }
 
   function confirm(state, d, now) {
-    const p = catalog.byId(d.product);
-    const check = validate.validateOrder({ ...d, items: [{ id: p.id, name: p.name, price: p.price, qty: 1 }] }, now);
+    const check = validate.validateOrder({ ...d, items: orderItems(d) }, now);
     if (!check.ok) {
       const nd = { ...d };
       if (check.errors.slot || check.errors.date) { delete nd.slot; delete nd.date; }
       return ask(state, nd, now, [Object.values(check.errors)[0]]);
     }
-    const rec = state.ctx.create({ ...check.value, kind: "order", source: state.ctx.source || "chat" });
+    const offers = d.offer ? [{ id: d.offer, accepted: (d.addons || []).includes(d.offer) }] : [];
+    const rec = state.ctx.create({ ...check.value, kind: "order", source: state.ctx.source || "chat", offers });
     const when = isOpen(now)
       ? "Флорист позвонит в течение 15 минут, подтвердит детали и пришлёт ссылку на оплату."
       : `Сейчас мы закрыты, но заказ уже у нас. В ${P.business.hours.from}:00 флорист первым делом позвонит, подтвердит детали и пришлёт ссылку на оплату.`;

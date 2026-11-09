@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const bot = require("../../js/bot.js");
 const S = require("../../js/store.js");
+const profile = require("../../js/profile.js");
 
 // 10:30 по Москве, среда 21 октября 2026: сегодня ещё доступны 15–18 и 18–21
 const NOW = new Date("2026-10-21T07:30:00Z");
@@ -247,4 +248,106 @@ test("имя с инициалом сохраняется как написан�
   c.say("полевой завтра утром, заберу сам");
   c.say("Ольга Н.");
   assert.equal(c.state.draft.name, "Ольга Н.");
+});
+
+// ---------- мягкие продажи ----------
+test("нет в наличии: честно говорит и предлагает похожие по цене и цветам", () => {
+  const c = session();
+  c.say("хочу ранункулюсы на завтра");
+  assert.match(c.all(), /«Ранункулюсы» сегодня закончились — привезём с утренней поставкой/);
+  assert.ok(c.last().cards.length > 0);
+  assert.ok(!c.last().cards.some((p) => p.id === "ranunkulus"), "закончившийся букет не предлагаем");
+  c.say("", "p:" + c.last().cards[0].id);
+  assert.equal(c.state.step, "slot", "дальше — как обычно, дата уже понята");
+});
+
+test("закончившийся букет не попадает в подборки", () => {
+  const c = session();
+  c.press("Подобрать букет");
+  c.press("Показать все");
+  assert.ok(!c.labels().some((l) => /Ранункулюсы/.test(l)));
+});
+
+test("допродажа: одно предложение при проверке заказа, с честной выгодой по доставке", () => {
+  const c = session();
+  c.say("сирень на завтра днём, доставка"); // 4 600 ₽: до бесплатной доставки 400 ₽, доставка 490 ₽
+  c.press(/^Сирень и мята/);
+  c.say("Профсоюзная 104, кв 220");
+  c.say("Ольга");
+  c.say("9161234567");
+  assert.match(c.last().text, /до бесплатной доставки не хватает 400\u00a0₽: если добавить шоколад ручной работы за 450\u00a0₽, доставка станет бесплатной — и это даже дешевле, чем платить за доставку\./);
+  c.press("Добавить шоколад (+450\u00a0₽)");
+  assert.match(c.all(), /Добавили шоколад к заказу/);
+  assert.match(c.last().text, /Шоколад ручной работы — 450\u00a0₽[\s\S]*Итого: 5\u00a0050\u00a0₽ \(доставка бесплатно\)/);
+  assert.doesNotMatch(c.last().text, /Кстати/, "второй раз не предлагает");
+  c.press("Всё верно, оформить");
+  const rec = c.store.get("1001");
+  assert.deepEqual(rec.items.map((i) => i.id), ["siren", "choco"]);
+  assert.equal(rec.totals.total, 5050);
+  assert.deepEqual(rec.offers, [{ id: "choco", accepted: true }]);
+});
+
+test("допродажа дороже доставки: агент считает, во сколько она обойдётся на самом деле", () => {
+  const p = profile.merge(profile.DEFAULT, { addons: [{ id: "vase", name: "Ваза", acc: "вазу", short: "вазу", nom: "ваза", price: 600, pitch: "." }] });
+  const store = S.createStore({ storage: S.memoryStorage(), now: () => NOW });
+  const ctx = { now: () => NOW, create: (i) => store.create(i), lookup: (id) => store.get(id), profile: p };
+  let r = bot.start({ profile: p });
+  for (const [t, v] of [["сирень на завтра днём, доставка"], ["", "p:siren"], ["Профсоюзная 104, кв 220"], ["Ольга"], ["9161234567"]]) r = bot.reply(r.state, { text: t, value: v }, ctx);
+  assert.match(r.messages.at(-1).text, /по сути ваза обойдётся в 110\u00a0₽/);
+});
+
+test("допродажа: отказ — просто оформляем, предложение не повторяется", () => {
+  const c = session();
+  c.say("пионы маме на завтра вечером, заберу сам");
+  c.press(/^Утро на даче/);
+  c.say("Мария");
+  c.say("9161234567");
+  assert.match(c.last().text, /шоколад ручной работы за 450 ₽/, "для мамы — шоколад, а не ваза");
+  c.say("нет");
+  c.press("Дату и время");
+  c.say("в субботу утром");
+  assert.doesNotMatch(c.last().text, /Кстати/);
+  c.press("Всё верно, оформить");
+  assert.deepEqual(c.store.get("1001").offers, [{ id: "choco", accepted: false }]);
+});
+
+test("допродажу можно принять словами", () => {
+  const c = session();
+  c.say("бордо на завтра утром, заберу сам");
+  c.say("Игорь");
+  c.say("9037654321");
+  c.say("да, добавьте вазу");
+  assert.match(c.last().text, /Стеклянная ваза — 700/);
+});
+
+test("мягкие продажи выключаются в профиле", () => {
+  const off = profile.merge(profile.DEFAULT, { sales: { softOffers: false } });
+  const store = S.createStore({ storage: S.memoryStorage(), now: () => NOW });
+  const ctx = { now: () => NOW, create: (i) => store.create(i), lookup: (id) => store.get(id), profile: off };
+  let r = bot.start({ profile: off });
+  for (const t of ["бордо на завтра утром, заберу сам", "Игорь", "9037654321"]) r = bot.reply(r.state, { text: t }, ctx);
+  assert.doesNotMatch(r.messages.at(-1).text, /Кстати/);
+});
+
+test("приветствие с просьбой в одном сообщении — бот отвечает на просьбу, а не только здоровается", () => {
+  const S2 = require("../../js/store.js");
+  const st = S2.createStore({ storage: S2.memoryStorage() });
+  const c = { now: () => new Date("2026-11-09T09:00:00Z"), create: (i) => st.create(i), lookup: (id) => st.get(id) };
+  const r = bot.reply(bot.start().state, { text: "Здравствуйте! Есть ранункулюсы? Хочу подарить сестре" }, c);
+  assert.match(r.messages[0].text, /закончились/);
+  const g = bot.reply(bot.start().state, { text: "Добрый день!" }, c);
+  assert.match(g.messages[0].text, /Чем помочь/);
+});
+
+test("выбор из списка по порядку: «давайте первый» — первый показанный букет", () => {
+  const S2 = require("../../js/store.js");
+  const st = S2.createStore({ storage: S2.memoryStorage() });
+  const c = { now: () => new Date("2026-11-09T09:00:00Z"), create: (i) => st.create(i), lookup: (id) => st.get(id) };
+  const a = bot.reply(bot.start().state, { text: "есть ранункулюсы?" }, c);
+  const first = a.messages.at(-1).options[0].label.split(",")[0];
+  const b = bot.reply(a.state, { text: "давайте первый, на завтра днём, доставка" }, c);
+  assert.match(b.messages[0].text, new RegExp(first));
+  assert.equal(b.state.draft.slot, "12-15");
+  const c2 = bot.reply(a.state, { text: "2" }, c);
+  assert.ok(c2.state.draft.product && !c2.state.draft.similarTo);
 });

@@ -204,7 +204,10 @@
       return queue;
     }
     async function deliver(update) {
-      const res = await CH.handle(p.ch, update, { sessions, ctx: paneCtx });
+      const L = Flora.llm;
+      const cfg = L && L.settings();
+      const rewrite = cfg && cfg.provider !== "none" ? (r, c) => L.rewrite(r, c, { cfg, history: transcript() }) : undefined;
+      const res = await CH.handle(p.ch, update, { sessions, ctx: paneCtx, rewrite });
       if (res.kind !== "message") return;
       // Яндекс возвращает в state.session ровно то, что навык отдал в session_state.
       if (p.ch === "alice") { alice = res.calls[0].body.session_state; sessions.set("alice-state:" + p.chatId, alice); }
