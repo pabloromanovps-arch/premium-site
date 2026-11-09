@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="js/framed.js"></script>
+  <title>Аналитика — Стебель</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 30V14' stroke='%232f5d3a' stroke-width='3'/%3E%3Ccircle cx='16' cy='10' r='8' fill='%23d6336c'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alice&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/tools.css">
+  <link rel="stylesheet" href="css/analytics.css">
+</head>
+<body>
+  <header class="tool-top">
+    <p class="logo">Стебель <span>стенд</span></p>
+    <nav aria-label="Разделы стенда">
+      <a href="shop.html">Магазин</a>
+      <a href="channels.html">Мессенджеры</a>
+      <a href="crm.html">CRM</a>
+      <a href="analytics.html" aria-current="page">Аналитика</a>
+    </nav>
+  </header>
+
+  <main class="tool">
+    <h1>Аналитика</h1>
+    <p class="intro">Где бизнес сейчас и куда идти дальше: заявки, заказы, выручка, каналы, ночные заказы, допродажи и работа агента — за день, месяц и год, в сравнении с прошлым периодом.</p>
+
+    <div class="filters" role="group" aria-label="Период">
+      <div class="seg" id="view" role="radiogroup" aria-label="Масштаб">
+        <button type="button" data-view="day" role="radio">День</button>
+        <button type="button" data-view="month" role="radio">Месяц</button>
+        <button type="button" data-view="year" role="radio">Год</button>
+      </div>
+      <div class="nav-period">
+        <button type="button" class="arrow" id="prev" aria-label="Предыдущий период">‹</button>
+        <b id="period-title"></b>
+        <button type="button" class="arrow" id="next" aria-label="Следующий период">›</button>
+      </div>
+      <label>Сравнить с
+        <select id="compare"><option value="prev">предыдущим периодом</option><option value="year">тем же периодом год назад</option></select>
+      </label>
+      <label>Данные
+        <select id="source"><option value="demo">демо-история за 2 года</option><option value="crm">заявки стенда (CRM)</option></select>
+      </label>
+    </div>
+    <p class="note" id="source-note"></p>
+
+    <section class="kpis" id="kpis" aria-label="Главные показатели"></section>
+
+    <section class="panel" aria-labelledby="t-main">
+      <div class="panel-head">
+        <h2 id="t-main">Динамика</h2>
+        <div class="seg small" id="metric" role="radiogroup" aria-label="Показатель">
+          <button type="button" data-metric="revenue" role="radio">Выручка</button>
+          <button type="button" data-metric="orders" role="radio">Заказы</button>
+          <button type="button" data-metric="leads" role="radio">Обращения</button>
+          <button type="button" data-metric="conversion" role="radio">Конверсия</button>
+        </div>
+      </div>
+      <p class="legend" id="legend"></p>
+      <div class="chart" id="chart"></div>
+      <details class="table-view"><summary>Показать таблицей</summary><div id="main-table"></div></details>
+    </section>
+
+    <section class="panel insights" aria-labelledby="t-next">
+      <h2 id="t-next">Куда идти дальше</h2>
+      <ul id="insights"></ul>
+    </section>
+
+    <div class="two">
+      <section class="panel" aria-labelledby="t-ch">
+        <h2 id="t-ch">Каналы</h2>
+        <p class="sub">Выручка по каналам и сколько обращений превращается в заказ.</p>
+        <div id="channels"></div>
+      </section>
+      <section class="panel" aria-labelledby="t-hours">
+        <h2 id="t-hours">Когда пишут клиенты</h2>
+        <p class="sub">Обращения по часам. С 21:00 до 9:00 магазин закрыт — отвечает агент.</p>
+        <div class="chart" id="hours"></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-labelledby="t-agent">
+      <h2 id="t-agent">Работа агента</h2>
+      <div class="agent-grid" id="agent"></div>
+    </section>
+  </main>
+  <div class="tip" id="tip" role="tooltip" hidden></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/validate.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/analytics-page.js"></script>
+</body>
+</html>

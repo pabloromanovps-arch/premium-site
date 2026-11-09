@@ -5,7 +5,7 @@
 (function () {
   const { sync } = Flora;
   const KEYS = { crm: "stebel.crm.v1", outbox: "stebel.outbox.v1", cleared: "stebel.outbox.cleared" };
-  const PAGES = { start: "start.html", agent: "agent.html", autopilot: "autopilot.html", shop: "shop.html", channels: "channels.html", crm: "crm.html", setup: "setup.html", brain: "brain.html", lab: "lab.html", pay: "pay.html" };
+  const PAGES = { start: "start.html", agent: "agent.html", autopilot: "autopilot.html", shop: "shop.html", channels: "channels.html", crm: "crm.html", setup: "setup.html", brain: "brain.html", analytics: "analytics.html", lab: "lab.html", pay: "pay.html" };
   const DOC_LIMIT = 240000;
   const $ = (id) => document.getElementById(id);
   const frame = $("frame");
