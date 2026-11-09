@@ -35,15 +35,18 @@ K1, K2, PR, P3 = "1_kuplet_pripev", "2_kuplet_pripev", "proigrysh", "pripev3_fin
 # (kind, file, in-point s, end beat): each shot runs from the previous end to its own end beat
 SHOTS = [
     # intro + verse 1: videos 1-9
-    ("v", f"{K1}/VID_1.mp4", 6.0, 20), ("v", f"{K1}/VID_2.mp4", 12.0, 32), ("v", f"{K1}/VID_3.mp4", 0.0, 42),
+    ("v", f"{K1}/VID_1.mp4", 8.0, 20), ("v", f"{K1}/VID_2.mp4", 12.0, 32), ("v", f"{K1}/VID_3.mp4", 0.0, 42),
     ("v", f"{K1}/VID_4.mp4", 0.2, 52), ("v", f"{K1}/VID_5.mp4", 0.0, 60), ("v", f"{K1}/VID_6.mp4", 0.0, 66),
     ("v", f"{K1}/VID_7.mp4", 5.0, 76), ("v", f"{K1}/VID_8.mp4", 0.0, 86), ("v", f"{K1}/VID_9.mp4", 0.0, 96),
-    # chorus 1: six photos
-    ("p", f"{K1}/припев1 (1).webp", 0, 107), ("p", f"{K1}/припев1 (1).jpg", 0, 118), ("p", f"{K1}/pripev1_2.JPG", 0, 129),
-    ("p", f"{K1}/припев1 (3).jpg", 0, 140), ("p", f"{K1}/pripev1_4.JPG", 0, 150), ("p", f"{K1}/pripev1_5.JPG", 0, 160),
+    # chorus 1: eight photos, two bars each (the client's two added: 0720 and 2196)
+    *[("p", n, 0, 96 + 8 * (i + 1)) for i, n in enumerate([
+        f"{K1}/припев1 (1).webp", f"{K1}/припев1 (1).jpg", "dop/5M5A0720.JPG", f"{K1}/pripev1_2.JPG",
+        f"{K1}/припев1 (3).jpg", "dop/5M5A2196.JPG", f"{K1}/pripev1_4.JPG", f"{K1}/pripev1_5.JPG"])],
     # verse 2
     ("v", f"{K2}/VID_10.mp4", 4.0, 170), ("v", f"{K2}/VID_11.mp4", 0.0, 178), ("v", f"{K2}/VID_12.mp4", 0.0, 187),
-    ("p", f"{K2}/foto13.jpg", 0, 200), ("p", f"{K2}/foto14.jpg", 0, 214), ("v", f"{K2}/VID_15.mp4", 0.0, 224),
+    ("p", f"{K2}/foto13.jpg", 0, 192), ("v", "dop/MVI_0291.MP4", 16.0, 200),        # graduation 2026: 0:16-0:20
+    ("p", f"{K2}/foto14.jpg", 0, 205), ("v", "dop/MVI_0295.MP4", 4.6, 216),         # 0:04-0:15, the diplomas go up
+    ("v", f"{K2}/VID_15.mp4", 0.0, 224),
     # chorus 2: nine photos
     *[("p", f"{K2}/pripev2_{i}.{'JPG' if i in (8, 9) else 'jpg'}", 0, e)
       for i, e in zip(range(1, 10), [232, 239, 246, 253, 260, 267, 274, 281, 288])],
@@ -53,6 +56,7 @@ SHOTS = [
     # chorus 3 to the end: fifteen photos, six beats each, then the logo
     *[("p", f"{P3}/{n}", 0, 320 + 6 * (i + 1)) for i, n in enumerate(
         ["pripev3_1.jpg", "pripev3_1.webp"] + [f"pripev3_{k}.jpg" for k in range(2, 15)])],
+    ("v", "dop/MVI_0273.MP4", 2.0, 206.0),          # the director with the graduates, 3:22-3:26
     ("logo", f"{P3}/logo_VTT.jpg", 0, None),
 ]
 
@@ -141,7 +145,7 @@ def frame_of(shot, obj, t, dur):
     if kind == "p":
         u = min(1.0, max(0.0, t / dur)); u = u * u * (3 - 2 * u) * 0.5 + u * 0.5          # soft start, steady drift
         punch = 0.0                       # clean cuts (the client's editor adds any accents himself)
-        im = obj.img; z = (0.84 + 0.07 * u) * (1 + punch)
+        im = obj.img; z = (0.84 + 0.09 * u) * (1 + punch)
         cx = im.shape[1] / 2 + obj.dir * (u - 0.5) * (im.shape[1] - W / z) * 0.35
         cy = im.shape[0] / 2
         M = np.float32([[z, 0, W / 2 - cx * z], [0, z, H / 2 - cy * z]])
@@ -158,8 +162,63 @@ def frame_of(shot, obj, t, dur):
 # shot spans in seconds
 spans, prev = [], 0.0
 for sh in SHOTS:
-    end = END if sh[3] is None else BT[sh[3]]
+    end = END if sh[3] is None else sh[3] if isinstance(sh[3], float) else BT[sh[3]]
     spans.append((prev, end)); prev = end
+# the moving cuts (the client asked for life between the stills): a whip pan with motion blur, sideways
+# or upward, or a zoom-through; on the beat, at every cut that touches a photo from chorus 1 on (not
+# into the logo); the plain video-to-video cuts of the verses stay straight
+TW = 0.16                              # half a transition, s: it is centred on the beat
+STYLES = ["whip_l", "zoom", "whip_r", "whip_u", "zoom", "whip_l", "whip_d", "whip_r"]
+TRANS = {}
+for k in range(1, len(SHOTS)):
+    if SHOTS[k][0] == "logo" or spans[k][0] < BT[96] - 0.01: continue
+    if "p" in (SHOTS[k - 1][0], SHOTS[k][0]) or SHOTS[k][1].startswith("dop/"):
+        TRANS[k] = STYLES[len(TRANS) % len(STYLES)]
+
+
+def ease_io(u): u = min(1.0, max(0.0, u)); return u * u * u * (u * (6 * u - 15) + 10)
+
+
+def motion_blur(img, length, vertical):
+    """a directional blur `length` px long, done at quarter size (it is a blur: nothing is lost)"""
+    if length < 3: return img
+    sm = cv2.resize(img, (W // 4, H // 4), interpolation=cv2.INTER_AREA)
+    L = max(1, int(length / 4)); k = (1, L) if vertical else (L, 1)
+    return cv2.resize(cv2.blur(sm, k), (W, H), interpolation=cv2.INTER_LINEAR)
+
+
+def zoom_of(img, z):
+    M = cv2.getRotationMatrix2D((W / 2, H / 2), 0, z)
+    return cv2.warpAffine(img, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+
+
+def zoom_blur(img, z, amount):
+    if amount < 0.01: return zoom_of(img, z)
+    sm = cv2.resize(img, (W // 3, H // 3), interpolation=cv2.INTER_AREA); acc = np.zeros(sm.shape, np.float32)
+    for j in range(6):
+        M = cv2.getRotationMatrix2D((sm.shape[1] / 2, sm.shape[0] / 2), 0, z * (1 + amount * j / 5))
+        acc += cv2.warpAffine(sm, M, (sm.shape[1], sm.shape[0]), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    return cv2.resize((acc / 6).astype(np.uint8), (W, H), interpolation=cv2.INTER_LINEAR)
+
+
+def transition(A, B, u, style):
+    """u: 0 (all A) .. 1 (all B), the cut itself at 0.5"""
+    sharp = np.sin(np.pi * u)                         # the speed: 0 at both ends, top at the cut
+    if style.startswith("whip"):
+        p = ease_io(u); vertical = style in ("whip_u", "whip_d"); n = H if vertical else W
+        off = int(round(p * n)); out = np.empty_like(A)
+        if style in ("whip_l", "whip_u"):             # the picture travels left / up, the next comes in behind it
+            if vertical: out[:n - off] = A[off:]; out[n - off:] = B[:off]
+            else: out[:, :n - off] = A[:, off:]; out[:, n - off:] = B[:, :off]
+        else:
+            if vertical: out[off:] = A[:n - off]; out[:off] = B[n - off:]
+            else: out[:, off:] = A[:, :n - off]; out[:, :off] = B[:, n - off:]
+        return motion_blur(out, 0.22 * n * sharp ** 1.5, vertical)
+    if u < 0.5:                                       # zoom-through: into A fast, B lands from big to its frame
+        v = u / 0.5; return zoom_blur(A, 1 + 0.9 * v ** 2.2, 0.25 * sharp)
+    v = (u - 0.5) / 0.5; return zoom_blur(B, 1 + 0.6 * (1 - ease_out(v)), 0.25 * sharp)
+
+
 # where the song changes section: a short burst of light across the cut
 SECTION_CUTS = []                     # clean version: no light bursts (were at beats 96, 160, 224, 288, 320)
 
@@ -185,7 +244,14 @@ for n in range(N):
     t = n / FPS
     i = next(k for k, (a, b) in enumerate(spans) if t < b or k == len(spans) - 1)
     a, b = spans[i]
-    img = frame_of(SHOTS[i], obj_for(i), t - a, b - a)          # straight cuts, on the beat
+    k = next((k for k in TRANS if abs(t - spans[k][0]) < TW), None)
+    if k is not None:                                   # a moving cut, centred on the beat
+        (a0, b0), (a1, b1) = spans[k - 1], spans[k]
+        A = frame_of(SHOTS[k - 1], obj_for(k - 1), t - a0, b0 - a0)
+        B = frame_of(SHOTS[k], obj_for(k), t - a1, b1 - a1)
+        img = transition(A, B, (t - (a1 - TW)) / (2 * TW), TRANS[k])
+    else:
+        img = frame_of(SHOTS[i], obj_for(i), t - a, b - a)      # straight cuts, on the beat
     for c in SECTION_CUTS:
         d = t - c
         if -0.1 < d < 0.3:
