@@ -47,9 +47,10 @@ SHOTS = [
     ("p", f"{K2}/foto13.jpg", 0, 192), ("v", "dop/MVI_0291.MP4", 16.0, 200),        # graduation 2026: 0:16-0:20
     ("p", f"{K2}/foto14.jpg", 0, 205), ("v", "dop/MVI_0295.MP4", 4.6, 216),         # 0:04-0:15, the diplomas go up
     ("v", f"{K2}/VID_15.mp4", 0.0, 224),
-    # chorus 2: nine photos
-    *[("p", f"{K2}/pripev2_{i}.{'JPG' if i in (8, 9) else 'jpg'}", 0, e)
-      for i, e in zip(range(1, 10), [232, 239, 246, 253, 260, 267, 274, 281, 288])],
+    # chorus 2: ten photos (the client's third new one, the PAO class opening, in the middle)
+    *[("p", n, 0, 224 + round(6.4 * (i + 1))) for i, n in enumerate(
+        [f"{K2}/pripev2_{i}.{'JPG' if i in (8, 9) else 'jpg'}" for i in range(1, 6)] + ["dop/vtt_otkrytie_klassa_PAO.jpg"]
+        + [f"{K2}/pripev2_{i}.{'JPG' if i in (8, 9) else 'jpg'}" for i in range(6, 10)])],
     # the break
     ("v", f"{PR}/VID_16.mp4", 4.0, 300), ("p", f"{PR}/foto17.jpg", 0, 307), ("p", f"{PR}/foto18.jpg", 0, 314),
     ("p", f"{PR}/foto19.jpg", 0, 320),
