@@ -27,6 +27,11 @@ for s in (sys.argv[1] if len(sys.argv) > 1 else "FDPA"):
     print(s, len(segs), "stretches", flush=True)
     size = SIZES[s]                                     # in ranged pieces: a whole-file GET hits Drive's download quota
     curl = subprocess.Popen([str(HERE / "tools/drive_cat.sh"), DRIVE[s], str(size)], stdout=subprocess.PIPE)
-    subprocess.run(cmd, stdin=curl.stdout, check=True); curl.stdout.close(); curl.wait()
-    for t, final in tmps: t.rename(final)
+    subprocess.run(cmd, stdin=curl.stdout, check=True); curl.stdout.close()
+    if curl.wait() != 0: sys.exit(f"{s}: the download broke off")
+    for t, final in tmps:
+        d = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(t)],
+                           capture_output=True, text=True).stdout.strip()
+        if d in ("", "N/A") or float(d) < 0.5: sys.exit(f"{t.name}: empty")
+        t.rename(final)
 print("prefetch ok")
