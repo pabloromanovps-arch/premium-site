@@ -1,6 +1,6 @@
 #!/bin/bash
-# stream a Drive file to stdout in 32 MB ranged requests (Drive answers ranges when a whole-file GET hits its quota)
-id=$1; size=$2; step=$((32*1024*1024)); off=0
+# stream a Drive file to stdout in 8 MB ranged requests (Drive answers ranges when a whole-file GET hits its quota)
+id=$1; size=$2; step=$((8*1024*1024)); off=0
 url="https://drive.usercontent.google.com/download?id=$id&export=download&confirm=t"
 while [ $off -lt $size ]; do
   end=$((off+step-1)); [ $end -ge $size ] && end=$((size-1))
