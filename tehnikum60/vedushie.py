@@ -35,44 +35,45 @@ P = lambda n, d, bw=False: ("p", n, d, bw)                 # a photo, its length
 V = lambda s, a, b, crop=None, speed=1.0: ("v", s, a, b, crop, speed)   # a stretch a..b (s) of source s
 
 FOTO = SRC / "foto"
+# the client's brief gives each block's length: yellow 47 s, blue 38 s, green 28 s, the last one 23 s
 PLAN = {
-    1: dict(music="Heartwarming.mp3", length=66.0, items=[
-        P("f01.jpg", 4.2), P("f01_1.jpg", 3.4), P("f02.jpg", 3.6), P("f03.jpg", 3.2), P("f04.jpg", 3.2),
-        P("f05.jpg", 3.0), P("f06.webp", 3.2), P("f07.jpg", 3.0), P("f08.jpg", 3.0), P("f09.jpg", 3.0),
-        P("f10.jpg", 3.0), P("f11.webp", 3.2), P("f12_chb.jpg", 3.2, True), P("f13.jpg", 3.2), P("f14.jpg", 3.6),
-        P("f15.jpg", 3.2), P("f16.jpg", 3.2), P("f17.jpg", 3.2), P("f18.jpg", 6.0)]),
-    2: dict(music="Inspired.mp3", length=None, items=[
+    1: dict(music="Heartwarming.mp3", length=47.0, items=[                      # yellow: the 19 photos in order
+        P("f01.jpg", 3.0), P("f01_1.jpg", 2.4), P("f02.jpg", 2.6), P("f03.jpg", 2.3), P("f04.jpg", 2.3),
+        P("f05.jpg", 2.2), P("f06.webp", 2.3), P("f07.jpg", 2.2), P("f08.jpg", 2.2), P("f09.jpg", 2.2),
+        P("f10.jpg", 2.2), P("f11.webp", 2.3), P("f12_chb.jpg", 2.3, True), P("f13.jpg", 2.3), P("f14.jpg", 2.6),
+        P("f15.jpg", 2.3), P("f16.jpg", 2.3), P("f17.jpg", 2.3), P("f18.jpg", 4.0)]),
+    2: dict(music="Inspired.mp3", length=38.0, items=[                         # blue
         # «И сегодня… пространство возможностей для молодёжи»
         V("F", 480.3, 483.0), V("F", 298.0, 299.9),
         # «…не просто слушают лекции, а с первых курсов погружаются в профессиональную среду»
-        V("F", 300.6, 302.9), V("F", 303.0, 305.9), V("F", 318.0, 319.9), V("F", 320.0, 321.9), V("F", 324.0, 325.9),
+        V("F", 300.6, 302.9), V("F", 303.0, 305.4), V("F", 318.0, 319.9), V("F", 320.0, 321.9),
         # «…учатся на современном оборудовании и отрабатывают навыки…»
-        V("F", 349.0, 351.4), V("F", 352.0, 354.6, "plate"), V("F", 340.0, 341.9, "plate"),
+        V("F", 349.0, 351.4), V("F", 352.0, 354.2, "plate"),
         # «…новые производственные мастерские, оснащённые по актуальным отраслевым стандартам»
-        V("F", 359.0, 360.9), V("F", 373.0, 374.9, "plate"), V("F", 375.5, 378.5, "plate"),
+        V("F", 359.0, 360.9), V("F", 373.0, 374.9, "plate"), V("F", 375.5, 378.0, "plate"),
         # «…рабочие операции: от базовых приёмов до сложных технологических процессов»
-        V("F", 371.3, 372.9, "plate"), V("F", 367.0, 369.8, "plate"), V("F", 384.0, 386.6, "plate"), V("F", 389.0, 391.8, "plate"),
+        V("F", 367.0, 369.6, "plate"), V("F", 384.0, 386.4, "plate"),
         # «…уверенно чувствовать себя на производстве и быстрее проходить адаптацию»
-        V("F", 407.0, 409.9), V("F", 415.5, 419.4), V("F", 421.0, 424.9)]),
-    3: dict(music="Ascending_the_Vale.mp3", length=None, items=[
+        V("F", 407.0, 409.4), V("F", 415.5, 418.5), V("F", 421.0, 424.9)]),
+    3: dict(music="Ascending_the_Vale.mp3", length=28.0, items=[                # green: Dorogobuzh, close-ups only
         # «Получаемые навыки напрямую соотносятся с задачами… на предприятиях региона»
-        V("D", 4.2, 6.0), V("D", 21.0, 23.8),
-        # «…открыта по рекомендации ПАО «Дорогобуж»… программа составлялась с учётом потребностей производства»
-        V("A", 432.0, 433.9, "logo"), V("P", 277.0, 280.6, "logo"), V("A", 451.0, 452.9, "logo"), V("D", 117.2, 118.9),
+        V("D", 4.2, 5.8), V("D", 21.0, 23.4),
+        # «…открыта по рекомендации ПАО «Дорогобуж»… с учётом реальных потребностей производства»
+        V("A", 432.0, 433.9, "logo"), V("P", 277.0, 279.8, "logo"),
         # «…обслуживать насосное, компрессорное и теплообменное оборудование»
-        V("A", 333.6, 336.9, "logo"), V("D", 40.2, 42.8), V("A", 354.0, 357.0, "logo"), V("D", 126.0, 128.9),
+        V("A", 333.6, 336.4, "logo"), V("D", 40.2, 42.4), V("A", 354.0, 356.4, "logo"),
         # «…участвовать в монтаже и наладке технологических линий»
-        V("A", 439.0, 441.9, "logo"), V("D", 132.0, 135.6), V("A", 442.0, 444.9, "logo"), V("P", 265.8, 268.9, "logo"),
+        V("A", 439.0, 441.6, "logo"), V("D", 132.0, 135.0),
         # «…обеспечивать бесперебойную работу цехов»
-        V("A", 448.0, 450.9, "logo"), V("A", 386.6, 388.6, "logo"), V("D", 98.0, 99.9),
+        V("A", 448.0, 450.9, "logo"), V("D", 98.0, 100.0)]),
+    4: dict(music="Ascending_the_Vale.mp3", music_at=40.0, length=23.0, items=[  # the last block
         # «Сочетание мощной практической базы, тесной связи с работодателями…»
-        V("F", 361.0, 364.0, "plate"), V("F", 276.4, 277.9, "plate"),
+        V("F", 361.0, 363.6, "plate"), V("F", 276.4, 277.9, "plate"),
         # «…и насыщенной внеучебной жизни…»
-        P(SONG / "2_kuplet_pripev/pripev2_3.jpg", 1.9), P(SONG / "2_kuplet_pripev/pripev2_6.jpg", 1.9),
-        P(SONG / "2_kuplet_pripev/pripev2_9.JPG", 1.9), P(SONG / "pripev3_final/pripev3_13.jpg", 1.9),
-        P(SONG / "pripev3_final/pripev3_6.jpg", 2.1),
+        P(SONG / "2_kuplet_pripev/pripev2_3.jpg", 1.7), P(SONG / "2_kuplet_pripev/pripev2_6.jpg", 1.7),
+        P(SONG / "2_kuplet_pripev/pripev2_9.JPG", 1.7), P(SONG / "pripev3_final/pripev3_13.jpg", 1.8),
         # «Здесь студенты… учатся быть самостоятельными, ответственными и целеустремлёнными»
-        V("F", 322.0, 323.9), V("F", 306.0, 307.9), V("F", 486.0, 490.4), V("F", 63.9, 65.3, None, 0.5)]),
+        V("F", 322.0, 323.9), V("F", 306.0, 307.9), V("F", 486.0, 489.9), V("F", 63.9, 65.3, None, 0.5)]),
 }
 plan = PLAN[N_FILE]
 MUSIC = SRC / "music" / plan["music"]
@@ -84,21 +85,22 @@ if not bf.exists():
     y, sr = librosa.load(str(MUSIC), sr=22050, mono=True)
     _, b = librosa.beat.beat_track(y=y, sr=sr)
     bf.write_text(json.dumps([round(float(t), 4) for t in librosa.frames_to_time(b, sr=sr)]))
-BT = np.array(json.loads(bf.read_text()))
+BT = np.array(json.loads(bf.read_text())) - plan.get("music_at", 0.0); BT = BT[BT > 0.5]
 
 
 def item_len(it):
     return it[2] if it[0] == "p" else (it[3] - it[2]) / it[5]
 
 
+TARGET = plan["length"]; SCALE = TARGET / sum(item_len(it) for it in plan["items"])
 spans, t = [], 0.0
 for k, it in enumerate(plan["items"]):
-    end = t + item_len(it)
+    end = t + item_len(it) * SCALE
     if k < len(plan["items"]) - 1:
         end = float(BT[np.argmin(np.abs(BT - end))])
         if end - t < 1.0: end = float(BT[np.searchsorted(BT, t + 1.0)])
     spans.append((t, end)); t = end
-END = plan["length"] or spans[-1][1]
+END = TARGET
 spans[-1] = (spans[-1][0], END)
 
 # ---- the used stretches (final: cut from the full-resolution sources; draft: the proxies)
@@ -246,7 +248,7 @@ def obj_for(k):
 
 
 enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
-                        "-i", "-", "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
+                        "-i", "-", "-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
                         "-af", f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5",
                         "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "17" if W >= 1920 else "20",
                         "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-movflags", "+faststart", OUT],
