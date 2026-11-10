@@ -32,27 +32,11 @@ class Brand:
         ys, xs = np.where(logo[..., 3] > 10); self.logo = logo[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         self.wipe_files = sorted((BR / "perekhod").glob("*.png")); self._wipe = {}
 
-    # the green ground with large faint outlines (gears, triangles, rings) like the approved slides
+    # the approved ground: the green with the «Профессионалитет» icons as faint outlines, rebuilt clean
+    # from the evening's slides (nov.pdf: per pixel, the green/outline value from the pages it shows on)
     def _ground(self):
-        W, H, s = self.W, self.H, self.s
-        g = np.zeros((H, W, 3), np.uint8); g[:] = GREEN
-        lay = g.copy(); col = (88, 178, 122); th = max(1, int(2.2 * s))
-        rng = np.random.default_rng(7)
-        for _ in range(9):
-            x, y, r = int(rng.uniform(0, W)), int(rng.uniform(0, H)), int(rng.uniform(60, 150) * s)
-            kind = rng.integers(3)
-            if kind == 0:                                           # a gear: ring + teeth
-                cv2.circle(lay, (x, y), r, col, th, cv2.LINE_AA); cv2.circle(lay, (x, y), int(r * 0.45), col, th, cv2.LINE_AA)
-                for a in np.linspace(0, 2 * np.pi, 12, endpoint=False):
-                    p1 = (int(x + r * np.cos(a)), int(y + r * np.sin(a))); p2 = (int(x + r * 1.18 * np.cos(a)), int(y + r * 1.18 * np.sin(a)))
-                    cv2.line(lay, p1, p2, col, th * 3, cv2.LINE_AA)
-            elif kind == 1:                                         # a triangle
-                pts = np.array([[x, y - r], [x - int(r * 0.9), y + int(r * 0.6)], [x + int(r * 0.9), y + int(r * 0.6)]], np.int32)
-                cv2.polylines(lay, [pts], True, col, th, cv2.LINE_AA)
-            else:                                                   # a wrench-like bar
-                cv2.line(lay, (x - r, y + r), (x + r, y - r), col, th, cv2.LINE_AA)
-                cv2.circle(lay, (x + r, y - r), int(r * 0.25), col, th, cv2.LINE_AA)
-        return cv2.addWeighted(g, 0.55, lay, 0.45, 0)
+        g = cv2.imread(str(BR / "podlozhka_4k.png"))
+        return cv2.resize(g, (self.W, self.H), interpolation=cv2.INTER_AREA)
 
     def _overlay(self):
         W, H, s = self.W, self.H, self.s
@@ -64,6 +48,13 @@ class Brand:
         ImageDraw.Draw(v).text((0, 0), word[:7], font=f, fill=(255, 255, 255, 255))
         v = v.rotate(90, expand=True); im.alpha_composite(v, (x0, y0))
         d.text((x0 + v.size[0] + int(3 * s), y0 - int(1 * s)), word[7:], font=f, fill=(255, 255, 255, 255))
+        # and its mirror in the bottom right corner: ПРОФЕСС across the bottom, ИОНАЛИТЕТ up the right side
+        v2 = Image.new("RGBA", (int(f.getlength(word[7:])) + 4, asc + 6), (0, 0, 0, 0))
+        ImageDraw.Draw(v2).text((0, 0), word[7:], font=f, fill=(255, 255, 255, 255))
+        v2 = v2.rotate(90, expand=True)
+        xr, yb = W - int(32 * s) - v2.size[0], H - int(44 * s)
+        im.alpha_composite(v2, (xr, yb - v2.size[1]))
+        d.text((xr - int(3 * s) - int(f.getlength(word[:7])), yb - asc - int(2 * s)), word[:7], font=f, fill=(255, 255, 255, 255))
         # the bar along the bottom
         seg = W / len(BAR)
         for k, (c, h) in enumerate(zip(BAR, BAR_H)):

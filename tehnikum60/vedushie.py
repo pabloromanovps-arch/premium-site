@@ -42,20 +42,21 @@ PLAN = {
         P("f05.jpg", 2.2), P("f06.webp", 2.3), P("f07.jpg", 2.2), P("f08.jpg", 2.2), P("f09.jpg", 2.2),
         P("f10.jpg", 2.2), P("f11.webp", 2.3), P("f12_chb.jpg", 2.3, True), P("f13.jpg", 2.3), P("f14.jpg", 2.6),
         P("f15.jpg", 2.3), P("f16.jpg", 2.3), P("f17.jpg", 2.3), P("f18.jpg", 4.0)]),
-    2: dict(music="Inspired.mp3", length=38.0, items=[                         # blue
+    2: dict(music="Inspired.mp3", length=38.0, cards=[2, 3, 8, 9], items=[      # blue; the film's shots mixed,
+        # not in the film's order, each still on its line
         # «И сегодня… пространство возможностей для молодёжи»
-        V("F", 480.3, 483.0), V("F", 298.0, 299.9),
+        V("F", 480.3, 483.0), V("F", 318.0, 319.9),
         # «…не просто слушают лекции, а с первых курсов погружаются в профессиональную среду»
-        V("F", 300.6, 302.9), V("F", 303.0, 305.4), V("F", 318.0, 319.9), V("F", 320.0, 321.9),
+        V("F", 298.0, 299.9), V("F", 349.0, 351.4), V("F", 303.0, 305.4), V("F", 359.0, 360.9),
         # «…учатся на современном оборудовании и отрабатывают навыки…»
-        V("F", 349.0, 351.4), V("F", 352.0, 354.2, "plate"),
+        V("F", 320.0, 321.9), V("F", 373.0, 374.9, "plate"),
         # «…новые производственные мастерские, оснащённые по актуальным отраслевым стандартам»
-        V("F", 359.0, 360.9), V("F", 373.0, 374.9, "plate"), V("F", 375.5, 378.0, "plate"),
+        V("F", 300.6, 302.9), V("F", 367.0, 369.6, "plate"), V("F", 352.0, 354.2, "plate"), V("F", 375.5, 378.0, "plate"),
         # «…рабочие операции: от базовых приёмов до сложных технологических процессов»
-        V("F", 367.0, 369.6, "plate"), V("F", 384.0, 386.4, "plate"),
+        V("F", 384.0, 386.4, "plate"), V("F", 407.0, 409.4),
         # «…уверенно чувствовать себя на производстве и быстрее проходить адаптацию»
-        V("F", 407.0, 409.4), V("F", 415.5, 418.5), V("F", 421.0, 424.9)]),
-    3: dict(music="Ascending_the_Vale.mp3", length=28.0, items=[                # green: Dorogobuzh, close-ups only
+        V("F", 421.0, 424.9), V("F", 415.5, 418.5)]),
+    3: dict(music="Ascending_the_Vale.mp3", length=28.0, cards=[2, 3], items=[                # green: Dorogobuzh, close-ups only
         # «Получаемые навыки напрямую соотносятся с задачами… на предприятиях региона»
         V("D", 4.2, 5.8), V("D", 21.0, 23.4),
         # «…открыта по рекомендации ПАО «Дорогобуж»… с учётом реальных потребностей производства»
@@ -66,14 +67,14 @@ PLAN = {
         V("A", 439.0, 441.6, "logo"), V("D", 132.0, 135.0),
         # «…обеспечивать бесперебойную работу цехов»
         V("A", 448.0, 450.9, "logo"), V("D", 98.0, 100.0)]),
-    4: dict(music="Ascending_the_Vale.mp3", music_at=40.0, length=23.0, items=[  # the last block
+    4: dict(music="Ascending_the_Vale.mp3", music_at=40.0, length=23.0, items=[  # the last block, mixed
         # «Сочетание мощной практической базы, тесной связи с работодателями…»
-        V("F", 361.0, 363.6, "plate"), V("F", 276.4, 277.9, "plate"),
+        V("F", 276.4, 277.9, "plate"), V("F", 361.0, 363.6, "plate"),
         # «…и насыщенной внеучебной жизни…»
-        P(SONG / "2_kuplet_pripev/pripev2_3.jpg", 1.7), P(SONG / "2_kuplet_pripev/pripev2_6.jpg", 1.7),
-        P(SONG / "2_kuplet_pripev/pripev2_9.JPG", 1.7), P(SONG / "pripev3_final/pripev3_13.jpg", 1.8),
+        P(SONG / "2_kuplet_pripev/pripev2_6.jpg", 1.7), P(SONG / "pripev3_final/pripev3_13.jpg", 1.7),
+        P(SONG / "2_kuplet_pripev/pripev2_3.jpg", 1.7), P(SONG / "2_kuplet_pripev/pripev2_9.JPG", 1.8),
         # «Здесь студенты… учатся быть самостоятельными, ответственными и целеустремлёнными»
-        V("F", 322.0, 323.9), V("F", 306.0, 307.9), V("F", 486.0, 489.9), V("F", 63.9, 65.3, None, 0.5)]),
+        V("F", 322.0, 323.9), V("F", 486.0, 489.9), V("F", 306.0, 307.9), V("F", 63.9, 65.3, None, 0.5)]),
 }
 plan = PLAN[N_FILE]
 MUSIC = SRC / "music" / plan["music"]
@@ -238,7 +239,24 @@ def transition(A, B, u, style):
 
 
 items = plan["items"]
-TRANS = {k: STYLES[(k - 1) % len(STYLES)] for k in range(1, len(items))}
+# ---- the evening's graphic format: photos (and some videos) sit in slanted white cards with the red shadow
+# on the green «Профессионалитет» ground; the other videos run full frame under the brand frame (corner
+# wordmarks, «60» badge, colour bar). Card to card: the new card flies in and the last one steps back
+# behind it; full to full: a whip; between the two: the colour-stripe wipe. The end: the stripes wipe
+# to the «60» mark.
+sys.path.insert(0, str(HERE))
+from brand_vecher import Brand
+BRAND = Brand(W, H)
+CARD_SET = set(plan.get("cards", [])) | {k for k, it in enumerate(items) if it[0] == "p"}
+LAYOUT = ["card" if k in CARD_SET else "full" for k in range(len(items))]
+MAIN = [(0.47, 0.49, 0.56, 0.66), (0.58, 0.55, 0.50, 0.60)]           # cx, cy, w, h (fractions of W, H)
+BACK = {1: (0.29, 0.40, 0.33, 0.40), 0: (0.73, 0.38, 0.30, 0.37)}     # where the previous card steps back to
+CARD_IN = 0.5                                                         # the card's flight, s
+WIPE_DUR = 1.0; WIPE_PRE, WIPE_POST = 0.55, 0.45                      # the stripe wipe (played 1.6x) around a cut, s
+TRANS = {}
+for k in range(1, len(items)):
+    a_, b_ = LAYOUT[k - 1], LAYOUT[k]
+    TRANS[k] = "card" if a_ == b_ == "card" else STYLES[(k - 1) % len(STYLES)] if a_ == b_ == "full" else "stripes"
 objs = {}
 def obj_for(k):
     if k not in objs:
@@ -246,6 +264,45 @@ def obj_for(k):
         objs[k] = Photo(items[k], k) if items[k][0] == "p" else Clip(items[k], b - a)
     return objs[k]
 
+
+def run_start(k):
+    """the first index of the run of cards that k belongs to"""
+    while k > 0 and LAYOUT[k - 1] == "card": k -= 1
+    return k
+
+
+def px(r): return r[0] * W, r[1] * H, r[2] * W, r[3] * H
+
+
+def lerp(p, q, u): return tuple(a + (b - a) * u for a, b in zip(p, q))
+
+
+def shot(k, t):
+    a, b = spans[k]; return obj_for(k).frame(t - a, b - a, k)
+
+
+def card_scene(k, t):
+    """the green ground with card k as the main card (and the previous card of the run stepping back)"""
+    img = BRAND.ground.copy(); a = spans[k][0]; slot = (k - run_start(k)) % 2
+    u = ease_out((t - a) / CARD_IN)
+    if k > run_start(k):                                              # the previous card: from main to back
+        prev_main = MAIN[(k - 1 - run_start(k)) % 2]
+        pk = k - 1; pa, pb = spans[pk]
+        pic = obj_for(pk).frame(min(t, pb) - pa, pb - pa, pk)
+        img = BRAND.card(img, pic, *px(lerp(prev_main, BACK[slot], u)))
+    pic = shot(k, t)
+    target = MAIN[slot]; start = (target[0] + 0.75, target[1] + 0.10, target[2] * 0.9, target[3] * 0.9)
+    pos = lerp(start, target, u) if k > run_start(k) or k > 0 else target
+    white = max(0.0, 1 - (t - a) / (CARD_IN * 0.9)) if k > 0 else 0.0
+    return BRAND.card(img, pic, *px(pos), white=white)
+
+
+def base_frame(k, t):
+    return card_scene(k, t) if LAYOUT[k] == "card" else shot(k, t)
+
+
+END_WIPE = 2.0                                                        # the closing stripes to the «60» mark, then a hold
+LOGO = BRAND.logo_screen(0.5)
 
 enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
                         "-i", "-", "-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
@@ -256,17 +313,23 @@ enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_f
 for n in range(int(END * FPS)):
     t = n / FPS
     i = next(k for k, (a, b) in enumerate(spans) if t < b or k == len(spans) - 1)
-    k = next((k for k in TRANS if abs(t - spans[k][0]) < TW), None)
-    if k is not None:
-        (a0, b0), (a1, b1) = spans[k - 1], spans[k]
-        A = obj_for(k - 1).frame(t - a0, b0 - a0, k - 1)
-        B = obj_for(k).frame(t - a1, b1 - a1, k)
-        img = transition(A, B, (t - (a1 - TW)) / (2 * TW), TRANS[k])
-    else:
-        a, b = spans[i]; img = obj_for(i).frame(t - a, b - a, i)
-    if t < 0.6: img = (img.astype(np.float32) * (t / 0.6)).astype(np.uint8)          # in from black
-    if t > END - 1.5: img = (img.astype(np.float32) * max(0.0, (END - t) / 1.5)).astype(np.uint8)   # out to black
-    for j in [j for j in objs if j < i - 1]: del objs[j]
+    img = None
+    for k in range(max(1, i), min(len(items), i + 2)):                 # a cut nearby?
+        c = spans[k][0]; style = TRANS[k]
+        if style == "stripes" and c - WIPE_PRE <= t < c + WIPE_POST:
+            img = base_frame(k - 1 if t < c else k, t)
+            img = BRAND.paste(img, BRAND.wipe((t - (c - WIPE_PRE)) / WIPE_DUR), 0, 0); break
+        if style not in ("stripes", "card") and abs(t - c) < TW:
+            A, B = shot(k - 1, t), shot(k, t)
+            img = transition(A, B, (t - (c - TW)) / (2 * TW), style); break
+    if img is None: img = base_frame(i, t)
+    if t > END - END_WIPE:                                            # the closing wipe to the «60» mark
+        u = (t - (END - END_WIPE)) / WIPE_DUR                         # 0..1: the wipe, then the mark holds
+        if u > 0.5: img = LOGO.copy()
+        if u < 1.0: img = BRAND.paste(img, BRAND.wipe(u), 0, 0)
+    img = BRAND.frame_on(img)
+    if t < 0.4: img = (img.astype(np.float32) * (t / 0.4)).astype(np.uint8)
+    for j in [j for j in objs if j < i - 2]: del objs[j]
     enc.stdin.write(img.tobytes())
     if n % (FPS * 10) == 0: print(f"{t:.0f}s / {END:.0f}s item {i + 1}/{len(items)}", flush=True)
 enc.stdin.close(); enc.wait()
