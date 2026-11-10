@@ -22,28 +22,21 @@ for s in (sys.argv[1] if len(sys.argv) > 1 else "FDPA"):
     for a, b in sorted(todo):
         if iv and a <= iv[-1][1]: iv[-1][1] = max(iv[-1][1], b)
         else: iv.append([a, b])
-    sel = "+".join(f"between(t,{a:.3f},{b:.3f})" for a, b in iv)
-    union = OUT / f"tmp_union_{s}.mp4"
+    sel = "+".join(f"between(t,{a - 0.1:.3f},{b + 0.1:.3f})" for a, b in iv)
+    union = OUT / f"tmp_union_{s}.mkv"
     print(s, len(todo), "stretches in", len(iv), "runs", flush=True)
     size = SIZES[s]
     curl = subprocess.Popen([str(HERE / "tools/drive_cat.sh"), DRIVE[s], str(size)], stdout=subprocess.PIPE)
+    # the source's own timestamps are kept (gaps and all), so each stretch is then cut at its exact time
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-t", f"{iv[-1][1] + 1:.1f}", "-i", "pipe:0",
-                    "-vf", f"fps={FPS},select='{sel}',setpts=N/{FPS}/TB,format=yuv420p", "-an",
+                    "-vf", f"select='{sel}',format=yuv420p", "-fps_mode", "passthrough", "-an",
                     "-c:v", "libx264", "-preset", "fast", "-crf", "14", str(union)], stdin=curl.stdout, check=True)
     curl.stdout.close()
     if curl.wait() != 0: sys.exit(f"{s}: the download broke off")
-    # where each run starts in the union (in frames)
-    # select keeps frame n (t = n / FPS) when a <= t <= b: frames ceil(a*FPS) .. floor(b*FPS) of each run
-    import math
-    first = lambda x: math.ceil(x * FPS - 1e-6); last = lambda x: math.floor(x * FPS + 1e-6)
-    starts, n = [], 0
-    for a, b in iv:
-        starts.append(n); n += last(b) - first(a) + 1
     for a, b in todo:
-        r = next(i for i, (x, y) in enumerate(iv) if x <= a + 1e-6 and b <= y + 1e-6)
-        f0 = starts[r] + first(a) - first(iv[r][0]); f1 = f0 + last(b) - first(a) + 1
         final = OUT / f"{s}_{a:.2f}_{b - 0.5:.2f}.mp4"; tmp = OUT / f"tmp_{final.name}"
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(union), "-vf", f"trim=start_frame={f0}:end_frame={f1},setpts=PTS-STARTPTS",
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-copyts", "-i", str(union),
+                        "-vf", f"trim=start={a:.3f}:end={b:.3f},setpts=PTS-STARTPTS,fps={FPS}",
                         "-an", "-c:v", "libx264", "-preset", "fast", "-crf", "14", "-pix_fmt", "yuv420p", str(tmp)], check=True)
         d = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(tmp)],
                            capture_output=True, text=True).stdout.strip()
