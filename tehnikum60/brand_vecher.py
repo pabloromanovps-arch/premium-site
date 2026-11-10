@@ -24,9 +24,11 @@ def _font(size):
 
 
 class Brand:
-    def __init__(self, W, H):
-        self.W, self.H = W, H; s = self.s = H / 720
-        self.ground = self._ground()
+    def __init__(self, W, H, alpha=False):
+        """alpha: the pictures go out with a transparency matte and without the ground, the badge, the
+        corner wordmarks and the bar (the editor lays the evening's original background and logo under them)"""
+        self.W, self.H = W, H; s = self.s = H / 720; self.alpha = alpha
+        self.ground = np.zeros((H, W, 4), np.uint8) if alpha else self._ground()
         self.over = self._overlay()                                 # RGBA: wordmark, badge, bar
         logo = cv2.imread(str(BR / "logo60_white.png"), cv2.IMREAD_UNCHANGED)
         ys, xs = np.where(logo[..., 3] > 10); self.logo = logo[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
@@ -77,11 +79,15 @@ class Brand:
         x0, y0, x1, y1 = max(0, x), max(0, y), min(W, x + w), min(H, y + h)
         if x1 <= x0 or y1 <= y0: return img
         sub = rgba[y0 - y:y1 - y, x0 - x:x1 - x].astype(np.float32); k = sub[..., 3:4] / 255 * alpha
-        img[y0:y1, x0:x1] = (img[y0:y1, x0:x1].astype(np.float32) * (1 - k) + sub[..., :3] * k).astype(np.uint8)
+        dst = img[y0:y1, x0:x1].astype(np.float32)
+        dst[..., :3] = dst[..., :3] * (1 - k) + sub[..., :3] * k
+        if dst.shape[2] == 4: dst[..., 3:4] = dst[..., 3:4] * (1 - k) + 255 * k
+        img[y0:y1, x0:x1] = dst.astype(np.uint8)
         return img
 
     def frame_on(self, img, alpha=1.0):
-        """the wordmark, the badge and the bottom bar over any picture"""
+        """the wordmark, the badge and the bottom bar over any picture (not in the alpha version)"""
+        if self.alpha: return img
         img = self.paste(img, self.over, 0, 0, alpha)
         return self.badge(img, alpha)
 
@@ -103,10 +109,12 @@ class Brand:
         if white > 0: pic = cv2.addWeighted(pic, 1 - white, np.full_like(pic, 255), white, 0)
         m_sh = np.zeros((self.H, self.W), np.uint8); cv2.fillPoly(m_sh, [sh.astype(np.int32)], 255, cv2.LINE_AA)
         m = np.zeros((self.H, self.W), np.uint8); cv2.fillPoly(m, [q.astype(np.int32)], 255, cv2.LINE_AA)
-        k = (m_sh.astype(np.float32) / 255 * alpha)[..., None]
-        out = img.astype(np.float32) * (1 - k) + np.float32(RED) * k
-        k = (m.astype(np.float32) / 255 * alpha)[..., None]
-        out = out * (1 - k) + pic.astype(np.float32) * k
+        if pic.shape[2] == 4: pic = pic[..., :3]
+        out = img.astype(np.float32)
+        for mask, colour in ((m_sh, np.float32(RED)), (m, pic.astype(np.float32))):
+            k = (mask.astype(np.float32) / 255 * alpha)[..., None]
+            out[..., :3] = out[..., :3] * (1 - k) + colour * k
+            if out.shape[2] == 4: out[..., 3:4] = out[..., 3:4] * (1 - k) + 255 * k
         return out.astype(np.uint8)
 
     def wipe(self, u):
@@ -117,8 +125,10 @@ class Brand:
         return self._wipe[i]
 
     def logo_screen(self, scale=0.5):
-        """the green ground with the white «60» mark in the middle (the opening and closing screen)"""
+        """the green ground with the white «60» mark in the middle (the opening and closing screen);
+        in the alpha version: nothing (transparent), the editor's own background and logo show"""
         img = self.ground.copy(); lh = int(self.H * scale)
+        if self.alpha: return img
         lg = cv2.resize(self.logo, (int(self.logo.shape[1] * lh / self.logo.shape[0]), lh), interpolation=cv2.INTER_AREA)
         img = self.paste(img, lg, (self.W - lg.shape[1]) // 2, (self.H - lg.shape[0]) // 2 - int(10 * self.s))
         return self.paste(img, self.over, 0, 0)

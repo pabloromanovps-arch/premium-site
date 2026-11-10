@@ -20,6 +20,7 @@ SONG = HERE / "pesnya_src"
 N_FILE, OUT = int(sys.argv[1]), sys.argv[2]
 W = int(sys.argv[3]) if len(sys.argv) > 3 else 960
 MODE = sys.argv[4] if len(sys.argv) > 4 else "draft"
+ALPHA = "alpha" in sys.argv[5:]          # fill + matte, no ground/badge/wordmarks/bar (the editor adds the originals)
 H = W * 9 // 16
 FPS = 25
 DRIVE = {"F": "1meHsQ8dSHR6eyWoszLgKGVkk41QzZ6Et",          # «60 лет ВТТ (Version 16)», 3840x2160
@@ -246,7 +247,7 @@ items = plan["items"]
 # to the «60» mark.
 sys.path.insert(0, str(HERE))
 from brand_vecher import Brand
-BRAND = Brand(W, H)
+BRAND = Brand(W, H, alpha=ALPHA)
 CARD_SET = set(plan.get("cards", [])) | {k for k, it in enumerate(items) if it[0] == "p"}
 LAYOUT = ["card" if k in CARD_SET else "full" for k in range(len(items))]
 MAIN = [(0.47, 0.49, 0.56, 0.66), (0.58, 0.55, 0.50, 0.60)]           # cx, cy, w, h (fractions of W, H)
@@ -278,7 +279,8 @@ def lerp(p, q, u): return tuple(a + (b - a) * u for a, b in zip(p, q))
 
 
 def shot(k, t):
-    a, b = spans[k]; return obj_for(k).frame(t - a, b - a, k)
+    a, b = spans[k]; f = obj_for(k).frame(t - a, b - a, k)
+    return np.dstack([f, np.full(f.shape[:2], 255, np.uint8)]) if ALPHA else f
 
 
 def card_scene(k, t):
@@ -304,12 +306,19 @@ def base_frame(k, t):
 END_WIPE = 2.0                                                        # the closing stripes to the «60» mark, then a hold
 LOGO = BRAND.logo_screen(0.5)
 
-enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
-                        "-i", "-", "-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
-                        "-af", f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5",
-                        "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "17" if W >= 1920 else "20",
-                        "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-movflags", "+faststart", OUT],
-                       stdin=subprocess.PIPE)
+AUDIO_ARGS = ["-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
+              "-af", f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5",
+              "-t", f"{END:.3f}", "-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
+if ALPHA:
+    from alpha_out import FillMatte
+    out = FillMatte(OUT[:-4] if OUT.endswith(".mp4") else OUT, W, H, FPS, AUDIO_ARGS)
+else:
+    enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
+                            "-i", "-", "-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
+                            "-af", f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5",
+                            "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "17" if W >= 1920 else "20",
+                            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-movflags", "+faststart", OUT],
+                           stdin=subprocess.PIPE)
 for n in range(int(END * FPS)):
     t = n / FPS
     i = next(k for k, (a, b) in enumerate(spans) if t < b or k == len(spans) - 1)
@@ -328,9 +337,10 @@ for n in range(int(END * FPS)):
         if u > 0.5: img = LOGO.copy()
         if u < 1.0: img = BRAND.paste(img, BRAND.wipe(u), 0, 0)
     img = BRAND.frame_on(img)
-    if t < 0.4: img = (img.astype(np.float32) * (t / 0.4)).astype(np.uint8)
+    if t < 0.4 and not ALPHA: img = (img.astype(np.float32) * (t / 0.4)).astype(np.uint8)
     for j in [j for j in objs if j < i - 2]: del objs[j]
-    enc.stdin.write(img.tobytes())
+    if ALPHA: out.write(img)
+    else: enc.stdin.write(img.tobytes())
     if n % (FPS * 10) == 0: print(f"{t:.0f}s / {END:.0f}s item {i + 1}/{len(items)}", flush=True)
-enc.stdin.close(); enc.wait()
+out.close() if ALPHA else (enc.stdin.close(), enc.wait())
 print("done", OUT, f"{END:.1f}s")

@@ -15,6 +15,7 @@ SRC = Path(__file__).resolve().parent / "pesnya_src"
 OUT = sys.argv[1]
 W = int(sys.argv[2]) if len(sys.argv) > 2 else 960
 FPS = int(sys.argv[3]) if len(sys.argv) > 3 else 30
+ALPHA = "alpha" in sys.argv[4:]          # fill + matte: photos in cards over transparency (the editor adds the original background)
 H = W * 9 // 16
 XF = 0.30          # the dissolve at every cut, seconds (centred on the beat)
 AUDIO = SRC / "fonogramma.mp3"
@@ -173,7 +174,7 @@ for sh in SHOTS:
 # straight cuts. The logo at the end stays as approved (built from its pieces on white).
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from brand_vecher import Brand
-BRAND = Brand(W, H)
+BRAND = Brand(W, H, alpha=ALPHA)
 TW = 0.16                              # half a whip, s
 STYLES = ["whip_l", "zoom", "whip_r", "whip_u", "zoom", "whip_l", "whip_d", "whip_r"]
 MAIN = [(0.47, 0.49, 0.64, 0.74), (0.55, 0.52, 0.60, 0.70)]          # the big card: cx, cy, w, h (of W, H)
@@ -241,7 +242,8 @@ def lerp(p, q, u): return tuple(a + (b - a) * u for a, b in zip(p, q))
 
 
 def shot(k, t):
-    a, b = spans[k]; return frame_of(SHOTS[k], obj_for(k), t - a, b - a)
+    a, b = spans[k]; f = frame_of(SHOTS[k], obj_for(k), t - a, b - a)
+    return np.dstack([f, np.full(f.shape[:2], 255, np.uint8)]) if ALPHA else f
 
 
 def scene(k, t):
@@ -257,11 +259,17 @@ def scene(k, t):
     white = max(0.0, 1 - (t - a) / (CARD_IN * 0.9)) if k > r0 else 0.0
     return BRAND.card(img, shot(k, t), *px(pos), white=white)
 
-enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
-                        "-i", "-", "-i", str(AUDIO), "-map", "0:v", "-map", "1:a",
-                        "-af", f"afade=t=out:st={END - 1.5}:d=1.5", "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium",
-                        "-crf", "17" if W >= 1920 else "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k",
-                        "-movflags", "+faststart", OUT], stdin=subprocess.PIPE)
+AUDIO_ARGS = ["-i", str(AUDIO), "-map", "0:v", "-map", "1:a", "-af", f"afade=t=out:st={END - 1.5}:d=1.5", "-t", f"{END:.3f}",
+              "-c:a", "aac", "-b:a", "320k"]
+if ALPHA:
+    from alpha_out import FillMatte
+    out = FillMatte(OUT[:-4] if OUT.endswith(".mp4") else OUT, W, H, FPS, AUDIO_ARGS)
+else:
+    enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
+                            "-i", "-", "-i", str(AUDIO), "-map", "0:v", "-map", "1:a",
+                            "-af", f"afade=t=out:st={END - 1.5}:d=1.5", "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium",
+                            "-crf", "17" if W >= 1920 else "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k",
+                            "-movflags", "+faststart", OUT], stdin=subprocess.PIPE)
 objs = {}
 def obj_for(i):
     if i not in objs:
@@ -291,7 +299,8 @@ for n in range(N):
     if t > END - 1.2:                                   # a fade to white at the very end
         k = min(1.0, (t - (END - 1.2)) / 1.0); img = cv2.addWeighted(img, 1 - k, np.full_like(img, 255), k, 0)
     for j in [j for j in objs if j < i - 2]: del objs[j]
-    enc.stdin.write(img.tobytes())
+    if ALPHA: out.write(img if img.shape[2] == 4 else np.dstack([img, np.full(img.shape[:2], 255, np.uint8)]))
+    else: enc.stdin.write(img.tobytes())
     if n % (FPS * 10) == 0: print(f"{t:.0f}s shot {i + 1}/{len(SHOTS)}", flush=True)
-enc.stdin.close(); enc.wait()
+out.close() if ALPHA else (enc.stdin.close(), enc.wait())
 print("done", OUT)
