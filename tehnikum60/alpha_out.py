@@ -22,20 +22,24 @@ class FillMatte:
         self.k = np.ones((5, 5), np.uint8)
 
     def write(self, bgra):
-        a = bgra[..., 3:4].astype(np.float32)
-        col = bgra[..., :3].astype(np.float32)
-        col = np.where(a > 0, np.clip(col * 255 / np.maximum(a, 1), 0, 255), 0).astype(np.uint8)   # un-premultiply
-        # beyond the edges, the edge's own colour (grown outwards a few pixels): compression and chroma
-        # subsampling then mix the edge with itself, not with black, so no dark fringe after keying
-        if (a < 255).any() and (a > 0).any():
-            grown = col.copy(); m = (a[..., 0] > 0).astype(np.uint8)
-            for _ in range(3):
-                d = cv2.dilate(grown, self.k); md = cv2.dilate(m, self.k)
-                new = (md > 0) & (m == 0); grown[new] = d[new]; m = md
-            col = grown
+        a8 = bgra[..., 3]
+        if a8.min() == 255:                                                # a full-frame shot: as is
+            self.fill.stdin.write(np.ascontiguousarray(bgra[..., :3]).tobytes())
+            self.matte.stdin.write(np.ascontiguousarray(a8).tobytes()); return
+        col = bgra[..., :3].copy()
+        edge = (a8 > 0) & (a8 < 255)                                       # un-premultiply the soft edges
+        if edge.any():
+            col[edge] = np.clip(col[edge].astype(np.float32) * 255 / a8[edge, None].astype(np.float32), 0, 255).astype(np.uint8)
+        # the transparent area takes the colour of what is near it (normalised blur at 1/8 size), so
+        # compression and chroma subsampling mix an edge with its own colour, not with black: no dark fringe
+        h, w = a8.shape; sh = (w // 8, h // 8)
+        af = cv2.resize(a8.astype(np.float32) / 255, sh, interpolation=cv2.INTER_AREA)
+        cf = cv2.resize(bgra[..., :3].astype(np.float32), sh, interpolation=cv2.INTER_AREA)  # premultiplied already
+        af = cv2.blur(af, (15, 15)); cf = cv2.blur(cf, (15, 15))
+        ext = cv2.resize(np.clip(cf / np.maximum(af, 1e-3)[..., None], 0, 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_LINEAR)
+        t = a8 == 0; col[t] = ext[t]
         self.fill.stdin.write(col.tobytes())
-        alpha = bgra[..., 3]; alpha = np.where(alpha < 3, 0, np.where(alpha > 252, 255, alpha)).astype(np.uint8)
-        self.matte.stdin.write(np.ascontiguousarray(alpha).tobytes())
+        self.matte.stdin.write(np.ascontiguousarray(np.where(a8 < 3, 0, np.where(a8 > 252, 255, a8)).astype(np.uint8)).tobytes())
 
     def close(self):
         for p in (self.fill, self.matte): p.stdin.close(); p.wait()
