@@ -165,16 +165,27 @@ spans, prev = [], 0.0
 for sh in SHOTS:
     end = END if sh[3] is None else sh[3] if isinstance(sh[3], float) else BT[sh[3]]
     spans.append((prev, end)); prev = end
-# the moving cuts (the client asked for life between the stills): a whip pan with motion blur, sideways
-# or upward, or a zoom-through; on the beat, at every cut that touches a photo from chorus 1 on (not
-# into the logo); the plain video-to-video cuts of the verses stay straight
-TW = 0.16                              # half a transition, s: it is centred on the beat
+# the evening's graphic format (approved for the presenters' slideshows, now for the song too): the
+# photos sit in large slanted white cards with the red shadow on the green «Профессионалитет» ground
+# (a new card flies in on the beat, the last one steps back behind it); the videos run full frame under
+# the brand frame (corner wordmarks, «60» badge, colour bar); between a video and a photo the colour
+# stripes wipe across, centred on the beat; video to video in the choruses: a whip; in the verses:
+# straight cuts. The logo at the end stays as approved (built from its pieces on white).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from brand_vecher import Brand
+BRAND = Brand(W, H)
+TW = 0.16                              # half a whip, s
 STYLES = ["whip_l", "zoom", "whip_r", "whip_u", "zoom", "whip_l", "whip_d", "whip_r"]
+MAIN = [(0.47, 0.49, 0.64, 0.74), (0.55, 0.52, 0.60, 0.70)]          # the big card: cx, cy, w, h (of W, H)
+BACK = {1: (0.27, 0.36, 0.34, 0.40), 0: (0.74, 0.36, 0.32, 0.38)}    # where the last card steps back to
+CARD_IN = 0.45
+WIPE_DUR = 1.0; WIPE_PRE, WIPE_POST = 0.55, 0.45
 TRANS = {}
 for k in range(1, len(SHOTS)):
-    if SHOTS[k][0] == "logo" or spans[k][0] < BT[96] - 0.01: continue
-    if "p" in (SHOTS[k - 1][0], SHOTS[k][0]) or SHOTS[k][1].startswith("dop/"):
-        TRANS[k] = STYLES[len(TRANS) % len(STYLES)]
+    a_, b_ = SHOTS[k - 1][0], SHOTS[k][0]
+    if b_ == "logo" or a_ != b_: TRANS[k] = "stripes"
+    elif a_ == "p": TRANS[k] = "card"
+    elif spans[k][0] >= BT[96] - 0.01 and SHOTS[k][1].startswith("dop/"): TRANS[k] = STYLES[len(TRANS) % len(STYLES)]
 
 
 def ease_io(u): u = min(1.0, max(0.0, u)); return u * u * u * (u * (6 * u - 15) + 10)
@@ -220,8 +231,31 @@ def transition(A, B, u, style):
     v = (u - 0.5) / 0.5; return zoom_blur(B, 1 + 0.6 * (1 - ease_out(v)), 0.25 * sharp)
 
 
-# where the song changes section: a short burst of light across the cut
-SECTION_CUTS = []                     # clean version: no light bursts (were at beats 96, 160, 224, 288, 320)
+def run_start(k):
+    while k > 0 and SHOTS[k - 1][0] == "p": k -= 1
+    return k
+
+
+def px(r): return r[0] * W, r[1] * H, r[2] * W, r[3] * H
+def lerp(p, q, u): return tuple(a + (b - a) * u for a, b in zip(p, q))
+
+
+def shot(k, t):
+    a, b = spans[k]; return frame_of(SHOTS[k], obj_for(k), t - a, b - a)
+
+
+def scene(k, t):
+    """shot k as it is shown: a photo in its card on the ground, a video full frame, the logo as is"""
+    if SHOTS[k][0] != "p": return shot(k, t)
+    img = BRAND.ground.copy(); a = spans[k][0]; r0 = run_start(k); slot = (k - r0) % 2
+    u = ease_out((t - a) / CARD_IN)
+    if k > r0:
+        pa, pb = spans[k - 1]
+        img = BRAND.card(img, frame_of(SHOTS[k - 1], obj_for(k - 1), min(t, pb) - pa, pb - pa), *px(lerp(MAIN[(k - 1 - r0) % 2], BACK[slot], u)))
+    target = MAIN[slot]; start = (target[0] + 0.75, target[1] + 0.10, target[2] * 0.9, target[3] * 0.9)
+    pos = lerp(start, target, u) if k > r0 else target
+    white = max(0.0, 1 - (t - a) / (CARD_IN * 0.9)) if k > r0 else 0.0
+    return BRAND.card(img, shot(k, t), *px(pos), white=white)
 
 enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
                         "-i", "-", "-i", str(AUDIO), "-map", "0:v", "-map", "1:a",
@@ -239,28 +273,24 @@ def obj_for(i):
             src = cv2.imread(str(SRC / sh[1])); objs[i] = LogoAnim(SRC / sh[1], min(W * 0.42 / src.shape[1], H * 0.64 / src.shape[0]))
     return objs[i]
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
 N = int(END * FPS)
 for n in range(N):
     t = n / FPS
     i = next(k for k, (a, b) in enumerate(spans) if t < b or k == len(spans) - 1)
-    a, b = spans[i]
-    k = next((k for k in TRANS if abs(t - spans[k][0]) < TW), None)
-    if k is not None:                                   # a moving cut, centred on the beat
-        (a0, b0), (a1, b1) = spans[k - 1], spans[k]
-        A = frame_of(SHOTS[k - 1], obj_for(k - 1), t - a0, b0 - a0)
-        B = frame_of(SHOTS[k], obj_for(k), t - a1, b1 - a1)
-        img = transition(A, B, (t - (a1 - TW)) / (2 * TW), TRANS[k])
-    else:
-        img = frame_of(SHOTS[i], obj_for(i), t - a, b - a)      # straight cuts, on the beat
-    for c in SECTION_CUTS:
-        d = t - c
-        if -0.1 < d < 0.3:
-            k = 0.85 * (np.exp(-(d / 0.05) ** 2) if d < 0 else np.exp(-d / 0.09))
-            img = cv2.addWeighted(img, 1 - k, np.full_like(img, 255), k, 0)
+    img = None
+    for k in range(max(1, i), min(len(SHOTS), i + 2)):
+        c = spans[k][0]; style = TRANS.get(k)
+        if style == "stripes" and c - WIPE_PRE <= t < c + WIPE_POST:
+            img = scene(k - 1 if t < c else k, t)
+            img = BRAND.paste(img, BRAND.wipe((t - (c - WIPE_PRE)) / WIPE_DUR), 0, 0); break
+        if style in STYLES and abs(t - c) < TW:
+            img = transition(shot(k - 1, t), shot(k, t), (t - (c - TW)) / (2 * TW), style); break
+    if img is None: img = scene(i, t)
+    logo_from = spans[-1][0]
+    if t < logo_from + WIPE_POST * 0.6: img = BRAND.frame_on(img)      # the brand frame on all but the logo
     if t > END - 1.2:                                   # a fade to white at the very end
         k = min(1.0, (t - (END - 1.2)) / 1.0); img = cv2.addWeighted(img, 1 - k, np.full_like(img, 255), k, 0)
-    for j in [j for j in objs if j < i - 1]: del objs[j]
+    for j in [j for j in objs if j < i - 2]: del objs[j]
     enc.stdin.write(img.tobytes())
     if n % (FPS * 10) == 0: print(f"{t:.0f}s shot {i + 1}/{len(SHOTS)}", flush=True)
 enc.stdin.close(); enc.wait()
