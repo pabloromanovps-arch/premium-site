@@ -1,6 +1,6 @@
 """Writes a picture with transparency as two ordinary files an editor puts together with a track matte
 (Premiere: Track Matte Key; DaVinci Resolve: matte / Alpha Mode; After Effects: Luma Matte):
-    <name>_FILL.mp4   the picture, colours un-premultiplied (no dark fringes at soft edges), with the sound
+    <name>_FILL.mp4   the picture, colours straight and carried a few pixels past every edge (no dark fringe), with the sound
     <name>_MATTE.mov  white = opaque, black = transparent; lossless (PNG in QuickTime)
 A true alpha file (ProRes 4444) would be tens of GB in 4K; these two are small and frame-identical.
 """
@@ -22,23 +22,9 @@ class FillMatte:
         self.k = np.ones((5, 5), np.uint8)
 
     def write(self, bgra):
+        """bgra: straight (un-premultiplied) colour, as Brand composites it in alpha mode"""
+        self.fill.stdin.write(np.ascontiguousarray(bgra[..., :3]).tobytes())
         a8 = bgra[..., 3]
-        if a8.min() == 255:                                                # a full-frame shot: as is
-            self.fill.stdin.write(np.ascontiguousarray(bgra[..., :3]).tobytes())
-            self.matte.stdin.write(np.ascontiguousarray(a8).tobytes()); return
-        col = bgra[..., :3].copy()
-        edge = (a8 > 0) & (a8 < 255)                                       # un-premultiply the soft edges
-        if edge.any():
-            col[edge] = np.clip(col[edge].astype(np.float32) * 255 / a8[edge, None].astype(np.float32), 0, 255).astype(np.uint8)
-        # the transparent area takes the colour of what is near it (normalised blur at 1/8 size), so
-        # compression and chroma subsampling mix an edge with its own colour, not with black: no dark fringe
-        h, w = a8.shape; sh = (w // 8, h // 8)
-        af = cv2.resize(a8.astype(np.float32) / 255, sh, interpolation=cv2.INTER_AREA)
-        cf = cv2.resize(bgra[..., :3].astype(np.float32), sh, interpolation=cv2.INTER_AREA)  # premultiplied already
-        af = cv2.blur(af, (15, 15)); cf = cv2.blur(cf, (15, 15))
-        ext = cv2.resize(np.clip(cf / np.maximum(af, 1e-3)[..., None], 0, 255).astype(np.uint8), (w, h), interpolation=cv2.INTER_LINEAR)
-        t = a8 == 0; col[t] = ext[t]
-        self.fill.stdin.write(col.tobytes())
         self.matte.stdin.write(np.ascontiguousarray(np.where(a8 < 3, 0, np.where(a8 > 252, 255, a8)).astype(np.uint8)).tobytes())
 
     def close(self):

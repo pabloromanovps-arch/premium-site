@@ -74,15 +74,37 @@ class Brand:
         return self.paste(img, lg, cx - lg.shape[1] // 2, cy - lg.shape[0] // 2, alpha)
 
     @staticmethod
+    def _over(dst, src_col, k, grow=None):
+        """`src_col` (H x W x 3) over the region `dst` (BGR or BGRA, uint8, edited in place) with coverage
+        k (H x W x 1, 0..1). With BGRA the colour stays straight (un-premultiplied); where `grow` (a
+        slightly larger mask) says so, the fully transparent pixels just outside take the source colour
+        too, so the fill never fades to black at an edge. Full coverage is a plain copy (fast)."""
+        k2 = k[..., 0]; full = k2 >= 0.999; part = (k2 > 0.001) & ~full
+        src = src_col if src_col.dtype == np.uint8 else np.clip(src_col, 0, 255).astype(np.uint8)
+        if dst.shape[2] == 4:
+            if grow is not None:
+                ring = grow[..., 0] & (dst[..., 3] == 0) & ~full & ~part
+                dst[ring, :3] = src[ring]
+            dst[full, :3] = src[full]; dst[full, 3] = 255
+            if part.any():
+                d = dst[part].astype(np.float32); kk = k2[part][:, None]; sc = src[part].astype(np.float32)
+                a = d[:, 3:4] / 255; na = kk + a * (1 - kk)
+                col = (sc * kk + d[:, :3] * a * (1 - kk)) / np.maximum(na, 1e-4)
+                dst[part] = np.clip(np.concatenate([col, na * 255], axis=1), 0, 255).astype(np.uint8)
+        else:
+            dst[full] = src[full]
+            if part.any():
+                d = dst[part].astype(np.float32); kk = k2[part][:, None]
+                dst[part] = np.clip(d * (1 - kk) + src[part].astype(np.float32) * kk, 0, 255).astype(np.uint8)
+
+    @staticmethod
     def paste(img, rgba, x, y, alpha=1.0):
         h, w = rgba.shape[:2]; H, W = img.shape[:2]
         x0, y0, x1, y1 = max(0, x), max(0, y), min(W, x + w), min(H, y + h)
         if x1 <= x0 or y1 <= y0: return img
-        sub = rgba[y0 - y:y1 - y, x0 - x:x1 - x].astype(np.float32); k = sub[..., 3:4] / 255 * alpha
-        dst = img[y0:y1, x0:x1].astype(np.float32)
-        dst[..., :3] = dst[..., :3] * (1 - k) + sub[..., :3] * k
-        if dst.shape[2] == 4: dst[..., 3:4] = dst[..., 3:4] * (1 - k) + 255 * k
-        img[y0:y1, x0:x1] = dst.astype(np.uint8)
+        sub = rgba[y0 - y:y1 - y, x0 - x:x1 - x]
+        k = sub[..., 3:4].astype(np.float32) / 255 * alpha
+        Brand._over(img[y0:y1, x0:x1], np.ascontiguousarray(sub[..., :3]), k, grow=k > 0)
         return img
 
     def frame_on(self, img, alpha=1.0):
@@ -97,25 +119,33 @@ class Brand:
         return np.float32([[cx - w / 2 + d, cy - h / 2], [cx + w / 2 + d, cy - h / 2], [cx + w / 2 - d, cy + h / 2], [cx - w / 2 - d, cy + h / 2]])
 
     def card(self, img, picture, cx, cy, w, h, alpha=1.0, white=0.0):
-        """a picture inside a slanted white-edged card with the red shadow; `picture` is BGR, any size
-        (it is cover-fitted into the card's box); white = 1 shows the bare white card (its entrance)"""
+        """a picture inside a slanted white-edged card with the red shadow; `picture` is BGR(A), any size
+        (it is cover-fitted into the card's box); white = 1 shows the bare white card (its entrance).
+        Only the card's own box is worked on (fast at 4K)."""
         s = self.s; q = self.card_quad(cx, cy, w, h)
         sh = q + np.float32([16 * s, 22 * s])
-        bw, bh = int(w + SKEW * h) + 2, int(h) + 2
-        x0, y0 = int(q[:, 0].min()), int(q[:, 1].min())
-        sc = max(bw / picture.shape[1], bh / picture.shape[0])
-        M = np.float32([[sc, 0, x0 + bw / 2 - picture.shape[1] * sc / 2], [0, sc, y0 + bh / 2 - picture.shape[0] * sc / 2]])
-        pic = cv2.warpAffine(picture, M, (self.W, self.H), flags=cv2.INTER_AREA if sc < 1 else cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+        pad = int(6 * s) + 2
+        allp = np.vstack([q, sh])
+        bx0, by0 = max(0, int(allp[:, 0].min()) - pad), max(0, int(allp[:, 1].min()) - pad)
+        bx1, by1 = min(self.W, int(allp[:, 0].max()) + pad), min(self.H, int(allp[:, 1].max()) + pad)
+        if bx1 <= bx0 or by1 <= by0: return img
+        bw_, bh_ = bx1 - bx0, by1 - by0
+        if picture.shape[2] == 4: picture = picture[..., :3]
+        cw, ch = w + SKEW * h, h                                       # the card's own box
+        x0, y0 = q[:, 0].min() - bx0, q[:, 1].min() - by0
+        sc = max(cw / picture.shape[1], ch / picture.shape[0])
+        M = np.float32([[sc, 0, x0 + cw / 2 - picture.shape[1] * sc / 2], [0, sc, y0 + ch / 2 - picture.shape[0] * sc / 2]])
+        pic = cv2.warpAffine(picture, M, (bw_, bh_), flags=cv2.INTER_AREA if sc < 1 else cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
         if white > 0: pic = cv2.addWeighted(pic, 1 - white, np.full_like(pic, 255), white, 0)
-        m_sh = np.zeros((self.H, self.W), np.uint8); cv2.fillPoly(m_sh, [sh.astype(np.int32)], 255, cv2.LINE_AA)
-        m = np.zeros((self.H, self.W), np.uint8); cv2.fillPoly(m, [q.astype(np.int32)], 255, cv2.LINE_AA)
-        if pic.shape[2] == 4: pic = pic[..., :3]
-        out = img.astype(np.float32)
-        for mask, colour in ((m_sh, np.float32(RED)), (m, pic.astype(np.float32))):
-            k = (mask.astype(np.float32) / 255 * alpha)[..., None]
-            out[..., :3] = out[..., :3] * (1 - k) + colour * k
-            if out.shape[2] == 4: out[..., 3:4] = out[..., 3:4] * (1 - k) + 255 * k
-        return out.astype(np.uint8)
+        off = np.float32([bx0, by0]); kern = np.ones((3, 3), np.uint8)
+        region = img[by0:by1, bx0:bx1]
+        for quad, colour in ((sh, np.float32(RED)), (q, None)):
+            m = np.zeros((bh_, bw_), np.uint8); cv2.fillPoly(m, [(quad - off).astype(np.int32)], 255, cv2.LINE_AA)
+            k = (m.astype(np.float32) / 255 * alpha)[..., None]
+            grow = (cv2.dilate(m, kern, iterations=int(3 * s) + 1) > 0)[..., None] if region.shape[2] == 4 else None
+            src = pic if colour is None else np.broadcast_to(colour.astype(np.uint8), (bh_, bw_, 3))
+            self._over(region, src, k, grow)
+        return img
 
     def wipe(self, u):
         """the colour-stripe wipe at u in 0..1 (it covers the frame fully from u ~ 0.33 to 0.6); RGBA at W x H"""
