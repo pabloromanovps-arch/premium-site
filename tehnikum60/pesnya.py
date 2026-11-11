@@ -15,6 +15,7 @@ SRC = Path(__file__).resolve().parent / "pesnya_src"
 OUT = sys.argv[1]
 W = int(sys.argv[2]) if len(sys.argv) > 2 else 960
 FPS = int(sys.argv[3]) if len(sys.argv) > 3 else 30
+BG_MODE = "bg" in sys.argv[4:]          # the client's BG.mp4 baked in as the ground (one finished file)
 ALPHA = "alpha" in sys.argv[4:]          # fill + matte: photos in cards over transparency (the editor adds the original background)
 H = W * 9 // 16
 XF = 0.30          # the dissolve at every cut, seconds (centred on the beat)
@@ -175,6 +176,7 @@ for sh in SHOTS:
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from brand_vecher import Brand
 BRAND = Brand(W, H, alpha=ALPHA)
+if BG_MODE: BRAND.use_bg(Path(__file__).resolve().parent / "vedushie_src" / "brand" / "BG.mp4")
 TW = 0.16                              # half a whip, s
 STYLES = ["whip_l", "zoom", "whip_r", "whip_u", "zoom", "whip_l", "whip_d", "whip_r"]
 MAIN = [(0.47, 0.49, 0.64, 0.74), (0.55, 0.52, 0.60, 0.70)]          # the big card: cx, cy, w, h (of W, H)
@@ -249,7 +251,7 @@ def shot(k, t):
 def scene(k, t):
     """shot k as it is shown: a photo in its card on the ground, a video full frame, the logo as is"""
     if SHOTS[k][0] != "p": return shot(k, t)
-    img = BRAND.ground.copy(); a = spans[k][0]; r0 = run_start(k); slot = (k - r0) % 2
+    img = BRAND.ground_at(t); a = spans[k][0]; r0 = run_start(k); slot = (k - r0) % 2
     u = ease_out((t - a) / CARD_IN)
     if k > r0:
         pa, pb = spans[k - 1]
