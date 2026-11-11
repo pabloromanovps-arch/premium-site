@@ -21,6 +21,7 @@ N_FILE, OUT = int(sys.argv[1]), sys.argv[2]
 W = int(sys.argv[3]) if len(sys.argv) > 3 else 960
 MODE = sys.argv[4] if len(sys.argv) > 4 else "draft"
 ALPHA = "alpha" in sys.argv[5:]          # fill + matte, no ground/badge/wordmarks/bar (the editor adds the originals)
+BG_MODE = "bg" in sys.argv[5:]          # the client's BG.mp4 baked in as the ground (one finished file)
 H = W * 9 // 16
 FPS = 25
 DRIVE = {"F": "1meHsQ8dSHR6eyWoszLgKGVkk41QzZ6Et",          # «60 лет ВТТ (Version 16)», 3840x2160
@@ -248,6 +249,7 @@ items = plan["items"]
 sys.path.insert(0, str(HERE))
 from brand_vecher import Brand
 BRAND = Brand(W, H, alpha=ALPHA)
+if BG_MODE: BRAND.use_bg(SRC / "brand" / "BG.mp4")
 CARD_SET = set(plan.get("cards", [])) | {k for k, it in enumerate(items) if it[0] == "p"}
 LAYOUT = ["card" if k in CARD_SET else "full" for k in range(len(items))]
 MAIN = [(0.47, 0.49, 0.56, 0.66), (0.58, 0.55, 0.50, 0.60)]           # cx, cy, w, h (fractions of W, H)
@@ -285,7 +287,7 @@ def shot(k, t):
 
 def card_scene(k, t):
     """the green ground with card k as the main card (and the previous card of the run stepping back)"""
-    img = BRAND.ground.copy(); a = spans[k][0]; slot = (k - run_start(k)) % 2
+    img = BRAND.ground_at(t); a = spans[k][0]; slot = (k - run_start(k)) % 2
     u = ease_out((t - a) / CARD_IN)
     if k > run_start(k):                                              # the previous card: from main to back
         prev_main = MAIN[(k - 1 - run_start(k)) % 2]
@@ -334,10 +336,10 @@ for n in range(int(END * FPS)):
     if img is None: img = base_frame(i, t)
     if t > END - END_WIPE:                                            # the closing wipe to the «60» mark
         u = (t - (END - END_WIPE)) / WIPE_DUR                         # 0..1: the wipe, then the mark holds
-        if u > 0.5: img = LOGO.copy()
+        if u > 0.5: img = BRAND.ground_at(t) if BG_MODE else LOGO.copy()
         if u < 1.0: img = BRAND.paste(img, BRAND.wipe(u), 0, 0)
     img = BRAND.frame_on(img)
-    if t < 0.4 and not ALPHA: img = (img.astype(np.float32) * (t / 0.4)).astype(np.uint8)
+    if t < 0.4 and not ALPHA and not BG_MODE: img = (img.astype(np.float32) * (t / 0.4)).astype(np.uint8)
     for j in [j for j in objs if j < i - 2]: del objs[j]
     if ALPHA: out.write(img)
     else: enc.stdin.write(img.tobytes())

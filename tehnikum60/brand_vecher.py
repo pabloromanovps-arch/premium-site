@@ -107,9 +107,24 @@ class Brand:
         Brand._over(img[y0:y1, x0:x1], np.ascontiguousarray(sub[..., :3]), k, grow=k > 0)
         return img
 
+    def use_bg(self, path):
+        """the client's own animated background (BG.mp4, a 10 s loop) as the ground; their logo goes on
+        top in the edit, so no wordmarks / badge / bar from here"""
+        cap = cv2.VideoCapture(str(path)); self.bg_frames = []
+        while True:
+            ok, f = cap.read()
+            if not ok: break
+            self.bg_frames.append(f)
+        self.bg_fps = cap.get(cv2.CAP_PROP_FPS) or 25; self.no_overlay = True
+
+    def ground_at(self, t):
+        if not getattr(self, "bg_frames", None): return self.ground.copy()
+        f = self.bg_frames[int(round(t * self.bg_fps)) % len(self.bg_frames)]
+        return cv2.resize(f, (self.W, self.H), interpolation=cv2.INTER_CUBIC) if f.shape[1] != self.W else f.copy()
+
     def frame_on(self, img, alpha=1.0):
-        """the wordmark, the badge and the bottom bar over any picture (not in the alpha version)"""
-        if self.alpha: return img
+        """the wordmark, the badge and the bottom bar over any picture (not in the alpha or BG version)"""
+        if self.alpha or getattr(self, "no_overlay", False): return img
         img = self.paste(img, self.over, 0, 0, alpha)
         return self.badge(img, alpha)
 
