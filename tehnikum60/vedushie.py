@@ -28,7 +28,7 @@ DRIVE = {"F": "1meHsQ8dSHR6eyWoszLgKGVkk41QzZ6Et",          # «60 лет ВТТ
          "D": "1qTsS3tFGLX18kSVhmnYnQk0cmt2rHNBH",          # «Дорогобуж — О предприятии», 1920x1080
          "P": "1-nasj1MLEZ7u7M-dKBTWP-mXHak4J4JI",          # «ПМУ — 40 лет», 1920x1080 (logo top-left)
          "A": "16IFUeyspqZDSxfNjO9o1cow7eWeeHDR3"}          # «Юбилейный ролик Аммиак», 1920x1080 50p (logo top-left)
-PROXY = {"O": "otkrytie.mp4", "F": "film_proxy.mp4", "D": "dorogobuzh_proxy.mp4", "P": "pmu40_proxy.mp4", "A": "ammiak_proxy.mp4"}
+PROXY = {"C2": "client/b2.mp4", "C4": "client/b4.mp4", "O": "otkrytie.mp4", "F": "film_proxy.mp4", "D": "dorogobuzh_proxy.mp4", "P": "pmu40_proxy.mp4", "A": "ammiak_proxy.mp4"}
 # crops, as (x0, y0, size) of the frame kept: "plate" drops the bottom quarter (name plates sit low-left),
 # "logo" drops the PMU film's corner logo
 CROPS = {None: (0, 0, 1), "plate": (0.12, 0.0, 0.76), "logo": (0.14, 0.14, 0.86)}
@@ -38,6 +38,12 @@ V = lambda s, a, b, crop=None, speed=1.0: ("v", s, a, b, crop, speed)   # a stre
 GAP = lambda d: ("b", None, d)                              # a black gap the client fills in the edit
 
 FOTO = SRC / "foto"
+
+
+def client_cut(src, cuts, end, cards):
+    """the client's own edit, shot by shot at its own cuts; `cards` = the shots shown in cards"""
+    b = [0.0] + cuts + [end]
+    return [V(src, b[k], b[k + 1]) for k in range(len(b) - 1)], sorted(cards)
 # the client's brief gives each block's length: yellow 47 s, blue 38 s, green 28 s, the last one 23 s
 PLAN = {
     1: dict(music="Heartwarming.mp3", length=47.0, items=[                      # yellow: the 19 photos in order
@@ -45,11 +51,9 @@ PLAN = {
         P("f05.jpg", 2.2), P("f06.webp", 2.3), P("f07.jpg", 2.2), P("f08.jpg", 2.2), P("f09.jpg", 2.2),
         P("f10.jpg", 2.2), P("f11.webp", 2.3), P("f12_chb.jpg", 2.3, True), P("f13.jpg", 2.3), P("f14.jpg", 2.6),
         P("f15.jpg", 2.3), P("f16.jpg", 2.3), P("f17.jpg", 2.3), P("f18.jpg", 4.0)]),
-    2: dict(music="Inspired.mp3", length=38.0, snap=False, end_wipe=False, items=[      # blue (client's revision 11.11):
-        # «И сегодня… пространство возможностей» — the cluster-opening report, 3:44-3:55, as one piece
-        V("O", 224.4, 234.9),          # 224.0-224.4 is the presenter, 234.94 cuts to the refinery
-        # the rest: the client puts in their own unused workshop / classroom shots
-        GAP(27.5)]),
+    # client's edit 11.11 (their own workshop / classroom shots), restyled: kept cut for cut, with its sound
+    2: dict(music="../client/b2.mp4", length=38.0, snap=False, client=client_cut("C2", [3.12, 5.08, 8.44, 10.52, 15.52,
+        17.56, 21.52, 22.64, 24.0, 25.76, 26.72, 28.08, 29.56, 30.76, 31.84, 33.36, 35.72], 38.0, [1, 2, 3, 7, 8, 9, 10, 11])),
     3: dict(music="Ascending_the_Vale.mp3", length=28.0, cards=[2, 3], items=[                # green: Dorogobuzh, close-ups only
         # «Получаемые навыки напрямую соотносятся с задачами… на предприятиях региона»
         V("D", 4.2, 5.8), V("D", 21.0, 23.4),
@@ -61,21 +65,22 @@ PLAN = {
         V("A", 439.0, 441.6, "logo"), V("D", 132.0, 135.0),
         # «…обеспечивать бесперебойную работу цехов»
         V("A", 448.0, 450.9, "logo"), V("D", 98.0, 100.0)]),
-    4: dict(music="Ascending_the_Vale.mp3", music_at=40.0, length=23.0, snap=False, end_wipe=False, items=[
-        # the client's own shots go into the gap; then the cluster-opening report from 6:34 to its end
-        GAP(13.4), V("O", 394.0, 403.6)]),
+    4: dict(music="../client/b4.mp4", length=23.0, snap=False, client=client_cut("C4", [1.52, 3.08, 5.24, 7.76, 10.16,
+        11.52, 14.24, 16.08, 18.6], 23.0, [2, 3, 4, 5, 8, 9])),
 }
 plan = PLAN[N_FILE]
+if "client" in plan: plan["items"], plan["cards"] = plan["client"]
 MUSIC = SRC / "music" / plan["music"]
 
 # ---- the music's beats: every cut is moved to the nearest one
 bf = SRC / "music" / (MUSIC.stem + "_beats.json")
-if not bf.exists():
+if not plan.get("snap", True): bf = None
+if bf is not None and not bf.exists():
     import librosa
     y, sr = librosa.load(str(MUSIC), sr=22050, mono=True)
     _, b = librosa.beat.beat_track(y=y, sr=sr)
     bf.write_text(json.dumps([round(float(t), 4) for t in librosa.frames_to_time(b, sr=sr)]))
-BT = np.array(json.loads(bf.read_text())) - plan.get("music_at", 0.0); BT = BT[BT > 0.5]
+BT = np.array(json.loads(bf.read_text()) if bf else []) - plan.get("music_at", 0.0); BT = BT[BT > 0.5]
 
 
 def item_len(it):
@@ -101,7 +106,7 @@ def segment(src, a, b):
     out = CACHE / f"{src}_{a:.2f}_{b:.2f}.mp4"
     if not out.exists():
         tmp = CACHE / "tmp.mp4"
-        if MODE == "final" and src != "O":
+        if MODE == "final" and src in DRIVE:
             inp = ["-ca_file", "/root/.ccr/ca-bundle.crt", "-http_proxy", __import__("os").environ["HTTPS_PROXY"],
                    "-ss", f"{a:.3f}", "-t", f"{b - a + 0.5:.3f}",
                    "-i", f"https://drive.usercontent.google.com/download?id={DRIVE[src]}&export=download&confirm=t"]
@@ -300,8 +305,9 @@ def base_frame(k, t):
 END_WIPE = 2.0                                                        # the closing stripes to the «60» mark, then a hold
 LOGO = BRAND.logo_screen(0.5)
 
+AF = "anull" if "client" in plan else f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5"   # the client's own mix stays as is
 AUDIO_ARGS = ["-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
-              "-af", f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5",
+              "-af", AF,
               "-t", f"{END:.3f}", "-c:a", "aac", "-b:a", "320k", "-ar", "48000"]
 if ALPHA:
     from alpha_out import FillMatte
@@ -309,7 +315,7 @@ if ALPHA:
 else:
     enc = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{W}x{H}", "-r", str(FPS),
                             "-i", "-", "-ss", str(plan.get("music_at", 0)), "-i", str(MUSIC), "-map", "0:v", "-map", "1:a",
-                            "-af", f"afade=t=in:d=0.3,afade=t=out:st={END - 3.0:.2f}:d=3.0,loudnorm=I=-16:TP=-1.5",
+                            "-af", AF,
                             "-t", f"{END:.3f}", "-c:v", "libx264", "-preset", "medium", "-crf", "17" if W >= 1920 else "20",
                             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-movflags", "+faststart", OUT],
                            stdin=subprocess.PIPE)
