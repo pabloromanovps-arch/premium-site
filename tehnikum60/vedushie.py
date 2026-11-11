@@ -28,13 +28,14 @@ DRIVE = {"F": "1meHsQ8dSHR6eyWoszLgKGVkk41QzZ6Et",          # «60 лет ВТТ
          "D": "1qTsS3tFGLX18kSVhmnYnQk0cmt2rHNBH",          # «Дорогобуж — О предприятии», 1920x1080
          "P": "1-nasj1MLEZ7u7M-dKBTWP-mXHak4J4JI",          # «ПМУ — 40 лет», 1920x1080 (logo top-left)
          "A": "16IFUeyspqZDSxfNjO9o1cow7eWeeHDR3"}          # «Юбилейный ролик Аммиак», 1920x1080 50p (logo top-left)
-PROXY = {"F": "film_proxy.mp4", "D": "dorogobuzh_proxy.mp4", "P": "pmu40_proxy.mp4", "A": "ammiak_proxy.mp4"}
+PROXY = {"O": "otkrytie.mp4", "F": "film_proxy.mp4", "D": "dorogobuzh_proxy.mp4", "P": "pmu40_proxy.mp4", "A": "ammiak_proxy.mp4"}
 # crops, as (x0, y0, size) of the frame kept: "plate" drops the bottom quarter (name plates sit low-left),
 # "logo" drops the PMU film's corner logo
 CROPS = {None: (0, 0, 1), "plate": (0.12, 0.0, 0.76), "logo": (0.14, 0.14, 0.86)}
 
 P = lambda n, d, bw=False: ("p", n, d, bw)                 # a photo, its length (s)
 V = lambda s, a, b, crop=None, speed=1.0: ("v", s, a, b, crop, speed)   # a stretch a..b (s) of source s
+GAP = lambda d: ("b", None, d)                              # a black gap the client fills in the edit
 
 FOTO = SRC / "foto"
 # the client's brief gives each block's length: yellow 47 s, blue 38 s, green 28 s, the last one 23 s
@@ -44,20 +45,11 @@ PLAN = {
         P("f05.jpg", 2.2), P("f06.webp", 2.3), P("f07.jpg", 2.2), P("f08.jpg", 2.2), P("f09.jpg", 2.2),
         P("f10.jpg", 2.2), P("f11.webp", 2.3), P("f12_chb.jpg", 2.3, True), P("f13.jpg", 2.3), P("f14.jpg", 2.6),
         P("f15.jpg", 2.3), P("f16.jpg", 2.3), P("f17.jpg", 2.3), P("f18.jpg", 4.0)]),
-    2: dict(music="Inspired.mp3", length=38.0, cards=[2, 3, 8, 9], items=[      # blue; the film's shots mixed,
-        # not in the film's order, each still on its line
-        # «И сегодня… пространство возможностей для молодёжи»
-        V("F", 480.3, 483.0), V("F", 318.0, 319.9),
-        # «…не просто слушают лекции, а с первых курсов погружаются в профессиональную среду»
-        V("F", 298.0, 299.9), V("F", 349.0, 351.4), V("F", 303.0, 305.4), V("F", 359.0, 360.9),
-        # «…учатся на современном оборудовании и отрабатывают навыки…»
-        V("F", 320.0, 321.9), V("F", 373.0, 374.9, "plate"),
-        # «…новые производственные мастерские, оснащённые по актуальным отраслевым стандартам»
-        V("F", 300.6, 302.9), V("F", 367.0, 369.6, "plate"), V("F", 352.0, 354.2, "plate"), V("F", 375.5, 378.0, "plate"),
-        # «…рабочие операции: от базовых приёмов до сложных технологических процессов»
-        V("F", 384.0, 386.4, "plate"), V("F", 407.0, 409.4),
-        # «…уверенно чувствовать себя на производстве и быстрее проходить адаптацию»
-        V("F", 421.0, 424.9), V("F", 415.5, 418.5)]),
+    2: dict(music="Inspired.mp3", length=38.0, snap=False, end_wipe=False, items=[      # blue (client's revision 11.11):
+        # «И сегодня… пространство возможностей» — the cluster-opening report, 3:44-3:55, as one piece
+        V("O", 224.4, 234.9),          # 224.0-224.4 is the presenter, 234.94 cuts to the refinery
+        # the rest: the client puts in their own unused workshop / classroom shots
+        GAP(27.5)]),
     3: dict(music="Ascending_the_Vale.mp3", length=28.0, cards=[2, 3], items=[                # green: Dorogobuzh, close-ups only
         # «Получаемые навыки напрямую соотносятся с задачами… на предприятиях региона»
         V("D", 4.2, 5.8), V("D", 21.0, 23.4),
@@ -69,14 +61,9 @@ PLAN = {
         V("A", 439.0, 441.6, "logo"), V("D", 132.0, 135.0),
         # «…обеспечивать бесперебойную работу цехов»
         V("A", 448.0, 450.9, "logo"), V("D", 98.0, 100.0)]),
-    4: dict(music="Ascending_the_Vale.mp3", music_at=40.0, length=23.0, items=[  # the last block, mixed
-        # «Сочетание мощной практической базы, тесной связи с работодателями…»
-        V("F", 276.4, 277.9, "plate"), V("F", 361.0, 363.6, "plate"),
-        # «…и насыщенной внеучебной жизни…»
-        P(SONG / "2_kuplet_pripev/pripev2_6.jpg", 1.7), P(SONG / "pripev3_final/pripev3_13.jpg", 1.7),
-        P(SONG / "2_kuplet_pripev/pripev2_3.jpg", 1.7), P(SONG / "2_kuplet_pripev/pripev2_9.JPG", 1.8),
-        # «Здесь студенты… учатся быть самостоятельными, ответственными и целеустремлёнными»
-        V("F", 322.0, 323.9), V("F", 486.0, 489.9), V("F", 306.0, 307.9), V("F", 63.9, 65.3, None, 0.5)]),
+    4: dict(music="Ascending_the_Vale.mp3", music_at=40.0, length=23.0, snap=False, end_wipe=False, items=[
+        # the client's own shots go into the gap; then the cluster-opening report from 6:34 to its end
+        GAP(13.4), V("O", 394.0, 403.6)]),
 }
 plan = PLAN[N_FILE]
 MUSIC = SRC / "music" / plan["music"]
@@ -92,14 +79,14 @@ BT = np.array(json.loads(bf.read_text())) - plan.get("music_at", 0.0); BT = BT[B
 
 
 def item_len(it):
-    return it[2] if it[0] == "p" else (it[3] - it[2]) / it[5]
+    return it[2] if it[0] in "pb" else (it[3] - it[2]) / it[5]
 
 
 TARGET = plan["length"]; SCALE = TARGET / sum(item_len(it) for it in plan["items"])
 spans, t = [], 0.0
 for k, it in enumerate(plan["items"]):
     end = t + item_len(it) * SCALE
-    if k < len(plan["items"]) - 1:
+    if k < len(plan["items"]) - 1 and plan.get("snap", True):
         end = float(BT[np.argmin(np.abs(BT - end))])
         if end - t < 1.0: end = float(BT[np.searchsorted(BT, t + 1.0)])
     spans.append((t, end)); t = end
@@ -114,7 +101,7 @@ def segment(src, a, b):
     out = CACHE / f"{src}_{a:.2f}_{b:.2f}.mp4"
     if not out.exists():
         tmp = CACHE / "tmp.mp4"
-        if MODE == "final":
+        if MODE == "final" and src != "O":
             inp = ["-ca_file", "/root/.ccr/ca-bundle.crt", "-http_proxy", __import__("os").environ["HTTPS_PROXY"],
                    "-ss", f"{a:.3f}", "-t", f"{b - a + 0.5:.3f}",
                    "-i", f"https://drive.usercontent.google.com/download?id={DRIVE[src]}&export=download&confirm=t"]
@@ -175,6 +162,10 @@ class Clip:
         M = np.float32([[sc, 0, W / 2 - cx * sc], [0, sc, H / 2 - cy * sc]])
         img = cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_AREA if sc < 1 else cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
         return apply_grade(img, self.luts)
+
+
+class Gap:
+    def frame(self, t, dur, k): return np.zeros((H, W, 3), np.uint8)
 
 
 class Photo:
@@ -260,11 +251,12 @@ TRANS = {}
 for k in range(1, len(items)):
     a_, b_ = LAYOUT[k - 1], LAYOUT[k]
     TRANS[k] = "card" if a_ == b_ == "card" else STYLES[(k - 1) % len(STYLES)] if a_ == b_ == "full" else "stripes"
+    if "b" in (items[k - 1][0], items[k][0]): TRANS[k] = "cut"          # a gap: a straight cut, nothing drawn over it
 objs = {}
 def obj_for(k):
     if k not in objs:
         a, b = spans[k]
-        objs[k] = Photo(items[k], k) if items[k][0] == "p" else Clip(items[k], b - a)
+        objs[k] = Photo(items[k], k) if items[k][0] == "p" else Gap() if items[k][0] == "b" else Clip(items[k], b - a)
     return objs[k]
 
 
@@ -334,7 +326,7 @@ for n in range(int(END * FPS)):
             A, B = shot(k - 1, t), shot(k, t)
             img = transition(A, B, (t - (c - TW)) / (2 * TW), style); break
     if img is None: img = base_frame(i, t)
-    if t > END - END_WIPE:                                            # the closing wipe to the «60» mark
+    if plan.get("end_wipe", True) and t > END - END_WIPE:                                            # the closing wipe to the «60» mark
         u = (t - (END - END_WIPE)) / WIPE_DUR                         # 0..1: the wipe, then the mark holds
         if u > 0.5: img = BRAND.ground_at(t) if BG_MODE else LOGO.copy()
         if u < 1.0: img = BRAND.paste(img, BRAND.wipe(u), 0, 0)
