@@ -18,9 +18,9 @@ from brand_vecher import BR, BAR, RED
 
 W, H, FPS, LOOP = 3840, 2160, 25, 10.0
 SS = 2                                                   # shapes drawn at 2x and reduced: smooth edges
-SCALE = 0.86                                             # the film's size in the frame
+SCALE = 0.83                                             # the film's size in the frame
 WW, WH = int(W * SCALE) // 2 * 2, int(H * SCALE) // 2 * 2
-X0, Y0 = W - WW - 150, (H - WH) // 2 + 10                # the window: to the right, the logo needs the left
+X0, Y0 = W - WW - 120, (H - WH) // 2 + 10                # the window: to the right, the logo needs the left
 R = 110                                                  # the window's corner radius
 TEAL = (143, 134, 5)                                     # the jubilee logo's teal (BGR)
 CYAN = (204, 190, 40)
@@ -59,7 +59,7 @@ lg = cv2.imread(str(BR / "logo60_white.png"), cv2.IMREAD_UNCHANGED)
 ys, xs = np.where(lg[..., 3] > 10); lg = lg[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 white = (lg[..., :3].min(axis=2) > 200)
 lg[..., :3][white] = TEAL
-DISC_R = 330; DCX, DCY = X0 + 30, Y0 + 270            # the disc sits over the window's top left corner
+DISC_R = 215; DCX, DCY = X0 // 2 - 6, Y0 + 300   # out in the left band: the film's own corner stays clear            # the disc sits over the window's top left corner
 LW = int(DISC_R * 1.42); lg = cv2.resize(lg, (LW, int(lg.shape[0] * LW / lg.shape[1])), interpolation=cv2.INTER_AREA)
 LX, LY = DCX - LW // 2 - 6, DCY - lg.shape[0] // 2 + 8
 LOGO_A = lg[..., 3:4].astype(np.float32) / 255
@@ -72,7 +72,7 @@ def teeth(t):
     m = big(); n = 48; ph = 2 * math.pi / n * (t / LOOP)
     for k in range(n):
         a = 2 * math.pi * k / n + ph
-        r0, r1, half = (DISC_R + 26) * SS, (DISC_R + 62) * SS, 0.022
+        r0, r1, half = (DISC_R + 16) * SS, (DISC_R + 36) * SS, 0.016
         pts = [(DCX * SS + r * math.cos(a + d), DCY * SS + r * math.sin(a + d)) for r, d in ((r0, -half), (r1, -half * 0.8), (r1, half * 0.8), (r0, half))]
         cv2.fillPoly(m, [np.int32(pts)], 255, cv2.LINE_AA)
     return shrink(m)
