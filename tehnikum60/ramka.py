@@ -126,7 +126,7 @@ def frame(n):
     over(RED, SHADOW * (1 - HOLE))
     over((255, 255, 255), RIM)
     alpha = 1 - HOLE                                                      # the window: transparent...
-    over((255, 255, 255), GLASS); alpha = np.maximum(alpha, GLASS * 0.22)   # ...but for the glassy band
+    # (no glassy band: the client wants the window cleanly transparent)
     dot(img, alpha, X0 - 4, Y0 + WH * 0.72, t, 0.0)
     dot(img, alpha, X0 + WW + 4, Y0 + WH * 0.42, t, 0.5)
     if LOGO_ON: draw_logo(img, alpha, t)
