@@ -59,7 +59,7 @@ lg = cv2.imread(str(BR / "logo60_white.png"), cv2.IMREAD_UNCHANGED)
 ys, xs = np.where(lg[..., 3] > 10); lg = lg[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
 white = (lg[..., :3].min(axis=2) > 200)
 lg[..., :3][white] = TEAL
-DISC_R = 215; DCX, DCY = X0 // 2 - 6, Y0 + 300   # out in the left band: the film's own corner stays clear            # the disc sits over the window's top left corner
+DISC_R = 215; DCX, DCY = X0 // 2 - 6, Y0 + 300   # in the left band: the film's own corner stays clear
 LW = int(DISC_R * 1.42); lg = cv2.resize(lg, (LW, int(lg.shape[0] * LW / lg.shape[1])), interpolation=cv2.INTER_AREA)
 LX, LY = DCX - LW // 2 - 6, DCY - lg.shape[0] // 2 + 8
 LOGO_A = lg[..., 3:4].astype(np.float32) / 255
