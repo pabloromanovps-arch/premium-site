@@ -20,7 +20,7 @@ W, H, FPS, LOOP = 3840, 2160, 25, 10.0
 SS = 2                                                   # shapes drawn at 2x and reduced: smooth edges
 SCALE = 0.83                                             # the film's size in the frame
 WW, WH = int(W * SCALE) // 2 * 2, int(H * SCALE) // 2 * 2
-X0, Y0 = W - WW - 120, (H - WH) // 2 + 10                # the window: to the right, the logo needs the left
+X0, Y0 = (W - WW) // 2, (H - WH) // 2 - 20                 # the window: centred (a little high: the bar takes the bottom)
 R = 110                                                  # the window's corner radius
 TEAL = (143, 134, 5)                                     # the jubilee logo's teal (BGR)
 CYAN = (204, 190, 40)
@@ -104,6 +104,19 @@ def dot(img, alpha, cx, cy, t, phase):
         alpha[:] = np.maximum(alpha, mm)
 
 
+LOGO_ON = False                                          # the client: no logo, the film centred
+
+
+def draw_logo(img, alpha, t):
+    def over(colour, m, k=1.0):
+        img[:] = img * (1 - m[..., None] * k) + np.array(colour, np.float32) * m[..., None] * k
+    over((20, 40, 10), DISC_SH, 0.35); alpha[:] = np.maximum(alpha, DISC_SH * 0.35)
+    tt = teeth(t); over(CYAN, tt); alpha[:] = np.maximum(alpha, tt)
+    over((255, 255, 255), DISC); alpha[:] = np.maximum(alpha, DISC)
+    reg = img[LY:LY + lg.shape[0], LX:LX + LW]
+    reg[:] = reg * (1 - LOGO_A) + lg[..., :3].astype(np.float32) * LOGO_A
+
+
 def frame(n):
     t = n / FPS
     img = cv2.resize(BGF[n % len(BGF)], (W, H), interpolation=cv2.INTER_CUBIC).astype(np.float32)
@@ -116,11 +129,7 @@ def frame(n):
     over((255, 255, 255), GLASS); alpha = np.maximum(alpha, GLASS * 0.22)   # ...but for the glassy band
     dot(img, alpha, X0 - 4, Y0 + WH * 0.72, t, 0.0)
     dot(img, alpha, X0 + WW + 4, Y0 + WH * 0.42, t, 0.5)
-    over((20, 40, 10), DISC_SH, 0.35); alpha = np.maximum(alpha, DISC_SH * 0.35)
-    tt = teeth(t); over(CYAN, tt); alpha = np.maximum(alpha, tt)
-    over((255, 255, 255), DISC); alpha = np.maximum(alpha, DISC)
-    reg = img[LY:LY + lg.shape[0], LX:LX + LW]
-    reg[:] = reg * (1 - LOGO_A) + lg[..., :3].astype(np.float32) * LOGO_A
+    if LOGO_ON: draw_logo(img, alpha, t)
     return np.clip(img, 0, 255).astype(np.uint8), np.clip(alpha * 255 + 0.5, 0, 255).astype(np.uint8)
 
 
