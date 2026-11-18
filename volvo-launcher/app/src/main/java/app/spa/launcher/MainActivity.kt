@@ -65,6 +65,8 @@ class MainActivity : ComponentActivity() {
             },
         )
 
+        vm.media.onNothingToPlay = ::startBtMusic
+
         setContent {
             LauncherRoot(vm, homeSignal, actions) {
                 picker?.let { slot -> SlotPicker(slot, vm) { picker = null } }
@@ -103,6 +105,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** ▶ при тишине: открыть Bluetooth Music, включить воспроизведение и вернуться в лаунчер. */
+    private fun startBtMusic() {
+        val st = vm.prefs.settings.value
+        val bt = Slot.BT_MUSIC.resolve(vm.apps.value, st.slots) as? LaunchTarget.App
+        if (bt == null) {
+            picker = Slot.BT_MUSIC
+            return
+        }
+        lifecycleScope.launch {
+            openQuietly(bt)
+            delay(1500)
+            vm.media.key(android.view.KeyEvent.KEYCODE_MEDIA_PLAY)
+            delay(400)
+            runCatching {
+                startActivity(
+                    Intent(this@MainActivity, MainActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                )
+            }
+        }
+    }
+
     private fun openQuietly(t: LaunchTarget.App) {
         runCatching {
             startActivity(
@@ -123,6 +147,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun start(t: LaunchTarget, origin: ARect?) {
+        if (t is LaunchTarget.App) vm.prefs.update { putString("recent", "${t.pkg}/${t.cls}") }
         val intent = when (t) {
             is LaunchTarget.App -> Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 .setComponent(ComponentName(t.pkg, t.cls))

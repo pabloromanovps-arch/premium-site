@@ -347,11 +347,11 @@ private fun HomePage(vm: LauncherVm, goTo: (Int) -> Unit, openPlayer: () -> Unit
                 SlotTile(Slot.NAV, Ic.Nav, sub(Slot.NAV))
                 SlotTile(Slot.CARPLAY, Ic.CarPlay, sub(Slot.CARPLAY))
                 SlotTile(Slot.YOUTUBE, Ic.YouTube, sub(Slot.YOUTUBE))
-                SlotTile(Slot.FRONT_CAM, Ic.Camera, sub(Slot.FRONT_CAM))
+                RecentTile(vm, Modifier.weight(1f).fillMaxHeight())
             }
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SlotTile(Slot.AUX, Ic.Aux, sub(Slot.AUX))
-                WeatherTile(vm, Modifier.weight(2f).fillMaxHeight()) { a.openUrl("https://yandex.ru/pogoda") }
+                SlotTile(Slot.FRONT_CAM, Ic.Camera, sub(Slot.FRONT_CAM))
+                ClockWeatherTile(vm, Modifier.weight(2f).fillMaxHeight()) { a.openUrl("https://yandex.ru/pogoda") }
                 BigTile(Ic.Apps, "Приложения", "${apps.size} установлено", Modifier.weight(1f).fillMaxHeight()) { goTo(PAGE_APPS) }
             }
         }
@@ -402,8 +402,9 @@ fun BigTile(
     }
 }
 
+/** Большие часы и погода в одной широкой плитке. */
 @Composable
-private fun WeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> Unit) {
+private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> Unit) {
     val accent = LocalAccent.current
     val weather by vm.weather.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
@@ -412,29 +413,69 @@ private fun WeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> Unit)
         modifier
             .pressable { onClick() }
             .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
-            .padding(horizontal = 24.dp, vertical = 18.dp),
+            .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Column(Modifier.weight(1.1f)) {
+            T(formatTime(now, tz), 70.sp, C.txt, FontWeight.Light)
+            T(formatDate(now, tz), 14.sp, C.dim, FontWeight.Medium)
+        }
+        Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 8.dp).background(C.line))
+        Spacer(Modifier.width(18.dp))
         val w = weather
         Column(Modifier.weight(1f)) {
-            T(w?.city?.ifBlank { null } ?: "Погода", 14.sp, C.dim, FontWeight.Medium)
-            Row(verticalAlignment = Alignment.Top) {
-                T(if (w != null) signed(w.temp) else "—", 64.sp, C.txt, FontWeight.Light)
-                T("°C", 18.sp, C.txt, modifier = Modifier.padding(top = 12.dp, start = 2.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(54.dp).drawBehind {
+                        drawCircle(Brush.radialGradient(listOf(accent.a.copy(alpha = 0.45f), Color.Transparent)), radius = size.minDimension / 2)
+                    },
+                    contentAlignment = Alignment.Center,
+                ) { VIcon(Ic.Weather, C.txt, 34.dp) }
+                Spacer(Modifier.width(6.dp))
+                T(if (w != null) signed(w.temp) + "°" else "—", 38.sp, C.txt, FontWeight.Light)
             }
-            T(w?.desc?.ifBlank { null } ?: if (w == null) "Подключаемся к интернету…" else "", 15.sp, C.txt)
-            Spacer(Modifier.height(3.dp))
+            Spacer(Modifier.height(4.dp))
+            T(w?.desc?.ifBlank { null } ?: if (w == null) "Загружаем погоду…" else "", 14.sp, C.txt)
             T(
-                if (w != null) "Ощущается ${signed(w.feels)}° · ветер ${w.wind} м/с" else formatDate(now, tz),
-                12.5.sp, C.dim,
+                if (w != null) listOf(w.city, "ощущ. ${signed(w.feels)}°", "${w.wind} м/с").filter { it.isNotBlank() }.joinToString(" · ") else "",
+                12.sp, C.dim,
             )
         }
+    }
+}
+
+/** Как дополнительная плитка Sensus: последнее открытое приложение. */
+@Composable
+private fun RecentTile(vm: LauncherVm, modifier: Modifier) {
+    val a = LocalActions.current
+    val accent = LocalAccent.current
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    val s by vm.prefs.settings.collectAsStateWithLifecycle()
+    val app = remember(apps, s.recent) { apps.firstOrNull { it.key == s.recent } }
+    Column(
+        modifier
+            .pressable { r -> if (app != null) a.launchApp(app, r) }
+            .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
         Box(
-            Modifier.size(110.dp).drawBehind {
-                drawCircle(Brush.radialGradient(listOf(accent.a.copy(alpha = 0.4f), Color.Transparent)), radius = size.minDimension / 2)
+            Modifier.size(86.dp).drawBehind {
+                drawCircle(Brush.radialGradient(listOf(accent.a.copy(alpha = 0.38f), Color.Transparent)), radius = size.minDimension / 2)
             },
             contentAlignment = Alignment.Center,
-        ) { VIcon(Ic.Weather, C.txt, 62.dp) }
+        ) {
+            if (app != null) {
+                Image(app.icon, null, Modifier.size(50.dp), colorFilter = if (s.monoIcons) MonoFilter else null)
+            } else {
+                VIcon(Ic.Apps, C.dim, 40.dp)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        T(app?.label ?: "Недавнее", 16.sp, if (app != null) C.txt else C.dim, FontWeight.Medium, align = TextAlign.Center)
+        Spacer(Modifier.height(2.dp))
+        T(if (app != null) "Недавнее" else "Откройте любое приложение", 11.5.sp, C.dim, align = TextAlign.Center)
     }
 }
 
@@ -465,7 +506,7 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit
         val (title, sub) = when {
             m != null && m.title.isNotBlank() -> m.title to m.artist
             !access -> "Музыка с телефона" to "Включите «Трек на экране» в Функциях"
-            else -> "Музыка с телефона" to "Нажмите, чтобы открыть Bluetooth Music"
+            else -> "Музыка с телефона" to "Нажмите ▶ — заиграет Bluetooth Music"
         }
         Crossfade(targetState = title to sub, animationSpec = tween(300), label = "title") { (t, s) ->
             Column {

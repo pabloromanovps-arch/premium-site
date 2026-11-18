@@ -12,6 +12,7 @@ data class LauncherSettings(
     val monoIcons: Boolean,
     val btOnStart: Boolean,
     val carplayOnStart: Boolean,
+    val recent: String?,
     val slots: Map<String, String>,
 )
 
@@ -24,7 +25,8 @@ class Prefs(ctx: Context) {
         accent = Accent.entries.firstOrNull { it.name == sp.getString("accent", null) } ?: Accent.ELEGANCE,
         monoIcons = sp.getBoolean("mono", true),
         btOnStart = sp.getBoolean("btboot", true),
-        carplayOnStart = sp.getBoolean("cpboot", true),
+        carplayOnStart = sp.getBoolean("cpboot2", false),
+        recent = sp.getString("recent", null),
         slots = Slot.entries.mapNotNull { s -> sp.getString("slot_" + s.name, null)?.let { s.name to it } }.toMap(),
     )
 

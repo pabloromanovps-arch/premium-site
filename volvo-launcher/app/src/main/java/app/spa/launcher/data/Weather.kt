@@ -47,15 +47,39 @@ object NetInfo {
         }.getOrNull()
     }
 
-    suspend fun weather(g: GeoInfo): Weather? = withContext(Dispatchers.IO) {
+    suspend fun weather(g: GeoInfo): Weather? = openMeteo(g) ?: wttr(g)
+
+    /** Запасной источник: wttr.in отвечает по обычному http, даже если часы магнитолы сбиты. */
+    private suspend fun wttr(g: GeoInfo): Weather? = withContext(Dispatchers.IO) {
         runCatching {
-            val url = String.format(
+            val url = String.format(Locale.US, "http://wttr.in/%.3f,%.3f?format=j1&lang=ru", g.lat, g.lon)
+            val text = open(url).inputStream.bufferedReader().use { it.readText() }
+            val cc = JSONObject(text).getJSONArray("current_condition").getJSONObject(0)
+            val desc = cc.optJSONArray("lang_ru")?.optJSONObject(0)?.optString("value")
+                ?: cc.optJSONArray("weatherDesc")?.optJSONObject(0)?.optString("value")
+                ?: ""
+            Weather(
+                temp = cc.getString("temp_C").toInt(),
+                feels = cc.getString("FeelsLikeC").toInt(),
+                wind = (cc.getString("windspeedKmph").toDouble() / 3.6).roundToInt(),
+                desc = desc.replaceFirstChar { it.uppercase() },
+                city = g.city,
+            )
+        }.getOrNull()
+    }
+
+    private suspend fun openMeteo(g: GeoInfo): Weather? = withContext(Dispatchers.IO) {
+        runCatching {
+            val path = String.format(
                 Locale.US,
-                "http://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f" +
+                "api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f" +
                     "&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m&wind_speed_unit=ms",
                 g.lat, g.lon,
             )
-            val text = open(url).inputStream.bufferedReader().use { it.readText() }
+            // Сначала https (http у сервиса перенаправляет), запасной вариант — http.
+            val text = listOf("https://$path", "http://$path").firstNotNullOfOrNull { url ->
+                runCatching { open(url).inputStream.bufferedReader().use { it.readText() } }.getOrNull()
+            } ?: error("weather unavailable")
             val cur = JSONObject(text).getJSONObject("current")
             Weather(
                 temp = cur.getDouble("temperature_2m").roundToInt(),

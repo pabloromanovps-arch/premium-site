@@ -63,7 +63,7 @@ fun AppsPage(vm: LauncherVm) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     val s by vm.prefs.settings.collectAsStateWithLifecycle()
     LazyVerticalGrid(
-        columns = GridCells.Fixed(11),
+        columns = GridCells.Fixed(10),
         modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -101,9 +101,9 @@ fun FunctionsPage(vm: LauncherVm) {
     Column(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         FuncRow {
             FuncBtn(Ic.Camera, "Передняя камера", null) { a.launchSlot(Slot.FRONT_CAM, it) }
-            FuncBtn(Ic.Aux, "Камера AUX", null) { a.launchSlot(Slot.AUX, it) }
             FuncBtn(Ic.Phone, "Телефон", null) { a.launchSlot(Slot.PHONE, it) }
             FuncBtn(Ic.Bluetooth, "Bluetooth", null) { a.openSystem(Settings.ACTION_BLUETOOTH_SETTINGS, false) }
+            FuncBtn(Ic.Cloud, "Яндекс Диск", null) { a.launchSlot(Slot.DISK, it) }
         }
         FuncRow {
             FuncBtn(Ic.Wifi, "Wi-Fi", null) { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) }
@@ -113,8 +113,8 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.Wave, "Звук при включении", if (s.btOnStart) "Запускать Bluetooth Music" else "Выключено", s.btOnStart) {
                 vm.prefs.update { putBoolean("btboot", !s.btOnStart) }
             }
-            FuncBtn(Ic.CarPlay, "CarPlay при включении", if (s.carplayOnStart) "Запускать TLink сразу" else "Выключено", s.carplayOnStart) {
-                vm.prefs.update { putBoolean("cpboot", !s.carplayOnStart) }
+            FuncBtn(Ic.CarPlay, "CarPlay при включении", if (s.carplayOnStart) "Запускать TLink сразу" else "Выключено · если CarPlay не мешает", s.carplayOnStart) {
+                vm.prefs.update { putBoolean("cpboot2", !s.carplayOnStart) }
             }
             FuncBtn(Ic.Music, "Трек на экране", if (access) "Доступ есть · проверить" else "Нажмите, чтобы разрешить", access) {
                 if (access) showDiag = true else a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)

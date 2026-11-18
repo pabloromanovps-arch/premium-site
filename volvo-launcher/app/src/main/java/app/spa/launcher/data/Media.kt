@@ -88,6 +88,9 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
     val access = MutableStateFlow(false)
     val debug = MutableStateFlow("Нет данных")
 
+    /** Что делать, если ничего не играет и нажали ▶: запустить Bluetooth Music. */
+    var onNothingToPlay: (() -> Unit)? = null
+
     /** Пакет Bluetooth Music: его открываем по нажатию, если трек пришёл не из сессии. */
     @Volatile var fallbackPkg: String? = null
 
@@ -153,7 +156,9 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
 
     private fun pick(list: List<MediaController>) {
         sessions = list
-        val best = list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING } ?: list.firstOrNull()
+        // Пустые сессии (например, TLink без CarPlay) не считаем плеером.
+        val best = list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            ?: list.firstOrNull { !it.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).isNullOrBlank() }
         if (best?.sessionToken != controller?.sessionToken) {
             controller?.unregisterCallback(cb)
             controller = best
@@ -293,7 +298,8 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
     fun playPause() {
         val c = controller
         if (c == null) {
-            key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+            val start = onNothingToPlay
+            if (info.value == null && start != null) start() else key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
             return
         }
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause()
@@ -310,7 +316,7 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         if (c != null) c.transportControls.skipToPrevious() else key(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
     }
 
-    private fun key(code: Int) {
+    fun key(code: Int) {
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
     }
