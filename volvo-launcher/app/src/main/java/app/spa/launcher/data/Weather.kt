@@ -42,8 +42,8 @@ object NetInfo {
     fun lastProblem(): String = log.lastOrNull { !it.endsWith(": ок") }.orEmpty().take(70)
 
     private fun open(url: String) = (URL(url).openConnection() as HttpURLConnection).apply {
-        connectTimeout = 8000
-        readTimeout = 8000
+        connectTimeout = 5000
+        readTimeout = 7000
         useCaches = false
         instanceFollowRedirects = true
     }
@@ -89,7 +89,8 @@ object NetInfo {
     }
 
     suspend fun weather(g: GeoInfo): Weather? = withContext(Dispatchers.IO) {
-        openMeteo(g) ?: wttr("%.3f,%.3f".format(Locale.US, g.lat, g.lon), g.city) ?: sevenTimer(g)
+        // wttr.in первым: на этой магнитоле он отвечает, а open-meteo — нет (таймаут).
+        wttr("%.3f,%.3f".format(Locale.US, g.lat, g.lon), g.city) ?: openMeteo(g) ?: sevenTimer(g)
     }
 
     /** Если город не определился ни одним сервисом: wttr.in сам найдёт место по адресу подключения. */
@@ -98,7 +99,7 @@ object NetInfo {
     /** Погода по названию города, который пользователь указал сам (IP оператора часто «живёт» в другом городе). */
     suspend fun weatherByCity(city: String): Weather? = withContext(Dispatchers.IO) {
         val q = java.net.URLEncoder.encode(city.trim(), "UTF-8")
-        geocode(q, city)?.let { g -> openMeteo(g) ?: sevenTimer(g) } ?: wttr(q, city)
+        wttr(q, city) ?: geocode(q, city)?.let { g -> openMeteo(g) ?: sevenTimer(g) }
     }
 
     /** Координаты города: геокодер Open-Meteo (https, затем http). */

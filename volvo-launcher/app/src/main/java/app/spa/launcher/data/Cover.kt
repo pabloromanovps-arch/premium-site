@@ -44,6 +44,7 @@ object CoverApi {
     suspend fun find(artist: String, title: String): Bitmap? = withContext(Dispatchers.IO) {
         val q = URLEncoder.encode(listOf(clean(artist), clean(title)).filter { it.isNotBlank() }.joinToString(" "), "UTF-8")
         val lookups: List<() -> String?> = listOf(
+            { yandex("https://api.music.yandex.net/search?text=$q&type=track&page=0") },
             { deezer("http://api.deezer.com/search?q=$q&limit=1") },
             { deezer("https://api.deezer.com/search?q=$q&limit=1") },
             { itunes("https://itunes.apple.com/search?term=$q&entity=song&limit=1") },
@@ -53,6 +54,17 @@ object CoverApi {
             image(art)?.let { return@withContext it }
         }
         null
+    }
+
+    /** Яндекс Музыка: открытый поиск, хорошо работает из России. */
+    private fun yandex(url: String): String? {
+        val tracks = JSONObject(text(url)).optJSONObject("result")?.optJSONObject("tracks")?.optJSONArray("results") ?: return null
+        if (tracks.length() == 0) return null
+        val t = tracks.getJSONObject(0)
+        val uri = t.optString("coverUri").ifBlank {
+            t.optJSONArray("albums")?.optJSONObject(0)?.optString("coverUri").orEmpty()
+        }.ifBlank { return null }
+        return "https://" + uri.replace("%%", "400x400")
     }
 
     private fun deezer(url: String): String? {

@@ -320,7 +320,14 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         appendLine()
         appendLine("Bluetooth Music изнутри (${probe.pkg ?: "ещё не прочитан"}):")
         appendLine("  рассылок найдено: ${probe.actions.size}, слушаем все")
-        appendLine("  кнопки плеера: " + if (btTakesButtons()) "напрямую в Bluetooth Music" else "системные медиа-кнопки")
+        appendLine("  кнопки плеера: " + when {
+            probe.controls.isNotEmpty() -> "команды Bluetooth Music: " + probe.controls.keys.joinToString()
+            btTakesButtons() -> "напрямую в Bluetooth Music"
+            else -> "системные медиа-кнопки"
+        })
+        appendLine("  последняя команда: ${probe.lastSent}")
+        appendLine("  проверены приложения: " + probe.scanned.joinToString())
+        appendLine("  принимает (${probe.accepted.size}): " + probe.accepted.take(25).joinToString { it.substringAfterLast('.') })
         if (probe.providers.isNotEmpty()) appendLine("  провайдеры: " + probe.providers.joinToString())
         if (probe.services.isNotEmpty()) appendLine("  службы: " + probe.services.joinToString { it.substringAfterLast('.') })
         if (probe.commands.isNotEmpty()) appendLine("  команды: " + probe.commands.take(12).joinToString { it.substringAfterLast('.') })
@@ -416,6 +423,18 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
 
     /** Одна кнопка — один путь, чтобы «следующий трек» не срабатывал дважды. */
     fun key(code: Int) {
+        // 1) Команды, которые Bluetooth Music точно принимает (нашли сами в его коде).
+        val kind = when (code) {
+            KeyEvent.KEYCODE_MEDIA_NEXT -> "next"
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> "prev"
+            else -> "toggle"
+        }
+        if (kind == "toggle") {
+            if (probe.send("toggle")) return
+            val playing = info.value?.playing == true
+            if (probe.send(if (playing) "pause" else "play")) return
+        } else if (probe.send(kind)) return
+        // 2) Кнопка плеера напрямую, 3) системная медиа-кнопка.
         if (btTakesButtons() && sendToBt(code)) return
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
