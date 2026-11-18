@@ -58,7 +58,7 @@ fun AppsPage(vm: LauncherVm) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     val s by vm.prefs.settings.collectAsStateWithLifecycle()
     LazyVerticalGrid(
-        columns = GridCells.Fixed(9),
+        columns = GridCells.Fixed(10),
         modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -89,7 +89,7 @@ fun FunctionsPage(vm: LauncherVm) {
     val s by vm.prefs.settings.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
     val access by vm.media.access.collectAsStateWithLifecycle()
-    val agama = Slot.AGAMA.resolve(apps, s.slots) as? LaunchTarget.App
+    val bt = Slot.BT_MUSIC.resolve(apps, s.slots) as? LaunchTarget.App
 
     Column(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         FuncRow {
@@ -100,9 +100,11 @@ fun FunctionsPage(vm: LauncherVm) {
         }
         FuncRow {
             FuncBtn(Ic.Wifi, "Wi-Fi", null) { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) }
-            FuncBtn(Ic.Wave, "Включить звук", agama?.label ?: "AGAMA не найдена", null) { a.launchSlot(Slot.AGAMA, it) }
-            FuncBtn(Ic.Wave, "Звук при включении", if (s.agamaOnStart) "Открывать AGAMA в фоне" else "Выключено", s.agamaOnStart) {
-                vm.prefs.update { putBoolean("agama", !s.agamaOnStart) }
+            FuncBtn(Ic.Headphones, "Bluetooth Music", bt?.label?.let { "Открыть" } ?: "Удерживайте, чтобы выбрать", null, onLong = { a.pick(Slot.BT_MUSIC) }) {
+                a.launchSlot(Slot.BT_MUSIC, it)
+            }
+            FuncBtn(Ic.Wave, "Звук при включении", if (s.btOnStart) "Запускать Bluetooth Music" else "Выключено", s.btOnStart) {
+                vm.prefs.update { putBoolean("btboot", !s.btOnStart) }
             }
             FuncBtn(Ic.Music, "Трек на экране", if (access) "Доступ есть" else "Нажмите, чтобы разрешить", access) {
                 a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)
@@ -132,17 +134,24 @@ private fun FuncRow(content: @Composable RowScope.() -> Unit) {
 /** Кнопка как «Функции автомобиля» в Sensus: слева полоска-индикатор включено/выключено. */
 @Composable
 private fun RowScope.FuncBtn(icon: ImageVector, title: String, active: Boolean?, onClick: (ARect?) -> Unit) =
-    FuncBtn(icon, title, null, active, onClick)
+    FuncBtn(icon, title, null, active, null, onClick)
 
 @Composable
-private fun RowScope.FuncBtn(icon: ImageVector, title: String, sub: String?, active: Boolean?, onClick: (ARect?) -> Unit) {
+private fun RowScope.FuncBtn(
+    icon: ImageVector,
+    title: String,
+    sub: String?,
+    active: Boolean?,
+    onLong: (() -> Unit)? = null,
+    onClick: (ARect?) -> Unit,
+) {
     val accent = LocalAccent.current
     val bar by animateColorAsState(if (active == true) accent.b else C.line, tween(260), label = "bar")
     Row(
         Modifier
             .weight(1f)
             .fillMaxHeight()
-            .pressable(onClick = onClick)
+            .pressable(onLongClick = onLong, onClick = onClick)
             .background(C.tile)
             .padding(start = 14.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

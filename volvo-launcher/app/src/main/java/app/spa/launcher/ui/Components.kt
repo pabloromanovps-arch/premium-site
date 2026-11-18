@@ -60,7 +60,6 @@ class UiActions(
     val openUrl: (String) -> Unit,
     val pick: (Slot) -> Unit,
     val appInfo: (AppEntry) -> Unit,
-    val requestLocation: () -> Unit,
 )
 
 val LocalActions = staticCompositionLocalOf<UiActions> { error("UiActions not provided") }

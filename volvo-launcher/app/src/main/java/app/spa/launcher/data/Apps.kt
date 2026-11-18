@@ -57,15 +57,15 @@ enum class Slot(
     val action: String? = null,
 ) {
     NAV("Навигатор", Ic.Nav, listOf("ru.yandex.yandexnavi", "ru.yandex.yandexmaps"), Regex("навигатор|navi", I)),
-    MUSIC("Музыка", Ic.Music, listOf("ru.yandex.music"), Regex("музык|music", I)),
-    YOUTUBE("YouTube", Ic.YouTube, url = "https://m.youtube.com"),
     CARPLAY("CarPlay", Ic.CarPlay, listOf("com.zjinnova.zlink", "com.tplink.tlink"), Regex("carplay|t-?link|zlink|tp-?link", I)),
+    YOUTUBE("YouTube", Ic.YouTube, url = "https://m.youtube.com"),
     FRONT_CAM("Передняя камера", Ic.Camera, regex = Regex("передн|front", I)),
     AUX("Камера AUX", Ic.Aux, regex = Regex("aux", I)),
+    BT_MUSIC("Музыка Bluetooth", Ic.Headphones, regex = Regex("bluetooth ?music|bt ?music|музык\\w* ?bluetooth|bluetooth[- ]музык", I)),
+    YMUSIC("Яндекс Музыка", Ic.Music, listOf("ru.yandex.music"), Regex("яндекс.?музык|yandex.?music", I)),
     DISK("Диск", Ic.Cloud, listOf("ru.yandex.disk"), Regex("диск|disk", I)),
-    PHONE("Телефон", Ic.Phone, regex = Regex("bluetooth|телефон|phone|dialer|^bt", I)),
-    SETTINGS("Настройки", Ic.Gear, action = Settings.ACTION_SETTINGS),
-    AGAMA("AGAMA", Ic.Wave, regex = Regex("agama", I));
+    PHONE("Телефон", Ic.Phone, regex = Regex("телефон|phone|dialer|^bluetooth$|^bt$", I)),
+    SETTINGS("Настройки", Ic.Gear, action = Settings.ACTION_SETTINGS);
 
     fun resolve(apps: List<AppEntry>, overrides: Map<String, String>): LaunchTarget? {
         fun AppEntry.t() = LaunchTarget.App(pkg, cls, label)
@@ -78,6 +78,6 @@ enum class Slot(
     }
 
     companion object {
-        val favorites = listOf(NAV, MUSIC, YOUTUBE, CARPLAY, FRONT_CAM, AUX, DISK, PHONE, SETTINGS)
+        val favorites = listOf(NAV, CARPLAY, YOUTUBE, FRONT_CAM, AUX, BT_MUSIC, YMUSIC, DISK, PHONE, SETTINGS)
     }
 }

@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class LauncherSettings(
     val accent: Accent,
     val monoIcons: Boolean,
-    val agamaOnStart: Boolean,
+    val btOnStart: Boolean,
     val slots: Map<String, String>,
 )
 
@@ -22,7 +22,7 @@ class Prefs(ctx: Context) {
     private fun read() = LauncherSettings(
         accent = Accent.entries.firstOrNull { it.name == sp.getString("accent", null) } ?: Accent.ELEGANCE,
         monoIcons = sp.getBoolean("mono", true),
-        agamaOnStart = sp.getBoolean("agama", true),
+        btOnStart = sp.getBoolean("btboot", true),
         slots = Slot.entries.mapNotNull { s -> sp.getString("slot_" + s.name, null)?.let { s.name to it } }.toMap(),
     )
 

@@ -1,10 +1,8 @@
 package app.spa.launcher
 
-import android.Manifest
 import android.app.ActivityOptions
 import android.content.ComponentName
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
@@ -16,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -51,7 +48,7 @@ class MainActivity : ComponentActivity() {
             launchApp = { app, r -> start(LaunchTarget.App(app.pkg, app.cls, app.label), r) },
             launchPkg = { pkg, r ->
                 val i = packageManager.getLaunchIntentForPackage(pkg)
-                if (i != null) startSafely(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), r) else launchSlot(Slot.MUSIC, r)
+                if (i != null) startSafely(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), r) else launchSlot(Slot.BT_MUSIC, r)
             },
             openSystem = { action, withPkg ->
                 val i = Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -66,7 +63,6 @@ class MainActivity : ComponentActivity() {
                     null,
                 )
             },
-            requestLocation = ::requestLocation,
         )
 
         setContent {
@@ -75,29 +71,26 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            requestLocation()
-        }
         bootSoundWorkaround()
     }
 
     /**
-     * На этой магнитоле звук в AUX появляется только после запуска AGAMA Car Launcher.
-     * Сразу после включения открываем AGAMA на пару секунд и возвращаемся на главный экран.
+     * На этой магнитоле звук в AUX появляется только после запуска приложения Bluetooth Music.
+     * Сразу после включения открываем его на пару секунд и возвращаемся на главный экран.
      */
     private fun bootSoundWorkaround() {
         if (bootFlowDone) return
         bootFlowDone = true
         if (SystemClock.elapsedRealtime() > 5 * 60_000L) return
-        if (!vm.prefs.settings.value.agamaOnStart) return
+        if (!vm.prefs.settings.value.btOnStart) return
         lifecycleScope.launch {
             val apps = withContext(Dispatchers.IO) { AppRepo.load(this@MainActivity) }
-            val agama = Slot.AGAMA.resolve(apps, vm.prefs.settings.value.slots) as? LaunchTarget.App ?: return@launch
-            delay(1200)
+            val bt = Slot.BT_MUSIC.resolve(apps, vm.prefs.settings.value.slots) as? LaunchTarget.App ?: return@launch
+            delay(1000)
             runCatching {
                 startActivity(
                     Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                        .setComponent(ComponentName(agama.pkg, agama.cls))
+                        .setComponent(ComponentName(bt.pkg, bt.cls))
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 )
             }
@@ -109,16 +102,6 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
-    }
-
-    private fun requestLocation() {
-        requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION), REQ_LOCATION)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQ_LOCATION) vm.location.start()
     }
 
     private fun launchSlot(slot: Slot, origin: ARect?) {
@@ -186,7 +169,6 @@ class MainActivity : ComponentActivity() {
     }
 
     companion object {
-        private const val REQ_LOCATION = 1
         private var bootFlowDone = false
     }
 }

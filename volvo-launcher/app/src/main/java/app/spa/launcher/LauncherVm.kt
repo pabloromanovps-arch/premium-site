@@ -5,53 +5,46 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.AudioManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.spa.launcher.data.AppEntry
 import app.spa.launcher.data.AppRepo
-import app.spa.launcher.data.LocationRepo
 import app.spa.launcher.data.MediaRepo
+import app.spa.launcher.data.NetInfo
 import app.spa.launcher.data.Prefs
 import app.spa.launcher.data.Weather
-import app.spa.launcher.data.WeatherApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-data class Volume(val value: Int, val max: Int)
+import java.util.TimeZone
+import kotlin.math.abs
 
 class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     val prefs = Prefs(app)
     val media = MediaRepo(app)
-    val location = LocationRepo(app)
-    private val am = app.getSystemService(AudioManager::class.java)
 
     val apps = MutableStateFlow<List<AppEntry>>(emptyList())
-    val volume = MutableStateFlow(readVolume())
     val brightness = MutableStateFlow(readBrightness())
     val canWriteSettings = MutableStateFlow(Settings.System.canWrite(app))
     val weather = MutableStateFlow<Weather?>(null)
-    val now = MutableStateFlow(System.currentTimeMillis())
 
-    private val volumeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(c: Context, i: Intent) {
-            volume.value = readVolume()
-        }
-    }
+    /** Поправка к часам магнитолы по времени из интернета (если они сбиты). */
+    private var clockOffset = 0L
+    val zone = MutableStateFlow<TimeZone>(TimeZone.getDefault())
+    val now = MutableStateFlow(currentTime())
+    private var clockJob: Job? = null
+
     private val packageReceiver = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) = reloadApps()
     }
 
     init {
         reloadApps()
-        ContextCompat.registerReceiver(
-            app, volumeReceiver, IntentFilter("android.media.VOLUME_CHANGED_ACTION"), ContextCompat.RECEIVER_EXPORTED,
-        )
         ContextCompat.registerReceiver(
             app, packageReceiver,
             IntentFilter().apply {
@@ -62,20 +55,35 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
             },
             ContextCompat.RECEIVER_EXPORTED,
         )
-        // Часы: обновление точно на границе минуты, без лишних перерисовок.
+        startClock()
+        // Город, точное время и погода раз в 30 минут (раз в минуту, пока нет интернета).
         viewModelScope.launch {
             while (true) {
-                now.value = System.currentTimeMillis()
-                delay(60_000 - now.value % 60_000 + 50)
+                val geo = NetInfo.geo()
+                if (geo != null) {
+                    geo.serverTime?.let { server ->
+                        val diff = server - System.currentTimeMillis()
+                        clockOffset = if (abs(diff) > 90_000) diff else 0L
+                    }
+                    geo.timezone?.let { id -> zone.value = TimeZone.getTimeZone(id) }
+                    startClock()
+                    NetInfo.weather(geo)?.let { weather.value = it }
+                }
+                delay(if (weather.value == null) 60_000 else 1_800_000)
             }
         }
-        // Погода раз в 30 минут (раз в 2 минуты, пока нет данных).
-        viewModelScope.launch {
+    }
+
+    private fun currentTime() = System.currentTimeMillis() + clockOffset
+
+    /** Часы обновляются ровно на границе минуты — без лишних перерисовок. */
+    private fun startClock() {
+        clockJob?.cancel()
+        clockJob = viewModelScope.launch {
             while (true) {
-                location.lastKnown()?.let { loc ->
-                    WeatherApi.fetch(loc.latitude, loc.longitude)?.let { weather.value = it }
-                }
-                delay(if (weather.value == null) 120_000 else 1_800_000)
+                val t = currentTime()
+                now.value = t
+                delay(60_000 - t % 60_000 + 50)
             }
         }
     }
@@ -87,25 +95,10 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun onResume() {
-        now.value = System.currentTimeMillis()
-        volume.value = readVolume()
+        startClock()
         brightness.value = readBrightness()
         canWriteSettings.value = Settings.System.canWrite(app)
         media.start()
-        location.start()
-    }
-
-    fun onPause() {
-        location.stop()
-    }
-
-    private fun readVolume() = Volume(am.getStreamVolume(AudioManager.STREAM_MUSIC), am.getStreamMaxVolume(AudioManager.STREAM_MUSIC))
-
-    fun setVolume(v: Int) {
-        val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-        val c = v.coerceIn(0, max)
-        runCatching { am.setStreamVolume(AudioManager.STREAM_MUSIC, c, 0) }
-        volume.value = readVolume()
     }
 
     private fun readBrightness() =
@@ -123,8 +116,6 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     }
 
     override fun onCleared() {
-        runCatching { app.unregisterReceiver(volumeReceiver) }
         runCatching { app.unregisterReceiver(packageReceiver) }
-        location.stop()
     }
 }

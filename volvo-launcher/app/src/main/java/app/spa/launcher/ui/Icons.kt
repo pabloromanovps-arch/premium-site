@@ -58,6 +58,8 @@ object Ic {
     val Home = icon(listOf("M3 11l9-8 9 8M5 9.5V21h14V9.5"))
     val Shield = icon(listOf("M12 2l8 3v6c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5z", "M9 12l2 2 4-4"))
     val Download = icon(listOf("M12 3v12M7 10l5 5 5-5M4 21h16"))
+    val Headphones = icon(listOf("M3 18v-6a9 9 0 0 1 18 0v6", rect(3f, 14f, 5f, 7f, 2f), rect(16f, 14f, 5f, 7f, 2f)))
+    val Weather = icon(listOf("M12 2v2M4.9 4.9l1.4 1.4M2 12h2M17.7 6.3l1.4-1.4", "M7.5 12.5a4.5 4.5 0 0 1 8.4-2.3", "M9 21h8a4 4 0 0 0 .4-7.98A5.5 5.5 0 0 0 7.1 14.6 3.25 3.25 0 0 0 9 21z"))
     val Close = icon(listOf("M6 6l12 12M18 6L6 18"))
     val Prev = icon(listOf("M19 20L9 12l10-8zM5 19V5"), width = 1.8f)
     val Next = icon(listOf("M5 4l10 8-10 8zM19 5v14"), width = 1.8f)

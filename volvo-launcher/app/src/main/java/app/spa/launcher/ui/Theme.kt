@@ -33,13 +33,14 @@ enum class Accent(val title: String, val a: Color, val b: Color) {
 }
 
 object C {
-    val bg = Color(0xFF07080A)
-    val tile = Color(0xFF15171B)
-    val tile2 = Color(0xFF1C1F24)
-    val chip = Color(0xE60C0E11)
-    val line = Color(0xFF2A2E35)
-    val txt = Color(0xFFE9ECEF)
-    val dim = Color(0xFF8A9099)
+    // Тёмно-синие тона, как у экрана Sensus.
+    val bg = Color(0xFF05070C)
+    val tile = Color(0xFF111622)
+    val tile2 = Color(0xFF19202E)
+    val chip = Color(0xE60A0D14)
+    val line = Color(0xFF263042)
+    val txt = Color(0xFFE9EEF5)
+    val dim = Color(0xFF8A94A6)
     val green = Color(0xFF3DDC84)
     val red = Color(0xFFE5332A)
 }
