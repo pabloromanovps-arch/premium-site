@@ -175,7 +175,7 @@ private fun Launcher(vm: LauncherVm, homeSignal: Int, overlay: @Composable () ->
                     }
                 }
                 // Плеер раскрывается из карточки музыки, как плитки в Sensus.
-                AnimatedVisibility(
+                androidx.compose.animation.AnimatedVisibility(
                     visible = nowPlaying,
                     enter = fadeIn(tween(200)) + scaleIn(tween(340, easing = FastOutSlowInEasing), initialScale = 0.86f, transformOrigin = TransformOrigin(0.16f, 0.5f)),
                     exit = fadeOut(tween(200)) + scaleOut(tween(260, easing = FastOutSlowInEasing), targetScale = 0.9f, transformOrigin = TransformOrigin(0.16f, 0.5f)),
