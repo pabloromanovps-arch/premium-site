@@ -65,6 +65,16 @@ class BtProbe(private val ctx: Context, private val onTrack: (AltTrack) -> Unit)
                 ?.filter { it.exported && it.permission == null && SERVICE.containsMatchIn(it.name) }
                 ?.map { it.name } ?: emptyList()
         }.getOrDefault(emptyList())
+        val hintSet = LinkedHashSet<String>()
+        runCatching {
+            ZipFile(info.sourceDir).use { zip ->
+                zip.entries().asSequence()
+                    .filter { it.name.startsWith("classes") && it.name.endsWith(".dex") }
+                    .forEach { e -> zip.getInputStream(e).use { collectHints(it.readBytes(), hintSet) } }
+            }
+        }
+        hints = hintSet.take(120)
+        twUtil = inspectTwUtil()
         val all = found.toList()
         commands = all.filter { CMD.containsMatchIn(it) }.take(40)
         actions = all.take(250)
@@ -134,6 +144,36 @@ class BtProbe(private val ctx: Context, private val onTrack: (AltTrack) -> Unit)
 
     @Volatile var lastSent: String = "—"
         private set
+
+    /** Строки из Bluetooth Music про виджет и кнопки — по ним видно, какими командами им управляют. */
+    @Volatile var hints: List<String> = emptyList()
+        private set
+    /** Системный модуль Topway (через него штатные приложения общаются с MCU и Bluetooth). */
+    @Volatile var twUtil: String = "не проверяли"
+        private set
+
+    private fun collectHints(bytes: ByteArray, out: MutableSet<String>) {
+        val sb = StringBuilder()
+        fun flush() {
+            if (sb.length in 4..80) {
+                val s = sb.toString()
+                if (HINTS.containsMatchIn(s) && !s.contains('/') && !s.contains(';') && !s.contains('(')) out.add(s)
+            }
+            sb.setLength(0)
+        }
+        for (b in bytes) {
+            val c = b.toInt() and 0xFF
+            if (c in 0x20..0x7E) sb.append(c.toChar()) else flush()
+        }
+        flush()
+    }
+
+    private fun inspectTwUtil(): String = runCatching {
+        val c = Class.forName("android.tw.john.TWUtil")
+        "есть: " + c.declaredMethods.filter { java.lang.reflect.Modifier.isPublic(it.modifiers) }
+            .joinToString { m -> m.name + "(" + m.parameterTypes.joinToString(",") { it.simpleName } + ")" }
+            .take(400)
+    }.getOrElse { "нет (${it.javaClass.simpleName})" }
 
     private fun collectAll(bytes: ByteArray, out: MutableSet<String>) {
         val sb = StringBuilder()
@@ -231,6 +271,7 @@ class BtProbe(private val ctx: Context, private val onTrack: (AltTrack) -> Unit)
     }
 
     companion object {
+        private val HINTS = Regex("btmusic|bt_music|btMusic|widget|gss|next|prev|play|pause|music_|_music|cmd|keycode|TWUtil|tw\\.john", RegexOption.IGNORE_CASE)
         private val ACTION_LOOSE = Regex("[a-zA-Z][\\w]*(\\.[\\w\\-]+)+")
         private val ACTION = Regex("[a-zA-Z][\\w]*(\\.[\\w\\-]+){2,}")
         private val SKIP = listOf("java.", "javax.", "kotlin.", "kotlinx.", "androidx.", "android.support.", "com.google.", "org.", "dalvik.", "sun.", "android.view.", "android.widget.")
