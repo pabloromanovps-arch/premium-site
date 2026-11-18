@@ -80,11 +80,15 @@ fun T(
     modifier: Modifier = Modifier,
     maxLines: Int = 1,
     align: TextAlign = TextAlign.Start,
+    tabular: Boolean = false,
 ) {
     BasicText(
         text = text,
         modifier = modifier,
-        style = TextStyle(color = color, fontSize = size, fontFamily = Inter, fontWeight = weight, textAlign = align),
+        style = TextStyle(
+            color = color, fontSize = size, fontFamily = Inter, fontWeight = weight, textAlign = align,
+            fontFeatureSettings = if (tabular) "tnum" else null,
+        ),
         maxLines = maxLines,
         overflow = TextOverflow.Ellipsis,
     )

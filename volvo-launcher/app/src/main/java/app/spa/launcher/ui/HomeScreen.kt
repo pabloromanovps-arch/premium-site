@@ -119,7 +119,7 @@ private fun Launcher(vm: LauncherVm, homeSignal: Int, overlay: @Composable () ->
     val welcome = remember { MutableTransitionState(WelcomeGate.take()) }
     LaunchedEffect(Unit) {
         if (welcome.currentState) {
-            delay(2600)
+            delay(3200)
             welcome.targetState = false
         }
     }
@@ -465,10 +465,12 @@ private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onLong: () -> U
             .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(Modifier.weight(1.1f)) {
-            T(formatTime(now, tz), 70.sp, C.txt, FontWeight.Light)
-            T(formatDate(now, tz), 14.sp, C.dim, FontWeight.Medium)
+        // Колонка времени — по ширине цифр (цифры одной ширины), место уступает погода.
+        Column {
+            T(formatTime(now, tz), 62.sp, C.txt, FontWeight.Light, tabular = true)
+            T(formatDate(now, tz), 13.sp, C.dim, FontWeight.Medium)
         }
+        Spacer(Modifier.width(18.dp))
         Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 8.dp).background(C.line))
         Spacer(Modifier.width(18.dp))
         val w = weather

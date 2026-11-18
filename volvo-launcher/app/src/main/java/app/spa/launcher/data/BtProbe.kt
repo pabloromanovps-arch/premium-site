@@ -27,6 +27,9 @@ class BtProbe(private val ctx: Context, private val onTrack: (AltTrack) -> Unit)
         private set
     @Volatile var heard: List<String> = emptyList()
         private set
+    /** Открытые службы Bluetooth Music, похожие на музыкальные: их можно запустить без окна. */
+    @Volatile var services: List<String> = emptyList()
+        private set
 
     private var receiver: BroadcastReceiver? = null
 
@@ -44,6 +47,11 @@ class BtProbe(private val ctx: Context, private val onTrack: (AltTrack) -> Unit)
         providers = runCatching {
             ctx.packageManager.getPackageInfo(target, PackageManager.GET_PROVIDERS).providers
                 ?.mapNotNull { it.authority } ?: emptyList()
+        }.getOrDefault(emptyList())
+        services = runCatching {
+            ctx.packageManager.getPackageInfo(target, PackageManager.GET_SERVICES).services
+                ?.filter { it.exported && it.permission == null && SERVICE.containsMatchIn(it.name) }
+                ?.map { it.name } ?: emptyList()
         }.getOrDefault(emptyList())
         val all = found.toList()
         commands = all.filter { CMD.containsMatchIn(it) }.take(40)
@@ -131,6 +139,7 @@ class BtProbe(private val ctx: Context, private val onTrack: (AltTrack) -> Unit)
         private val ACTION = Regex("[a-zA-Z][\\w]*(\\.[\\w\\-]+){2,}")
         private val SKIP = listOf("java.", "javax.", "kotlin.", "kotlinx.", "androidx.", "android.support.", "com.google.", "org.", "dalvik.", "sun.", "android.view.", "android.widget.")
         private val HINT = Regex("action|ACTION|[A-Z]{3,}_[A-Z_]+|id3|ID3|music|MUSIC|meta|META|track|TRACK|song|SONG|play|PLAY|avrcp|AVRCP|a2dp|A2DP|bt\\.|BT_", RegexOption.IGNORE_CASE)
+        private val SERVICE = Regex("music|avrcp|a2dp|bt|blue|media|play", RegexOption.IGNORE_CASE)
         private val CMD = Regex("play|pause|next|prev|stop|resume", RegexOption.IGNORE_CASE)
         private val TITLE_KEY = Regex("title|song|track|name|id3", RegexOption.IGNORE_CASE)
         private val ARTIST_KEY = Regex("artist|singer|performer", RegexOption.IGNORE_CASE)

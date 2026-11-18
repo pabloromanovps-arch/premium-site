@@ -111,8 +111,22 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.Headphones, "Bluetooth Music", if (bt != null) "Открыть" else "Удерживайте, чтобы выбрать", null, onLong = { a.pick(Slot.BT_MUSIC) }) {
                 a.launchSlot(Slot.BT_MUSIC, it)
             }
-            FuncBtn(Ic.Wave, "Звук при включении", if (s.btOnStart) "Запускать Bluetooth Music" else "Выключено", s.btOnStart) {
-                vm.prefs.update { putBoolean("btboot", !s.btOnStart) }
+            val modeText = when {
+                !s.btOnStart -> "Выключено"
+                s.btMode == "bg" -> "В фоне, без окна"
+                s.btMode == "safe" -> "Надёжно (окно 2 с)"
+                else -> "Быстро (окно мелькнёт)"
+            }
+            FuncBtn(Ic.Wave, "Bluetooth Music при включении", modeText, s.btOnStart) {
+                // Быстро → В фоне → Надёжно → Выключено → Быстро
+                vm.prefs.update {
+                    when {
+                        !s.btOnStart -> { putBoolean("btboot", true); putString("btmode", "fast") }
+                        s.btMode == "fast" -> putString("btmode", "bg")
+                        s.btMode == "bg" -> putString("btmode", "safe")
+                        else -> putBoolean("btboot", false)
+                    }
+                }
             }
             FuncBtn(Ic.Music, "Диагностика", if (access) "Трек, уведомления, погода" else "Нажмите, чтобы разрешить доступ", access) {
                 if (access) showDiag = true else a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)

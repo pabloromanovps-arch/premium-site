@@ -322,6 +322,7 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         appendLine("  рассылок найдено: ${probe.actions.size}, слушаем все")
         appendLine("  кнопки плеера: " + if (btTakesButtons()) "напрямую в Bluetooth Music" else "системные медиа-кнопки")
         if (probe.providers.isNotEmpty()) appendLine("  провайдеры: " + probe.providers.joinToString())
+        if (probe.services.isNotEmpty()) appendLine("  службы: " + probe.services.joinToString { it.substringAfterLast('.') })
         if (probe.commands.isNotEmpty()) appendLine("  команды: " + probe.commands.take(12).joinToString { it.substringAfterLast('.') })
         appendLine("  пойманные рассылки:")
         if (probe.heard.isEmpty()) appendLine("    — пока ничего (переключите трек на телефоне)")
@@ -372,8 +373,9 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
             val cur = info.value
             when {
                 cur == null && start != null -> start()
-                cur?.playing == true -> key(KeyEvent.KEYCODE_MEDIA_PAUSE)
-                else -> key(KeyEvent.KEYCODE_MEDIA_PLAY)
+                // Bluetooth Music понимает только одну кнопку «Плей/Пауза», как на руле:
+                // отдельные «Пауза» и «Плей» роняли его.
+                else -> key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
             }
             return
         }
@@ -397,6 +399,20 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
             ctx.packageManager.queryBroadcastReceivers(Intent(Intent.ACTION_MEDIA_BUTTON).setPackage(p), 0).isNotEmpty()
         }.getOrDefault(false)
     } ?: false
+
+    /**
+     * Разбудить Bluetooth Music без окна: запустить его службы и, если ничего не играет, нажать «Плей/Пауза».
+     * Возвращает true, если удалось запустить хотя бы одну службу.
+     */
+    fun wakeBt(): Boolean {
+        val pkg = fallbackPkg ?: return false
+        var started = false
+        probe.services.forEach { cls ->
+            runCatching { ctx.startService(Intent().setClassName(pkg, cls)) }.onSuccess { if (it != null) started = true }
+        }
+        if (info.value?.playing != true) key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+        return started
+    }
 
     /** Одна кнопка — один путь, чтобы «следующий трек» не срабатывал дважды. */
     fun key(code: Int) {

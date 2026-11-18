@@ -11,6 +11,8 @@ data class LauncherSettings(
     val accent: Accent,
     val monoIcons: Boolean,
     val btOnStart: Boolean,
+    /** fast — окно на долю секунды, bg — без окна, safe — как раньше (2 с). */
+    val btMode: String,
     val recent: String?,
     val phoneOnly: Boolean,
     val slots: Map<String, String>,
@@ -25,6 +27,7 @@ class Prefs(ctx: Context) {
         accent = Accent.entries.firstOrNull { it.name == sp.getString("accent", null) } ?: Accent.ELEGANCE,
         monoIcons = sp.getBoolean("mono", true),
         btOnStart = sp.getBoolean("btboot", true),
+        btMode = sp.getString("btmode", "fast") ?: "fast",
         recent = sp.getString("recent", null),
         phoneOnly = sp.getBoolean("phoneonly", true),
         slots = Slot.entries.mapNotNull { s -> sp.getString("slot_" + s.name, null)?.let { s.name to it } }.toMap(),

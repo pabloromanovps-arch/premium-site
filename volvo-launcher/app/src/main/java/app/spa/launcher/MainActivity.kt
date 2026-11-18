@@ -89,20 +89,31 @@ class MainActivity : ComponentActivity() {
         if (!st.btOnStart) return
         lifecycleScope.launch {
             val apps = withContext(Dispatchers.IO) { AppRepo.load(this@MainActivity) }
-            val bt = if (st.btOnStart) Slot.BT_MUSIC.resolve(apps, st.slots) as? LaunchTarget.App else null
-            if (bt == null) return@launch
-            delay(1000)
-            bt?.let { openQuietly(it); delay(2000) }
-            runCatching {
-                startActivity(
-                    Intent(this@MainActivity, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                )
+            val bt = Slot.BT_MUSIC.resolve(apps, st.slots) as? LaunchTarget.App ?: return@launch
+            when (st.btMode) {
+                "bg" -> {
+                    // Ждём, пока лаунчер прочитает Bluetooth Music и найдёт его службы.
+                    delay(1500)
+                    vm.media.wakeBt()
+                }
+                "safe" -> {
+                    delay(1000)
+                    openQuietly(bt)
+                    delay(2000)
+                    bringBack()
+                }
+                else -> {
+                    // Под заставкой: окно Bluetooth Music успевает запуститься и сразу уходит назад.
+                    delay(300)
+                    openQuietly(bt)
+                    delay(450)
+                    bringBack()
+                }
             }
         }
     }
 
-    /** ▶ при тишине: открыть Bluetooth Music, включить воспроизведение и вернуться в лаунчер. */
+    /** ▶ при тишине: открыть Bluetooth Music на долю секунды, включить музыку и вернуться. */
     private fun startBtMusic() {
         val st = vm.prefs.settings.value
         val bt = Slot.BT_MUSIC.resolve(vm.apps.value, st.slots) as? LaunchTarget.App
@@ -112,15 +123,20 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             openQuietly(bt)
-            delay(1500)
-            vm.media.key(android.view.KeyEvent.KEYCODE_MEDIA_PLAY)
-            delay(400)
-            runCatching {
-                startActivity(
-                    Intent(this@MainActivity, MainActivity::class.java)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                )
-            }
+            delay(450)
+            bringBack()
+            delay(600)
+            vm.media.key(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+        }
+    }
+
+    private fun bringBack() {
+        runCatching {
+            startActivity(
+                Intent(this@MainActivity, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT),
+                ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle(),
+            )
         }
     }
 
@@ -129,7 +145,8 @@ class MainActivity : ComponentActivity() {
             startActivity(
                 Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                     .setComponent(ComponentName(t.pkg, t.cls))
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+                ActivityOptions.makeCustomAnimation(this, 0, 0).toBundle(),
             )
         }
     }
