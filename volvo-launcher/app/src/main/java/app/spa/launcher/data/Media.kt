@@ -91,6 +91,12 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
     /** Что делать, если ничего не играет и нажали ▶: запустить Bluetooth Music. */
     var onNothingToPlay: (() -> Unit)? = null
 
+    /** Только музыка с телефона: Bluetooth Music, системный Bluetooth и CarPlay (TLink). */
+    @Volatile var phoneOnly: Boolean = true
+    @Volatile var phonePkgs: Set<String> = emptySet()
+
+    private fun isPhone(pkg: String) = pkg in phonePkgs || pkg.contains("bluetooth", ignoreCase = true)
+
     /** Пакет Bluetooth Music: его открываем по нажатию, если трек пришёл не из сессии. */
     @Volatile var fallbackPkg: String? = null
 
@@ -156,9 +162,11 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
 
     private fun pick(list: List<MediaController>) {
         sessions = list
+        // Плееры на самой магнитоле (её Яндекс Музыка и т.п.) не показываем, если выбрано «только телефон».
+        val pool = if (phoneOnly) list.filter { isPhone(it.packageName) } else list
         // Пустые сессии (например, TLink без CarPlay) не считаем плеером.
-        val best = list.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
-            ?: list.firstOrNull { !it.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).isNullOrBlank() }
+        val best = pool.firstOrNull { it.playbackState?.state == PlaybackState.STATE_PLAYING }
+            ?: pool.firstOrNull { !it.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).isNullOrBlank() }
         if (best?.sessionToken != controller?.sessionToken) {
             controller?.unregisterCallback(cb)
             controller = best
@@ -251,7 +259,8 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         if (sessions.isEmpty()) appendLine("  — нет")
         sessions.forEach { s ->
             val t = s.metadata?.getString(MediaMetadata.METADATA_KEY_TITLE).orEmpty()
-            appendLine("  • ${s.packageName}: " + t.ifBlank { "(без названия)" })
+            val mark = if (!phoneOnly || isPhone(s.packageName)) "" else "  [на магнитоле — скрыт]"
+            appendLine("  • ${s.packageName}: " + t.ifBlank { "(без названия)" } + mark)
         }
         appendLine()
         val n = MediaBus.lastNotification

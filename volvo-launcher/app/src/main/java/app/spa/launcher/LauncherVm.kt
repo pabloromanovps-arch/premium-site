@@ -91,11 +91,19 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
         }
         // Пакет Bluetooth Music: трек из его уведомлений и куда вести по нажатию на карточку.
         viewModelScope.launch {
-            combine(apps, prefs.settings) { list, st -> Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App }
-                .collect { bt ->
-                    media.fallbackPkg = bt?.pkg
-                    MediaBus.musicPkgs = setOfNotNull(bt?.pkg)
-                }
+            combine(apps, prefs.settings) { list, st ->
+                Triple(
+                    (Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App)?.pkg,
+                    (Slot.CARPLAY.resolve(list, st.slots) as? LaunchTarget.App)?.pkg,
+                    st.phoneOnly,
+                )
+            }.collect { (bt, carplay, phoneOnly) ->
+                media.fallbackPkg = bt
+                media.phonePkgs = setOfNotNull(bt, carplay, "com.android.bluetooth")
+                media.phoneOnly = phoneOnly
+                MediaBus.musicPkgs = setOfNotNull(bt)
+                media.refresh()
+            }
         }
         // Город, точное время и погода раз в 30 минут (раз в минуту, пока нет интернета).
         viewModelScope.launch {

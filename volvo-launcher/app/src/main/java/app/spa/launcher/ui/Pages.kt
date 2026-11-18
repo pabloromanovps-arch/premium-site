@@ -134,6 +134,9 @@ fun FunctionsPage(vm: LauncherVm) {
             }
             FuncBtn(Ic.Home, "Лаунчер по умолчанию", null) { a.openSystem(Settings.ACTION_HOME_SETTINGS, false) }
             FuncBtn(Ic.Gear, "Настройки Android", null) { a.openSystem(Settings.ACTION_SETTINGS, false) }
+            FuncBtn(Ic.Headphones, "Музыка только с телефона", if (s.phoneOnly) "Bluetooth и CarPlay" else "Все плееры, и на магнитоле", s.phoneOnly) {
+                vm.prefs.update { putBoolean("phoneonly", !s.phoneOnly) }
+            }
             FuncBtn(Ic.Download, "Обновления", "Скачать новую версию", null) { a.openUrl(RELEASES_URL) }
         }
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
