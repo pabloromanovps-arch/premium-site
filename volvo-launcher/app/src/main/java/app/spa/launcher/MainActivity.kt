@@ -151,11 +151,6 @@ class MainActivity : ComponentActivity() {
         vm.onResume()
     }
 
-    override fun onPause() {
-        super.onPause()
-        vm.onPause()
-    }
-
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) hideSystemBars()
