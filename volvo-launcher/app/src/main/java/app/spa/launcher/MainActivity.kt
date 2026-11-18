@@ -75,32 +75,41 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * На этой магнитоле звук в AUX появляется только после запуска приложения Bluetooth Music.
-     * Сразу после включения открываем его на пару секунд и возвращаемся на главный экран.
+     * После включения магнитолы:
+     *  • Bluetooth Music — без его запуска на этой магнитоле нет звука в AUX;
+     *  • TLink (CarPlay) — чтобы он сразу начал ждать iPhone, а не только после ручного открытия.
+     * Оба открываются на пару секунд, потом возвращаемся на главный экран.
      */
     private fun bootSoundWorkaround() {
         if (bootFlowDone) return
         bootFlowDone = true
         if (SystemClock.elapsedRealtime() > 5 * 60_000L) return
-        if (!vm.prefs.settings.value.btOnStart) return
+        val st = vm.prefs.settings.value
+        if (!st.btOnStart && !st.carplayOnStart) return
         lifecycleScope.launch {
             val apps = withContext(Dispatchers.IO) { AppRepo.load(this@MainActivity) }
-            val bt = Slot.BT_MUSIC.resolve(apps, vm.prefs.settings.value.slots) as? LaunchTarget.App ?: return@launch
+            val bt = if (st.btOnStart) Slot.BT_MUSIC.resolve(apps, st.slots) as? LaunchTarget.App else null
+            val cp = if (st.carplayOnStart) Slot.CARPLAY.resolve(apps, st.slots) as? LaunchTarget.App else null
+            if (bt == null && cp == null) return@launch
             delay(1000)
-            runCatching {
-                startActivity(
-                    Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-                        .setComponent(ComponentName(bt.pkg, bt.cls))
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                )
-            }
-            delay(2500)
+            bt?.let { openQuietly(it); delay(2000) }
+            cp?.let { openQuietly(it); delay(2500) }
             runCatching {
                 startActivity(
                     Intent(this@MainActivity, MainActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
                 )
             }
+        }
+    }
+
+    private fun openQuietly(t: LaunchTarget.App) {
+        runCatching {
+            startActivity(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                    .setComponent(ComponentName(t.pkg, t.cls))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
         }
     }
 

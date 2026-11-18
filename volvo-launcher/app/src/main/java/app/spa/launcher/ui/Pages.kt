@@ -28,6 +28,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -90,6 +95,8 @@ fun FunctionsPage(vm: LauncherVm) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     val access by vm.media.access.collectAsStateWithLifecycle()
     val bt = Slot.BT_MUSIC.resolve(apps, s.slots) as? LaunchTarget.App
+    var showDiag by remember { mutableStateOf(false) }
+    if (showDiag) MediaDiag(vm) { showDiag = false }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         FuncRow {
@@ -100,14 +107,17 @@ fun FunctionsPage(vm: LauncherVm) {
         }
         FuncRow {
             FuncBtn(Ic.Wifi, "Wi-Fi", null) { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) }
-            FuncBtn(Ic.Headphones, "Bluetooth Music", bt?.label?.let { "Открыть" } ?: "Удерживайте, чтобы выбрать", null, onLong = { a.pick(Slot.BT_MUSIC) }) {
+            FuncBtn(Ic.Headphones, "Bluetooth Music", if (bt != null) "Открыть" else "Удерживайте, чтобы выбрать", null, onLong = { a.pick(Slot.BT_MUSIC) }) {
                 a.launchSlot(Slot.BT_MUSIC, it)
             }
             FuncBtn(Ic.Wave, "Звук при включении", if (s.btOnStart) "Запускать Bluetooth Music" else "Выключено", s.btOnStart) {
                 vm.prefs.update { putBoolean("btboot", !s.btOnStart) }
             }
-            FuncBtn(Ic.Music, "Трек на экране", if (access) "Доступ есть" else "Нажмите, чтобы разрешить", access) {
-                a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)
+            FuncBtn(Ic.CarPlay, "CarPlay при включении", if (s.carplayOnStart) "Запускать TLink сразу" else "Выключено", s.carplayOnStart) {
+                vm.prefs.update { putBoolean("cpboot", !s.carplayOnStart) }
+            }
+            FuncBtn(Ic.Music, "Трек на экране", if (access) "Доступ есть · проверить" else "Нажмите, чтобы разрешить", access) {
+                if (access) showDiag = true else a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)
             }
         }
         FuncRow {
@@ -258,6 +268,38 @@ fun SlotPicker(slot: Slot, vm: LauncherVm, onDismiss: () -> Unit) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// ───────────────────────────── Диагностика трека ─────────────────────────────
+
+/** Что лаунчер видит о музыке: помогает понять, откуда брать трек на этой магнитоле. */
+@Composable
+fun MediaDiag(vm: LauncherVm, onDismiss: () -> Unit) {
+    val text by vm.media.debug.collectAsStateWithLifecycle()
+    val density = LocalDensity.current
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        CompositionLocalProvider(LocalDensity provides density) {
+            Column(
+                Modifier
+                    .size(900.dp, 400.dp)
+                    .background(C.tile2, RoundedCornerShape(6.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VIcon(Ic.Music, LocalAccent.current.b, 22.dp)
+                    Spacer(Modifier.width(12.dp))
+                    T("Трек на экране — что видит лаунчер", 18.sp, C.txt, FontWeight.SemiBold)
+                    Spacer(Modifier.weight(1f))
+                    SquareBtn(Ic.Close, size = 40) { onDismiss() }
+                }
+                Spacer(Modifier.height(12.dp))
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                    T(text, 14.sp, C.txt, maxLines = 40)
+                }
+                T("Включите песню на телефоне и сфотографируйте этот экран.", 12.sp, C.dim)
             }
         }
     }

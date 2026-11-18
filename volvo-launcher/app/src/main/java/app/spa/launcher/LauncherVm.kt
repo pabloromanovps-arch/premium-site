@@ -11,6 +11,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import app.spa.launcher.data.AppEntry
 import app.spa.launcher.data.AppRepo
+import app.spa.launcher.data.LaunchTarget
+import app.spa.launcher.data.MediaBus
+import app.spa.launcher.data.Slot
 import app.spa.launcher.data.MediaRepo
 import app.spa.launcher.data.NetInfo
 import app.spa.launcher.data.Prefs
@@ -19,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.TimeZone
@@ -26,7 +30,7 @@ import kotlin.math.abs
 
 class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     val prefs = Prefs(app)
-    val media = MediaRepo(app)
+    val media = MediaRepo(app, viewModelScope)
 
     val apps = MutableStateFlow<List<AppEntry>>(emptyList())
     val brightness = MutableStateFlow(readBrightness())
@@ -56,6 +60,14 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
             ContextCompat.RECEIVER_EXPORTED,
         )
         startClock()
+        // Пакет Bluetooth Music: трек из его уведомлений и куда вести по нажатию на карточку.
+        viewModelScope.launch {
+            combine(apps, prefs.settings) { list, st -> Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App }
+                .collect { bt ->
+                    media.fallbackPkg = bt?.pkg
+                    MediaBus.musicPkgs = setOfNotNull(bt?.pkg)
+                }
+        }
         // Город, точное время и погода раз в 30 минут (раз в минуту, пока нет интернета).
         viewModelScope.launch {
             while (true) {
@@ -117,5 +129,6 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         runCatching { app.unregisterReceiver(packageReceiver) }
+        media.close()
     }
 }
