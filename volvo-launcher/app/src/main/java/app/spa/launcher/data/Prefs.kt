@@ -15,6 +15,8 @@ data class LauncherSettings(
     val btMode: String,
     val recent: String?,
     val phoneOnly: Boolean,
+    /** Город для погоды, заданный вручную; null — определять по интернету. */
+    val city: String?,
     val slots: Map<String, String>,
 )
 
@@ -30,6 +32,7 @@ class Prefs(ctx: Context) {
         btMode = sp.getString("btmode", "fast") ?: "fast",
         recent = sp.getString("recent", null),
         phoneOnly = sp.getBoolean("phoneonly", true),
+        city = sp.getString("city", null)?.trim()?.ifBlank { null },
         slots = Slot.entries.mapNotNull { s -> sp.getString("slot_" + s.name, null)?.let { s.name to it } }.toMap(),
     )
 

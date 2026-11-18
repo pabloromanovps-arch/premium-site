@@ -28,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -98,6 +100,8 @@ fun FunctionsPage(vm: LauncherVm) {
     val bt = Slot.BT_MUSIC.resolve(apps, s.slots) as? LaunchTarget.App
     var showDiag by remember { mutableStateOf(false) }
     if (showDiag) MediaDiag(vm) { showDiag = false }
+    var showCity by remember { mutableStateOf(false) }
+    if (showCity) CityDialog(vm, s.city) { showCity = false }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         FuncRow {
@@ -105,6 +109,7 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.Phone, "Телефон", null) { a.launchSlot(Slot.PHONE, it) }
             FuncBtn(Ic.Bluetooth, "Bluetooth", null) { a.openSystem(Settings.ACTION_BLUETOOTH_SETTINGS, false) }
             FuncBtn(Ic.Cloud, "Яндекс Диск", null) { a.launchSlot(Slot.DISK, it) }
+            FuncBtn(Ic.Weather, "Город для погоды", s.city ?: "Авто (по интернету)", null) { showCity = true }
         }
         FuncRow {
             FuncBtn(Ic.Wifi, "Wi-Fi", null) { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) }
@@ -318,4 +323,80 @@ fun MediaDiag(vm: LauncherVm, onDismiss: () -> Unit) {
             }
         }
     }
+}
+
+// ───────────────────────────── Город для погоды ─────────────────────────────
+
+private val QUICK_CITIES = listOf("Смоленск", "Москва", "Санкт-Петербург", "Минск", "Брянск", "Калуга")
+
+@Composable
+fun CityDialog(vm: LauncherVm, current: String?, onDismiss: () -> Unit) {
+    val accent = LocalAccent.current
+    val density = LocalDensity.current
+    var text by remember { mutableStateOf(current.orEmpty()) }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        CompositionLocalProvider(LocalDensity provides density) {
+            Column(
+                Modifier
+                    .size(760.dp, 300.dp)
+                    .background(C.tile2, RoundedCornerShape(6.dp))
+                    .padding(18.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    VIcon(Ic.Weather, accent.b, 22.dp)
+                    Spacer(Modifier.width(12.dp))
+                    T("Город для погоды", 18.sp, C.txt, FontWeight.SemiBold)
+                    Spacer(Modifier.weight(1f))
+                    SquareBtn(Ic.Close, size = 40) { onDismiss() }
+                }
+                Spacer(Modifier.height(14.dp))
+                androidx.compose.foundation.text.BasicTextField(
+                    value = text,
+                    onValueChange = { text = it.take(40) },
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(color = C.txt, fontSize = 20.sp, fontFamily = Inter),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(accent.b),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { vm.setCity(text); onDismiss() }),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .background(C.tile, RoundedCornerShape(4.dp))
+                        .border(1.5.dp, accent.b, RoundedCornerShape(4.dp))
+                        .padding(horizontal = 14.dp, vertical = 13.dp)
+                        .focusRequester(focus),
+                    decorationBox = { inner ->
+                        if (text.isEmpty()) T("Например, Смоленск", 20.sp, C.dim)
+                        inner()
+                    },
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    QUICK_CITIES.forEach { c ->
+                        Box(
+                            Modifier
+                                .height(40.dp)
+                                .pressable { text = c }
+                                .tileBg()
+                                .padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { T(c, 14.sp, C.txt) }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Box(
+                        Modifier.weight(1f).height(50.dp).pressable { vm.setCity(null); onDismiss() }.tileBg(),
+                        contentAlignment = Alignment.Center,
+                    ) { T("Авто — по интернету", 15.sp, C.txt, FontWeight.Medium) }
+                    Box(
+                        Modifier.weight(1f).height(50.dp).pressable { vm.setCity(text); onDismiss() }.background(accent.brush, RoundedCornerShape(4.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) { T("Сохранить", 15.sp, androidx.compose.ui.graphics.Color.White, FontWeight.SemiBold) }
+                }
+            }
+        }
+    }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 }

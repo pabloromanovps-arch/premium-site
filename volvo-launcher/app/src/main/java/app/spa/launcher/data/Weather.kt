@@ -95,6 +95,28 @@ object NetInfo {
     /** Если город не определился ни одним сервисом: wttr.in сам найдёт место по адресу подключения. */
     suspend fun weatherByIp(): Weather? = withContext(Dispatchers.IO) { wttr("", null) }
 
+    /** Погода по названию города, который пользователь указал сам (IP оператора часто «живёт» в другом городе). */
+    suspend fun weatherByCity(city: String): Weather? = withContext(Dispatchers.IO) {
+        val q = java.net.URLEncoder.encode(city.trim(), "UTF-8")
+        geocode(q, city)?.let { g -> openMeteo(g) ?: sevenTimer(g) } ?: wttr(q, city)
+    }
+
+    /** Координаты города: геокодер Open-Meteo (https, затем http). */
+    private fun geocode(q: String, city: String): GeoInfo? {
+        for (scheme in listOf("https://", "http://")) {
+            val g = attempt("геокодер ($scheme)") {
+                val res = JSONObject(fetch("${scheme}geocoding-api.open-meteo.com/v1/search?name=$q&count=1&language=ru").first)
+                    .optJSONArray("results")
+                if (res == null || res.length() == 0) null
+                else res.getJSONObject(0).let { r ->
+                    GeoInfo(r.getDouble("latitude"), r.getDouble("longitude"), r.optString("name").ifBlank { city }, r.optString("timezone").ifBlank { null }, null)
+                }
+            }
+            if (g != null) return g
+        }
+        return null
+    }
+
     private fun openMeteo(g: GeoInfo): Weather? {
         val path = String.format(
             Locale.US,

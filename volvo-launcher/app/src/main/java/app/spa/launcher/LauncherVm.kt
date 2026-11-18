@@ -119,7 +119,12 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                     geo.timezone?.let { id -> zone.value = TimeZone.getTimeZone(id) }
                     startClock()
                 }
-                val w = if (geo != null) NetInfo.weather(geo) else NetInfo.weatherByIp()
+                val manual = prefs.settings.value.city
+                val w = when {
+                    manual != null -> NetInfo.weatherByCity(manual)
+                    geo != null -> NetInfo.weather(geo)
+                    else -> NetInfo.weatherByIp()
+                }
                 if (w != null) {
                     weather.value = w
                     weatherStatus.value = ""
@@ -166,6 +171,14 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                 caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
             level = level,
         )
+    }
+
+    /** Сменили город — сразу обновить погоду. */
+    fun setCity(city: String?) {
+        prefs.update { if (city.isNullOrBlank()) remove("city") else putString("city", city.trim()) }
+        weather.value = null
+        weatherStatus.value = "Загружаем погоду…"
+        weatherKick.trySend(Unit)
     }
 
     fun onResume() {
