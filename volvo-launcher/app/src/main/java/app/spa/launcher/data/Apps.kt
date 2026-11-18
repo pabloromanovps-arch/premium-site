@@ -65,7 +65,8 @@ enum class Slot(
     ZVUK("СберЗвук", Ic.Wave, listOf("com.zvooq.openplay"), Regex("сбер.?звук|zvuk|zvooq", I)),
     DISK("Диск", Ic.Cloud, listOf("ru.yandex.disk"), Regex("диск|disk", I)),
     PHONE("Телефон", Ic.Phone, regex = Regex("телефон|phone|dialer|^bluetooth$|^bt$", I)),
-    SETTINGS("Настройки", Ic.Gear, action = Settings.ACTION_SETTINGS);
+    SETTINGS("Настройки", Ic.Gear, action = Settings.ACTION_SETTINGS),
+    WEATHER("Погода", Ic.Weather, url = "https://yandex.ru/pogoda");
 
     fun resolve(apps: List<AppEntry>, overrides: Map<String, String>): LaunchTarget? {
         fun AppEntry.t() = LaunchTarget.App(pkg, cls, label)

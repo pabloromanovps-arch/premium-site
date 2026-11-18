@@ -143,6 +143,15 @@ class MainActivity : ComponentActivity() {
             picker = slot
             return
         }
+        // Ярлык-ссылка (Погода, YouTube) с выбранным приложением: открываем ссылку именно в нём.
+        val url = slot.url
+        if (url != null && t is LaunchTarget.App) {
+            val view = Intent(Intent.ACTION_VIEW, Uri.parse(url)).setPackage(t.pkg).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            if (view.resolveActivity(packageManager) != null) {
+                startSafely(view, origin)
+                return
+            }
+        }
         start(t, origin)
     }
 

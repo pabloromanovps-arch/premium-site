@@ -260,8 +260,12 @@ private fun StatusBar(vm: LauncherVm, pager: PagerState, onPull: () -> Unit) {
             }
         }
         Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            T(formatTime(now, tz), 15.sp, C.txt, FontWeight.Medium)
-            Spacer(Modifier.height(4.dp))
+            // На главном экране время уже крупно в плитке — здесь только на других экранах.
+            val onHome = pager.currentPage == PAGE_HOME && abs(pager.currentPageOffsetFraction) < 0.5f
+            if (!onHome) {
+                T(formatTime(now, tz), 15.sp, C.txt, FontWeight.Medium)
+                Spacer(Modifier.height(4.dp))
+            }
             PageDots(pager)
         }
         Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
@@ -396,7 +400,7 @@ private fun HomePage(vm: LauncherVm, goTo: (Int) -> Unit, openPlayer: () -> Unit
             }
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SlotTile(Slot.FRONT_CAM, Ic.Camera, sub(Slot.FRONT_CAM), act(Slot.FRONT_CAM))
-                ClockWeatherTile(vm, Modifier.weight(2f).fillMaxHeight()) { a.openUrl("https://yandex.ru/pogoda") }
+                ClockWeatherTile(vm, Modifier.weight(2f).fillMaxHeight(), onLong = { a.pick(Slot.WEATHER) }) { r -> a.launchSlot(Slot.WEATHER, r) }
                 BigTile(Ic.Apps, "Приложения", "${apps.size} установлено", Modifier.weight(1f).fillMaxHeight(), active = false) { goTo(PAGE_APPS) }
             }
         }
@@ -449,14 +453,14 @@ fun BigTile(
 
 /** Большие часы и погода в одной широкой плитке. */
 @Composable
-private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> Unit) {
+private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onLong: () -> Unit, onClick: (ARect?) -> Unit) {
     val accent = LocalAccent.current
     val weather by vm.weather.collectAsStateWithLifecycle()
     val now by vm.now.collectAsStateWithLifecycle()
     val tz by vm.zone.collectAsStateWithLifecycle()
     Row(
         modifier
-            .pressable { onClick() }
+            .pressable(onLongClick = onLong, onClick = onClick)
             .tileBg()
             .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,

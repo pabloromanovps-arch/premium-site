@@ -25,6 +25,12 @@ class MediaListenerService : NotificationListenerService() {
     private fun handle(sbn: StatusBarNotification) {
         val n = sbn.notification ?: return
         val ex = n.extras ?: return
+        runCatching {
+            val t = ex.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty()
+            val x = ex.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty()
+            val acts = n.actions?.joinToString("/") { it.title?.toString().orEmpty() }.orEmpty()
+            MediaBus.record("${sbn.packageName} [${n.category ?: "-"}] $t | $x" + if (acts.isNotBlank()) " {$acts}" else "")
+        }
         val isMusic = n.category == Notification.CATEGORY_TRANSPORT ||
             ex.containsKey(Notification.EXTRA_MEDIA_SESSION) ||
             sbn.packageName in MediaBus.musicPkgs

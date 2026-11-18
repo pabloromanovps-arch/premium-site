@@ -116,15 +116,14 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                     }
                     geo.timezone?.let { id -> zone.value = TimeZone.getTimeZone(id) }
                     startClock()
-                    val w = NetInfo.weather(geo)
-                    if (w != null) {
-                        weather.value = w
-                        weatherStatus.value = ""
-                    } else if (weather.value == null) {
-                        weatherStatus.value = "Город: ${geo.city.ifBlank { "найден" }}. Сервер погоды не отвечает, пробуем снова…"
-                    }
+                }
+                val w = if (geo != null) NetInfo.weather(geo) else NetInfo.weatherByIp()
+                if (w != null) {
+                    weather.value = w
+                    weatherStatus.value = ""
                 } else if (weather.value == null) {
-                    weatherStatus.value = "Нет ответа из интернета. Проверьте подключение — пробуем снова…"
+                    weatherStatus.value = if (net.value.internet) "Сервисы погоды не ответили. Подробнее: Функции → Диагностика"
+                    else "Нет интернета. Подключите Wi-Fi"
                 }
                 delay(if (weather.value == null) 60_000 else 1_800_000)
             }
@@ -170,10 +169,15 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     fun ensureWifi() {
         if (!prefs.settings.value.wifiAlways) return
         runCatching {
+            // Беспроводной CarPlay работает на своей Wi-Fi-точке магнитолы — её не трогаем.
+            if (isHotspotOn()) return
             if (!wm.isWifiEnabled) wm.isWifiEnabled = true
-            else if (!net.value.wifi) wm.reconnect()
         }
     }
+
+    private fun isHotspotOn(): Boolean = runCatching {
+        wm.javaClass.getMethod("isWifiApEnabled").invoke(wm) as Boolean
+    }.getOrDefault(false)
 
     fun onResume() {
         ensureWifi()

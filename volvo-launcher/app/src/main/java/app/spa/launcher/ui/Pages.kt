@@ -124,7 +124,7 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.CarPlay, "CarPlay при включении", if (s.carplayOnStart) "Запускать TLink сразу" else "Выключено · если CarPlay не мешает", s.carplayOnStart) {
                 vm.prefs.update { putBoolean("cpboot2", !s.carplayOnStart) }
             }
-            FuncBtn(Ic.Music, "Трек на экране", if (access) "Доступ есть · проверить" else "Нажмите, чтобы разрешить", access) {
+            FuncBtn(Ic.Music, "Диагностика", if (access) "Трек, уведомления, погода" else "Нажмите, чтобы разрешить доступ", access) {
                 if (access) showDiag = true else a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)
             }
         }
@@ -302,15 +302,15 @@ fun MediaDiag(vm: LauncherVm, onDismiss: () -> Unit) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     VIcon(Ic.Music, LocalAccent.current.b, 22.dp)
                     Spacer(Modifier.width(12.dp))
-                    T("Трек на экране — что видит лаунчер", 18.sp, C.txt, FontWeight.SemiBold)
+                    T("Диагностика — что видит лаунчер", 18.sp, C.txt, FontWeight.SemiBold)
                     Spacer(Modifier.weight(1f))
                     SquareBtn(Ic.Close, size = 40) { onDismiss() }
                 }
                 Spacer(Modifier.height(12.dp))
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-                    T(text, 14.sp, C.txt, maxLines = 40)
+                    T(text, 13.sp, C.txt, maxLines = 80)
                 }
-                T("Включите песню на телефоне и сфотографируйте этот экран.", 12.sp, C.dim)
+                T("Включите песню на телефоне, прокрутите вниз и сфотографируйте этот экран.", 12.sp, C.dim)
             }
         }
     }

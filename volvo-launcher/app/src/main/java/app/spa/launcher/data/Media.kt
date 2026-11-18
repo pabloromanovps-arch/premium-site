@@ -61,6 +61,14 @@ data class AltTrack(
 /** Связь с сервисом уведомлений: он живёт в том же процессе. */
 object MediaBus {
     @Volatile var musicPkgs: Set<String> = emptySet()
+
+    /** Последние уведомления любых приложений — для диагностики (звонки, Bluetooth Music). */
+    @Volatile var recent: List<String> = emptyList()
+        private set
+
+    fun record(line: String) {
+        recent = (listOf(line) + recent.filter { it != line }).take(10)
+    }
     var onNotification: ((AltTrack?) -> Unit)? = null
     var lastNotification: AltTrack? = null
         private set
@@ -275,6 +283,15 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
             pending.isNotEmpty() -> "ищем в интернете…"
             else -> "не найдена"
         })
+        appendLine()
+        appendLine("Последние уведомления на магнитоле:")
+        if (MediaBus.recent.isEmpty()) appendLine("  — нет")
+        MediaBus.recent.forEach { appendLine("  • $it") }
+        appendLine()
+        appendLine("Погода и город:")
+        if (NetInfo.log.isEmpty()) appendLine("  — ещё не запрашивали")
+        NetInfo.log.forEach { appendLine("  • $it") }
+        appendLine()
         append("Обновлено: " + tf.format(Date()))
     }
 
