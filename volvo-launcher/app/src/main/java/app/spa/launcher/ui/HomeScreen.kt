@@ -339,29 +339,32 @@ private fun HomePage(vm: LauncherVm, goTo: (Int) -> Unit, openPlayer: () -> Unit
         is LaunchTarget.App -> t.label.takeIf { !it.equals(slot.title, ignoreCase = true) }
         else -> null
     }
+    val media by vm.media.info.collectAsStateWithLifecycle()
+    val activePkgs = setOfNotNull(media?.takeIf { it.playing }?.pkg, s.recent?.substringBefore('/'))
+    fun act(slot: Slot) = (slot.resolve(apps, s.slots) as? LaunchTarget.App)?.pkg?.let { it in activePkgs } ?: false
 
     Row(Modifier.fillMaxSize().padding(horizontal = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         MediaCard(vm, Modifier.width(400.dp).fillMaxHeight(), openPlayer)
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SlotTile(Slot.NAV, Ic.Nav, sub(Slot.NAV))
-                SlotTile(Slot.CARPLAY, Ic.CarPlay, sub(Slot.CARPLAY))
-                SlotTile(Slot.YOUTUBE, Ic.YouTube, sub(Slot.YOUTUBE))
+                SlotTile(Slot.NAV, Ic.Nav, sub(Slot.NAV), act(Slot.NAV))
+                SlotTile(Slot.CARPLAY, Ic.CarPlay, sub(Slot.CARPLAY), act(Slot.CARPLAY))
+                SlotTile(Slot.YOUTUBE, Ic.YouTube, sub(Slot.YOUTUBE), act(Slot.YOUTUBE))
                 RecentTile(vm, Modifier.weight(1f).fillMaxHeight())
             }
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                SlotTile(Slot.FRONT_CAM, Ic.Camera, sub(Slot.FRONT_CAM))
+                SlotTile(Slot.FRONT_CAM, Ic.Camera, sub(Slot.FRONT_CAM), act(Slot.FRONT_CAM))
                 ClockWeatherTile(vm, Modifier.weight(2f).fillMaxHeight()) { a.openUrl("https://yandex.ru/pogoda") }
-                BigTile(Ic.Apps, "Приложения", "${apps.size} установлено", Modifier.weight(1f).fillMaxHeight()) { goTo(PAGE_APPS) }
+                BigTile(Ic.Apps, "Приложения", "${apps.size} установлено", Modifier.weight(1f).fillMaxHeight(), active = false) { goTo(PAGE_APPS) }
             }
         }
     }
 }
 
 @Composable
-private fun RowScope.SlotTile(slot: Slot, icon: ImageVector, sub: String?) {
+private fun RowScope.SlotTile(slot: Slot, icon: ImageVector, sub: String?, active: Boolean) {
     val a = LocalActions.current
-    BigTile(icon, slot.title, sub, Modifier.weight(1f).fillMaxHeight(), onLong = { a.pick(slot) }) { a.launchSlot(slot, it) }
+    BigTile(icon, slot.title, sub, Modifier.weight(1f).fillMaxHeight(), active = active, onLong = { a.pick(slot) }) { a.launchSlot(slot, it) }
 }
 
 /** Крупная плитка с иконкой в мягком свечении цвета темы. */
@@ -371,6 +374,7 @@ fun BigTile(
     title: String,
     sub: String?,
     modifier: Modifier,
+    active: Boolean = false,
     onLong: (() -> Unit)? = null,
     onClick: (ARect?) -> Unit,
 ) {
@@ -378,8 +382,7 @@ fun BigTile(
     Column(
         modifier
             .pressable(onLongClick = onLong, onClick = onClick)
-            .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
-            .drawBehind { drawRect(Color.White.copy(alpha = 0.05f), size = Size(size.width, 1.dp.toPx())) }
+            .tileBg(active)
             .padding(horizontal = 10.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -412,7 +415,7 @@ private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> 
     Row(
         modifier
             .pressable { onClick() }
-            .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
+            .tileBg()
             .padding(horizontal = 22.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -435,7 +438,8 @@ private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> 
                 T(if (w != null) signed(w.temp) + "°" else "—", 38.sp, C.txt, FontWeight.Light)
             }
             Spacer(Modifier.height(4.dp))
-            T(w?.desc?.ifBlank { null } ?: if (w == null) "Загружаем погоду…" else "", 14.sp, C.txt)
+            val status by vm.weatherStatus.collectAsStateWithLifecycle()
+            T(w?.desc?.ifBlank { null } ?: if (w == null) status else "", 14.sp, if (w == null) C.dim else C.txt, maxLines = 2)
             T(
                 if (w != null) listOf(w.city, "ощущ. ${signed(w.feels)}°", "${w.wind} м/с").filter { it.isNotBlank() }.joinToString(" · ") else "",
                 12.sp, C.dim,
@@ -455,7 +459,7 @@ private fun RecentTile(vm: LauncherVm, modifier: Modifier) {
     Column(
         modifier
             .pressable { r -> if (app != null) a.launchApp(app, r) }
-            .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
+            .tileBg(app != null)
             .padding(horizontal = 10.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
@@ -491,7 +495,7 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit
     Column(
         modifier
             .pressable(onLongClick = { a.pick(Slot.BT_MUSIC) }) { openPlayer() }
-            .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
+            .tileBg(m?.playing == true)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
         TileHeader(Ic.Headphones, m?.appLabel ?: "Музыка Bluetooth")

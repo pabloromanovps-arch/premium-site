@@ -23,10 +23,19 @@ import androidx.compose.ui.unit.dp
 import app.spa.launcher.R
 
 /** Темы как у цифровой приборки Volvo P3 (2014): Elegance / Eco / Performance. */
-enum class Accent(val title: String, val a: Color, val b: Color) {
+enum class Accent(
+    val title: String,
+    val a: Color,
+    val b: Color,
+    /** R-Design: графитовые плитки с фактурой карбона и хромированной кромкой. */
+    val carbon: Boolean = false,
+    val top: Color = Color(0xFF19202E),
+    val bottom: Color = Color(0xFF111622),
+) {
     ELEGANCE("Elegance", Color(0xFF1F4FD8), Color(0xFF6FB2FF)),
     ECO("Eco", Color(0xFF0B8A6A), Color(0xFF6FE0B8)),
-    PERFORMANCE("Performance", Color(0xFFB3122B), Color(0xFFFF6A55));
+    PERFORMANCE("Performance", Color(0xFFB3122B), Color(0xFFFF6A55)),
+    RDESIGN("R-Design", Color(0xFF0057D9), Color(0xFF4FC3FF), carbon = true, top = Color(0xFF1D2025), bottom = Color(0xFF0C0D10));
 
     val brush: Brush get() = Brush.horizontalGradient(listOf(a, b))
     val vbrush: Brush get() = Brush.verticalGradient(listOf(b, a))

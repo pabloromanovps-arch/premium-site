@@ -1,5 +1,6 @@
 package app.spa.launcher.ui
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -35,7 +36,12 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageShader
+import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -111,6 +117,44 @@ fun Modifier.pressable(
         )
 }
 
+/** Мелкое плетение карбона: крошечная текстура, повторяется видеокартой — нагрузки нет. */
+private val carbonBrush: Brush by lazy {
+    val n = 12
+    val bmp = android.graphics.Bitmap.createBitmap(n, n, android.graphics.Bitmap.Config.ARGB_8888)
+    for (y in 0 until n) for (x in 0 until n) {
+        val cell = ((x / 6) + (y / 6)) % 2 == 0
+        val stripe = if (cell) (x + y) % 3 == 0 else (x - y + n) % 3 == 0
+        val alpha = if (stripe) 0x16 else 0x05
+        bmp.setPixel(x, y, android.graphics.Color.argb(alpha, 255, 255, 255))
+    }
+    ShaderBrush(ImageShader(bmp.asImageBitmap(), TileMode.Repeated, TileMode.Repeated))
+}
+
+/**
+ * Фон плитки в стиле Sensus. active != null — слева полоска-индикатор, как у кнопок
+ * «Функции автомобиля»: горит цветом темы, когда приложение активно.
+ */
+fun Modifier.tileBg(active: Boolean? = null): Modifier = composed {
+    val accent = LocalAccent.current
+    val bar by animateColorAsState(if (active == true) accent.b else C.line, tween(300), label = "tile-bar")
+    this
+        .background(Brush.verticalGradient(listOf(accent.top, accent.bottom)))
+        .then(if (accent.carbon) Modifier.background(carbonBrush) else Modifier)
+        .drawBehind {
+            val edge = if (accent.carbon) 0.16f else 0.05f
+            drawRect(Color.White.copy(alpha = edge), size = Size(size.width, 1.dp.toPx()))
+            if (active != null) {
+                val h = size.height * 0.42f
+                drawRoundRect(
+                    bar,
+                    topLeft = Offset(7.dp.toPx(), (size.height - h) / 2),
+                    size = Size(3.dp.toPx(), h),
+                    cornerRadius = CornerRadius(2.dp.toPx()),
+                )
+            }
+        }
+}
+
 /** Тонкий ползунок с градиентом темы. */
 @Composable
 fun LineSlider(value: Float, onChange: (Float) -> Unit, modifier: Modifier = Modifier) {
@@ -146,7 +190,7 @@ fun SquareBtn(icon: ImageVector, modifier: Modifier = Modifier, size: Int = 46, 
         modifier
             .size(size.dp)
             .pressable(pressedScale = 0.9f) { onClick() }
-            .background(C.tile),
+            .tileBg(),
         contentAlignment = Alignment.Center,
     ) { VIcon(icon, C.txt, 22.dp) }
 }
@@ -179,7 +223,7 @@ fun AppCell(
             .fillMaxWidth()
             .height(104.dp)
             .pressable(onLongClick = onLong, onClick = onClick)
-            .background(if (selected) C.tile2 else C.tile)
+            .tileBg()
             .drawBehind {
                 if (selected) drawRect(accent.brush, size = Size(size.width, 3.dp.toPx()))
             }

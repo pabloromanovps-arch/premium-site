@@ -36,6 +36,8 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     val brightness = MutableStateFlow(readBrightness())
     val canWriteSettings = MutableStateFlow(Settings.System.canWrite(app))
     val weather = MutableStateFlow<Weather?>(null)
+    /** Почему погоды нет: показываем прямо в плитке. */
+    val weatherStatus = MutableStateFlow("Определяем город…")
 
     /** Поправка к часам магнитолы по времени из интернета (если они сбиты). */
     private var clockOffset = 0L
@@ -79,7 +81,15 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                     }
                     geo.timezone?.let { id -> zone.value = TimeZone.getTimeZone(id) }
                     startClock()
-                    NetInfo.weather(geo)?.let { weather.value = it }
+                    val w = NetInfo.weather(geo)
+                    if (w != null) {
+                        weather.value = w
+                        weatherStatus.value = ""
+                    } else if (weather.value == null) {
+                        weatherStatus.value = "Город: ${geo.city.ifBlank { "найден" }}. Сервер погоды не отвечает, пробуем снова…"
+                    }
+                } else if (weather.value == null) {
+                    weatherStatus.value = "Нет ответа из интернета. Проверьте подключение — пробуем снова…"
                 }
                 delay(if (weather.value == null) 60_000 else 1_800_000)
             }

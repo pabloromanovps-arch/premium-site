@@ -162,7 +162,7 @@ private fun RowScope.FuncBtn(
             .weight(1f)
             .fillMaxHeight()
             .pressable(onLongClick = onLong, onClick = onClick)
-            .background(C.tile)
+            .tileBg()
             .padding(start = 14.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
