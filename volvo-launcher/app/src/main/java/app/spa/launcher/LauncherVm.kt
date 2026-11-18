@@ -5,6 +5,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import android.provider.Settings
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -28,7 +32,19 @@ import kotlinx.coroutines.withContext
 import java.util.TimeZone
 import kotlin.math.abs
 
+/** Состояние сети для значка в верхней строке. */
+data class NetState(val wifi: Boolean = false, val cellular: Boolean = false, val internet: Boolean = false, val level: Int = 0)
+
 class LauncherVm(private val app: Application) : AndroidViewModel(app) {
+    private val cm = app.getSystemService(ConnectivityManager::class.java)
+    private val wm = app.applicationContext.getSystemService(WifiManager::class.java)
+    val net = MutableStateFlow(NetState())
+    private val netCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = updateNet()
+        override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = updateNet()
+        override fun onLost(network: Network) = updateNet()
+    }
+
     val prefs = Prefs(app)
     val media = MediaRepo(app, viewModelScope)
 
@@ -62,6 +78,17 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
             ContextCompat.RECEIVER_EXPORTED,
         )
         startClock()
+        runCatching { cm.registerDefaultNetworkCallback(netCallback) }
+        updateNet()
+        ensureWifi()
+        // Сеть и Wi-Fi: раз в минуту проверяем, что Wi-Fi включён и значок актуален.
+        viewModelScope.launch {
+            while (true) {
+                delay(60_000)
+                ensureWifi()
+                updateNet()
+            }
+        }
         // Пакет Bluetooth Music: трек из его уведомлений и куда вести по нажатию на карточку.
         viewModelScope.launch {
             combine(apps, prefs.settings) { list, st -> Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App }
@@ -116,7 +143,33 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
+    @Suppress("DEPRECATION")
+    fun updateNet() {
+        val caps = runCatching { cm.getNetworkCapabilities(cm.activeNetwork) }.getOrNull()
+        val wifi = caps?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+        val level = if (wifi) runCatching { WifiManager.calculateSignalLevel(wm.connectionInfo.rssi, 4) }.getOrDefault(3) else 0
+        net.value = NetState(
+            wifi = wifi,
+            cellular = caps?.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) == true,
+            internet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true ||
+                caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
+            level = level,
+        )
+    }
+
+    /** Wi-Fi всегда включён: магнитола сама подключается к сохранённой раздаче телефона. */
+    @Suppress("DEPRECATION")
+    fun ensureWifi() {
+        if (!prefs.settings.value.wifiAlways) return
+        runCatching {
+            if (!wm.isWifiEnabled) wm.isWifiEnabled = true
+            else if (!net.value.wifi) wm.reconnect()
+        }
+    }
+
     fun onResume() {
+        ensureWifi()
+        updateNet()
         startClock()
         brightness.value = readBrightness()
         canWriteSettings.value = Settings.System.canWrite(app)
@@ -140,5 +193,6 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     override fun onCleared() {
         runCatching { app.unregisterReceiver(packageReceiver) }
         media.close()
+        runCatching { cm.unregisterNetworkCallback(netCallback) }
     }
 }

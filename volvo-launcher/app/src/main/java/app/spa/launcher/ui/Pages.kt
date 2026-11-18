@@ -106,7 +106,15 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.Cloud, "Яндекс Диск", null) { a.launchSlot(Slot.DISK, it) }
         }
         FuncRow {
-            FuncBtn(Ic.Wifi, "Wi-Fi", null) { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) }
+            FuncBtn(
+                Ic.Wifi, "Wi-Fi всегда включён",
+                if (s.wifiAlways) "Вкл · удерживайте для настроек" else "Выключено",
+                s.wifiAlways,
+                onLong = { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) },
+            ) {
+                vm.prefs.update { putBoolean("wifi", !s.wifiAlways) }
+                vm.ensureWifi()
+            }
             FuncBtn(Ic.Headphones, "Bluetooth Music", if (bt != null) "Открыть" else "Удерживайте, чтобы выбрать", null, onLong = { a.pick(Slot.BT_MUSIC) }) {
                 a.launchSlot(Slot.BT_MUSIC, it)
             }

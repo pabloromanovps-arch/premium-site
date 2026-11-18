@@ -13,9 +13,10 @@ android {
     defaultConfig {
         applicationId = "app.spa.launcher"
         minSdk = 26
-        targetSdk = 34
+        // 28: на Android 10 только так приложение может само включать Wi-Fi.
+        targetSdk = 28
         versionCode = buildNumber
-        versionName = "0.1.$buildNumber"
+        versionName = "1.0.$buildNumber"
     }
 
     // Один постоянный ключ: новые сборки ставятся поверх старых без удаления.

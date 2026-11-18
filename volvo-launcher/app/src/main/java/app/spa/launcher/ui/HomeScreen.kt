@@ -264,8 +264,50 @@ private fun StatusBar(vm: LauncherVm, pager: PagerState, onPull: () -> Unit) {
             Spacer(Modifier.height(4.dp))
             PageDots(pager)
         }
-        weather?.let { w ->
-            T(listOf(w.city, signed(w.temp) + "°C").filter { it.isNotBlank() }.joinToString("  "), 14.sp, C.dim, modifier = Modifier.align(Alignment.CenterEnd))
+        Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
+            weather?.let { w ->
+                T(listOf(w.city, signed(w.temp) + "°C").filter { it.isNotBlank() }.joinToString("  "), 14.sp, C.dim)
+                Spacer(Modifier.width(16.dp))
+            }
+            NetBadge(vm)
+        }
+    }
+}
+
+/** Значок сети: Wi-Fi с уровнем сигнала или LTE; тусклый — если интернета нет. */
+@Composable
+private fun NetBadge(vm: LauncherVm) {
+    val accent = LocalAccent.current
+    val n by vm.net.collectAsStateWithLifecycle()
+    when {
+        n.wifi -> {
+            WifiGlyph(n.level, if (n.internet) C.txt else C.dim, accent.b)
+            Spacer(Modifier.width(6.dp))
+            T(if (n.internet) "Wi-Fi" else "Wi-Fi · нет интернета", 13.sp, if (n.internet) C.txt else C.dim, FontWeight.Medium)
+        }
+        n.cellular -> T("LTE", 13.sp, C.txt, FontWeight.Medium)
+        else -> {
+            WifiGlyph(0, C.dim, C.dim)
+            Spacer(Modifier.width(6.dp))
+            T("Нет сети", 13.sp, C.dim, FontWeight.Medium)
+        }
+    }
+}
+
+@Composable
+private fun WifiGlyph(level: Int, on: Color, off: Color) {
+    androidx.compose.foundation.Canvas(Modifier.size(20.dp, 16.dp)) {
+        val cx = size.width / 2
+        val by = size.height
+        drawCircle(if (level >= 1) on else off.copy(alpha = 0.4f), radius = 1.8.dp.toPx(), center = Offset(cx, by - 2.dp.toPx()))
+        listOf(1, 2, 3).forEach { i ->
+            val r = (4.5f * i).dp.toPx()
+            drawArc(
+                color = if (level >= i + 1 || (level == 3 && i == 3)) on else off.copy(alpha = 0.35f),
+                startAngle = 225f, sweepAngle = 90f, useCenter = false,
+                topLeft = Offset(cx - r, by - 2.dp.toPx() - r), size = Size(r * 2, r * 2),
+                style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
+            )
         }
     }
 }
@@ -494,7 +536,9 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit
     val m = info
     Column(
         modifier
-            .pressable(onLongClick = { a.pick(Slot.BT_MUSIC) }) { openPlayer() }
+            .pressable(onLongClick = { a.pick(Slot.BT_MUSIC) }) {
+                if (!access) a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false) else openPlayer()
+            }
             .tileBg(m?.playing == true)
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
@@ -509,7 +553,7 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit
         Spacer(Modifier.height(12.dp))
         val (title, sub) = when {
             m != null && m.title.isNotBlank() -> m.title to m.artist
-            !access -> "Музыка с телефона" to "Включите «Трек на экране» в Функциях"
+            !access -> "Музыка с телефона" to "Нажмите, чтобы показывать трек здесь"
             else -> "Музыка с телефона" to "Нажмите ▶ — заиграет Bluetooth Music"
         }
         Crossfade(targetState = title to sub, animationSpec = tween(300), label = "title") { (t, s) ->

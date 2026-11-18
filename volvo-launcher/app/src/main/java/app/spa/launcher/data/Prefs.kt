@@ -13,6 +13,7 @@ data class LauncherSettings(
     val btOnStart: Boolean,
     val carplayOnStart: Boolean,
     val recent: String?,
+    val wifiAlways: Boolean,
     val slots: Map<String, String>,
 )
 
@@ -27,6 +28,7 @@ class Prefs(ctx: Context) {
         btOnStart = sp.getBoolean("btboot", true),
         carplayOnStart = sp.getBoolean("cpboot2", false),
         recent = sp.getString("recent", null),
+        wifiAlways = sp.getBoolean("wifi", true),
         slots = Slot.entries.mapNotNull { s -> sp.getString("slot_" + s.name, null)?.let { s.name to it } }.toMap(),
     )
 
