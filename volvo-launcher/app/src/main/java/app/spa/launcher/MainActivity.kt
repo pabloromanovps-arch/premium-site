@@ -74,6 +74,7 @@ class MainActivity : ComponentActivity() {
         }
 
         bootSoundWorkaround()
+        askWifiNamePermission()
     }
 
     /**
@@ -128,6 +129,22 @@ class MainActivity : ComponentActivity() {
             delay(600)
             vm.media.key(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
         }
+    }
+
+    /** Android 10 сообщает название Wi-Fi только при разрешении на местоположение. Спрашиваем один раз. */
+    private fun askWifiNamePermission() {
+        val p = android.Manifest.permission.ACCESS_FINE_LOCATION
+        if (checkSelfPermission(p) == android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        val sp = getSharedPreferences("spa", MODE_PRIVATE)
+        if (sp.getBoolean("askedLoc", false)) return
+        sp.edit().putBoolean("askedLoc", true).apply()
+        requestPermissions(arrayOf(p, android.Manifest.permission.ACCESS_COARSE_LOCATION), 7)
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        vm.updateNet()
     }
 
     private fun bringBack() {

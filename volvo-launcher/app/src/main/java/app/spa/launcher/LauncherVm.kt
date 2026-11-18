@@ -35,7 +35,14 @@ import java.util.TimeZone
 import kotlin.math.abs
 
 /** Состояние сети для значка в верхней строке. */
-data class NetState(val wifi: Boolean = false, val cellular: Boolean = false, val internet: Boolean = false, val level: Int = 0)
+data class NetState(
+    val wifi: Boolean = false,
+    val cellular: Boolean = false,
+    val internet: Boolean = false,
+    val level: Int = 0,
+    /** Название сети, например «iPhone Pablo»; null — Android его не сообщил. */
+    val ssid: String? = null,
+)
 
 class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     private val cm = app.getSystemService(ConnectivityManager::class.java)
@@ -170,6 +177,8 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
             internet = caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true ||
                 caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
             level = level,
+            ssid = if (wifi) runCatching { wm.connectionInfo.ssid }.getOrNull()
+                ?.removeSurrounding("\"")?.takeIf { it.isNotBlank() && it != "<unknown ssid>" && it != "0x" } else null,
         )
     }
 

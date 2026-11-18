@@ -60,6 +60,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -269,10 +271,6 @@ private fun StatusBar(vm: LauncherVm, pager: PagerState, onPull: () -> Unit) {
             PageDots(pager)
         }
         Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically) {
-            weather?.let { w ->
-                T(listOf(w.city, signed(w.temp) + "°C").filter { it.isNotBlank() }.joinToString("  "), 14.sp, C.dim)
-                Spacer(Modifier.width(16.dp))
-            }
             NetBadge(vm)
         }
     }
@@ -283,23 +281,22 @@ private fun StatusBar(vm: LauncherVm, pager: PagerState, onPull: () -> Unit) {
 private fun NetBadge(vm: LauncherVm) {
     val accent = LocalAccent.current
     val n by vm.net.collectAsStateWithLifecycle()
-    when {
-        n.wifi -> {
-            WifiGlyph(n.level, if (n.internet) C.txt else C.dim, accent.b)
-            Spacer(Modifier.width(6.dp))
-            T(if (n.internet) "Wi-Fi" else "Wi-Fi · нет интернета", 13.sp, if (n.internet) C.txt else C.dim, FontWeight.Medium)
-        }
-        n.cellular -> T("LTE", 13.sp, C.txt, FontWeight.Medium)
-        else -> {
-            WifiGlyph(0, C.dim, C.dim)
-            Spacer(Modifier.width(6.dp))
-            T("Нет сети", 13.sp, C.dim, FontWeight.Medium)
-        }
+    if (n.wifi) {
+        WifiGlyph(n.level, if (n.internet) C.txt else C.dim, accent.b, crossed = false)
+        Spacer(Modifier.width(6.dp))
+        T(
+            (n.ssid ?: "Wi-Fi") + if (n.internet) "" else " · нет интернета",
+            13.sp, if (n.internet) C.txt else C.dim, FontWeight.Medium, modifier = Modifier.widthIn(max = 260.dp),
+        )
+    } else {
+        WifiGlyph(0, C.dim, C.dim, crossed = true)
+        Spacer(Modifier.width(6.dp))
+        T(if (n.cellular) "Нет Wi-Fi · LTE" else "Нет Wi-Fi", 13.sp, C.dim, FontWeight.Medium)
     }
 }
 
 @Composable
-private fun WifiGlyph(level: Int, on: Color, off: Color) {
+private fun WifiGlyph(level: Int, on: Color, off: Color, crossed: Boolean) {
     androidx.compose.foundation.Canvas(Modifier.size(20.dp, 16.dp)) {
         val cx = size.width / 2
         val by = size.height
@@ -312,6 +309,9 @@ private fun WifiGlyph(level: Int, on: Color, off: Color) {
                 topLeft = Offset(cx - r, by - 2.dp.toPx() - r), size = Size(r * 2, r * 2),
                 style = androidx.compose.ui.graphics.drawscope.Stroke(1.8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round),
             )
+        }
+        if (crossed) {
+            drawLine(C.txt.copy(alpha = 0.75f), Offset(2.dp.toPx(), 1.dp.toPx()), Offset(size.width - 2.dp.toPx(), size.height - 1.dp.toPx()), 1.8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
         }
     }
 }
@@ -562,10 +562,23 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit
     ) {
         TileHeader(Ic.Headphones, m?.appLabel ?: "Музыка Bluetooth")
         Spacer(Modifier.height(10.dp))
-        Box(Modifier.fillMaxWidth().height(158.dp).clip(RoundedCornerShape(3.dp))) {
+        // Обложка целиком (не обрезаем), по бокам — её же размытые цвета, как в Sensus. Занимает всё свободное место.
+        Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(3.dp))) {
             Crossfade(targetState = m?.art, animationSpec = tween(450), label = "art") { art ->
-                if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else ArtPlaceholder(accent)
+                if (art != null) {
+                    val ambient = remember(art) {
+                        runCatching {
+                            android.graphics.Bitmap.createScaledBitmap(art.asAndroidBitmap(), 10, 10, true).asImageBitmap()
+                        }.getOrNull()
+                    }
+                    Box(Modifier.fillMaxSize()) {
+                        if (ambient != null) {
+                            Image(ambient, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.75f,
+                                filterQuality = androidx.compose.ui.graphics.FilterQuality.Low)
+                        }
+                        Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                    }
+                } else ArtPlaceholder(accent)
             }
         }
         Spacer(Modifier.height(12.dp))
@@ -581,9 +594,12 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit
                 T(s, 14.sp, C.dim)
             }
         }
-        Spacer(Modifier.height(12.dp))
-        Progress(m)
-        Spacer(Modifier.weight(1f))
+        // Bluetooth часто не передаёт длину трека — тогда полоску не показываем, место отдаём обложке.
+        if ((m?.duration ?: 0L) > 0L) {
+            Spacer(Modifier.height(10.dp))
+            Progress(m)
+        }
+        Spacer(Modifier.height(6.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround, verticalAlignment = Alignment.CenterVertically) {
             MediaBtn(Ic.Prev, 26) { vm.media.prev() }
             MediaBtn(if (m?.playing == true) Ic.Pause else Ic.Play, 34) { vm.media.playPause() }
