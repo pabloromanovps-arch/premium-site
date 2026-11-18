@@ -63,7 +63,7 @@ fun AppsPage(vm: LauncherVm) {
     val apps by vm.apps.collectAsStateWithLifecycle()
     val s by vm.prefs.settings.collectAsStateWithLifecycle()
     LazyVerticalGrid(
-        columns = GridCells.Fixed(10),
+        columns = GridCells.Fixed(11),
         modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -180,7 +180,7 @@ private fun RowScope.FuncBtn(
 }
 
 @Composable
-private fun BrightnessCard(vm: LauncherVm, modifier: Modifier) {
+fun BrightnessCard(vm: LauncherVm, modifier: Modifier) {
     val a = LocalActions.current
     val b by vm.brightness.collectAsStateWithLifecycle()
     val can by vm.canWriteSettings.collectAsStateWithLifecycle()
@@ -200,7 +200,7 @@ private fun BrightnessCard(vm: LauncherVm, modifier: Modifier) {
 }
 
 @Composable
-private fun ThemeCard(vm: LauncherVm, modifier: Modifier) {
+fun ThemeCard(vm: LauncherVm, modifier: Modifier) {
     val s by vm.prefs.settings.collectAsStateWithLifecycle()
     Column(modifier.background(C.tile, RoundedCornerShape(4.dp)).padding(horizontal = 18.dp, vertical = 14.dp)) {
         TileHeader(Ic.Palette, "Тема — как на приборке")

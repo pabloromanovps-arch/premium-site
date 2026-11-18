@@ -63,6 +63,7 @@ enum class Slot(
     AUX("Камера AUX", Ic.Aux, regex = Regex("aux", I)),
     BT_MUSIC("Музыка Bluetooth", Ic.Headphones, regex = Regex("bluetooth ?music|bt ?music|музык\\w* ?bluetooth|bluetooth[- ]музык", I)),
     YMUSIC("Яндекс Музыка", Ic.Music, listOf("ru.yandex.music"), Regex("яндекс.?музык|yandex.?music", I)),
+    ZVUK("СберЗвук", Ic.Wave, listOf("com.zvooq.openplay"), Regex("сбер.?звук|zvuk|zvooq", I)),
     DISK("Диск", Ic.Cloud, listOf("ru.yandex.disk"), Regex("диск|disk", I)),
     PHONE("Телефон", Ic.Phone, regex = Regex("телефон|phone|dialer|^bluetooth$|^bt$", I)),
     SETTINGS("Настройки", Ic.Gear, action = Settings.ACTION_SETTINGS);
@@ -78,6 +79,6 @@ enum class Slot(
     }
 
     companion object {
-        val favorites = listOf(NAV, CARPLAY, YOUTUBE, FRONT_CAM, AUX, BT_MUSIC, YMUSIC, DISK, PHONE, SETTINGS)
+        val favorites = listOf(NAV, CARPLAY, YOUTUBE, FRONT_CAM, AUX, BT_MUSIC, YMUSIC, ZVUK, DISK, PHONE, SETTINGS)
     }
 }

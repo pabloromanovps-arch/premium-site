@@ -1,6 +1,22 @@
 package app.spa.launcher.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -98,48 +114,104 @@ private fun Launcher(vm: LauncherVm, homeSignal: Int, overlay: @Composable () ->
     val settings by vm.prefs.settings.collectAsStateWithLifecycle()
     val pager = rememberPagerState(initialPage = PAGE_HOME) { 3 }
     val scope = rememberCoroutineScope()
+    var nowPlaying by remember { mutableStateOf(false) }
+    var panel by remember { mutableStateOf(false) }
+    val welcome = remember { MutableTransitionState(WelcomeGate.take()) }
+    LaunchedEffect(Unit) {
+        if (welcome.currentState) {
+            delay(2600)
+            welcome.targetState = false
+        }
+    }
     val goTo: (Int) -> Unit = { p ->
+        nowPlaying = false
         scope.launch { pager.animateScrollToPage(p, animationSpec = tween(420, easing = FastOutSlowInEasing)) }
     }
     LaunchedEffect(homeSignal) {
-        if (homeSignal > 0) pager.animateScrollToPage(PAGE_HOME, animationSpec = tween(420, easing = FastOutSlowInEasing))
+        if (homeSignal > 0) {
+            nowPlaying = false
+            panel = false
+            pager.animateScrollToPage(PAGE_HOME, animationSpec = tween(420, easing = FastOutSlowInEasing))
+        }
     }
-    // «Назад» в лаунчере всегда возвращает на главный экран и никогда не закрывает его.
-    BackHandler(enabled = true) { if (pager.currentPage != PAGE_HOME) goTo(PAGE_HOME) }
+    // «Назад» в лаунчере закрывает шторку/плеер или возвращает на главный экран, но никогда не закрывает лаунчер.
+    BackHandler(enabled = true) {
+        when {
+            panel -> panel = false
+            nowPlaying -> nowPlaying = false
+            pager.currentPage != PAGE_HOME -> goTo(PAGE_HOME)
+        }
+    }
 
     CompositionLocalProvider(LocalAccent provides settings.accent) {
         Column(Modifier.fillMaxSize()) {
-            StatusBar(vm, pager)
-            HorizontalPager(
-                state = pager,
-                modifier = Modifier.fillMaxWidth().height(384.dp),
-                beyondViewportPageCount = 1,
-                flingBehavior = PagerDefaults.flingBehavior(
+            StatusBar(vm, pager) { panel = true }
+            Box(Modifier.fillMaxWidth().height(384.dp)) {
+                HorizontalPager(
                     state = pager,
-                    snapAnimationSpec = spring(dampingRatio = 0.86f, stiffness = 420f),
-                ),
-            ) { page ->
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            // Соседние экраны слегка уменьшаются и гаснут при свайпе, как в Sensus.
-                            val o = abs((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
-                            alpha = 1f - o * 0.55f
-                            scaleX = 1f - o * 0.05f
-                            scaleY = 1f - o * 0.05f
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1,
+                    flingBehavior = PagerDefaults.flingBehavior(
+                        state = pager,
+                        snapAnimationSpec = spring(dampingRatio = 0.86f, stiffness = 420f),
+                    ),
+                ) { page ->
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                // Соседние экраны слегка уменьшаются и гаснут при свайпе, как в Sensus.
+                                val o = abs((pager.currentPage - page) + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                                alpha = 1f - o * 0.55f
+                                scaleX = 1f - o * 0.05f
+                                scaleY = 1f - o * 0.05f
+                            }
+                    ) {
+                        when (page) {
+                            PAGE_APPS -> AppsPage(vm)
+                            PAGE_HOME -> HomePage(vm, goTo) { nowPlaying = true }
+                            else -> FunctionsPage(vm)
                         }
-                ) {
-                    when (page) {
-                        PAGE_APPS -> AppsPage(vm)
-                        PAGE_HOME -> HomePage(vm, goTo)
-                        else -> FunctionsPage(vm)
                     }
                 }
+                // Плеер раскрывается из карточки музыки, как плитки в Sensus.
+                AnimatedVisibility(
+                    visible = nowPlaying,
+                    enter = fadeIn(tween(200)) + scaleIn(tween(340, easing = FastOutSlowInEasing), initialScale = 0.86f, transformOrigin = TransformOrigin(0.16f, 0.5f)),
+                    exit = fadeOut(tween(200)) + scaleOut(tween(260, easing = FastOutSlowInEasing), targetScale = 0.9f, transformOrigin = TransformOrigin(0.16f, 0.5f)),
+                ) { NowPlaying(vm) { nowPlaying = false } }
             }
-            BottomBar(vm, pager, goTo)
+            BottomBar(vm, pager) { p -> if (p == PAGE_HOME && nowPlaying) nowPlaying = false else goTo(p) }
         }
+
+        // Шторка сверху.
+        AnimatedVisibility(visible = panel, enter = fadeIn(tween(220)), exit = fadeOut(tween(220))) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Color(0x99000000))
+                    .pressable(clipShape = RectangleShape, pressedScale = 1f) { panel = false }
+            )
+        }
+        AnimatedVisibility(
+            visible = panel,
+            enter = slideInVertically(tween(320, easing = FastOutSlowInEasing)) { -it } + fadeIn(tween(200)),
+            exit = slideOutVertically(tween(260, easing = FastOutSlowInEasing)) { -it } + fadeOut(tween(200)),
+        ) { TopPanel(vm, onClose = { panel = false }, openFunctions = { goTo(PAGE_FUNCTIONS) }) }
+
         overlay()
+
+        AnimatedVisibility(visibleState = welcome, enter = fadeIn(tween(1)), exit = fadeOut(tween(700))) { Welcome(vm) }
+    }
+}
+
+/** Приветствие показываем один раз, только сразу после включения магнитолы. */
+object WelcomeGate {
+    private var shown = false
+    fun take(): Boolean {
+        if (shown) return false
+        shown = true
+        return android.os.SystemClock.elapsedRealtime() < 4 * 60_000L
     }
 }
 
@@ -158,12 +230,27 @@ fun signed(t: Int) = if (t > 0) "+$t" else "$t"
 // ───────────────────────────── Статус-строка ─────────────────────────────
 
 @Composable
-private fun StatusBar(vm: LauncherVm, pager: PagerState) {
+private fun StatusBar(vm: LauncherVm, pager: PagerState, onPull: () -> Unit) {
     val now by vm.now.collectAsStateWithLifecycle()
     val tz by vm.zone.collectAsStateWithLifecycle()
     val media by vm.media.info.collectAsStateWithLifecycle()
     val weather by vm.weather.collectAsStateWithLifecycle()
-    Box(Modifier.fillMaxWidth().height(34.dp).padding(horizontal = 18.dp)) {
+    val pull by rememberUpdatedState(onPull)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(34.dp)
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { change, dy ->
+                    if (dy > 6) {
+                        change.consume()
+                        pull()
+                    }
+                }
+            }
+            .pointerInput(Unit) { detectTapGestures { pull() } }
+            .padding(horizontal = 18.dp)
+    ) {
         val m = media
         if (m != null && m.playing && m.title.isNotBlank()) {
             Row(Modifier.align(Alignment.CenterStart).widthIn(max = 420.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -243,7 +330,7 @@ private fun BottomBar(vm: LauncherVm, pager: PagerState, goTo: (Int) -> Unit) {
 // ───────────────────────────── Главный экран ─────────────────────────────
 
 @Composable
-private fun HomePage(vm: LauncherVm, goTo: (Int) -> Unit) {
+private fun HomePage(vm: LauncherVm, goTo: (Int) -> Unit, openPlayer: () -> Unit) {
     val a = LocalActions.current
     val apps by vm.apps.collectAsStateWithLifecycle()
     val s by vm.prefs.settings.collectAsStateWithLifecycle()
@@ -254,7 +341,7 @@ private fun HomePage(vm: LauncherVm, goTo: (Int) -> Unit) {
     }
 
     Row(Modifier.fillMaxSize().padding(horizontal = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        MediaCard(vm, Modifier.width(400.dp).fillMaxHeight())
+        MediaCard(vm, Modifier.width(400.dp).fillMaxHeight(), openPlayer)
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 SlotTile(Slot.NAV, Ic.Nav, sub(Slot.NAV))
@@ -354,7 +441,7 @@ private fun WeatherTile(vm: LauncherVm, modifier: Modifier, onClick: () -> Unit)
 // ───────────────────────────── Музыка ─────────────────────────────
 
 @Composable
-private fun MediaCard(vm: LauncherVm, modifier: Modifier) {
+private fun MediaCard(vm: LauncherVm, modifier: Modifier, openPlayer: () -> Unit) {
     val a = LocalActions.current
     val accent = LocalAccent.current
     val info by vm.media.info.collectAsStateWithLifecycle()
@@ -362,9 +449,7 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier) {
     val m = info
     Column(
         modifier
-            .pressable(onLongClick = { a.pick(Slot.BT_MUSIC) }) { r ->
-                if (m != null) a.launchPkg(m.pkg, r) else a.launchSlot(Slot.BT_MUSIC, r)
-            }
+            .pressable(onLongClick = { a.pick(Slot.BT_MUSIC) }) { openPlayer() }
             .background(Brush.verticalGradient(listOf(C.tile2, C.tile)))
             .padding(horizontal = 18.dp, vertical = 14.dp)
     ) {
@@ -401,7 +486,7 @@ private fun MediaCard(vm: LauncherVm, modifier: Modifier) {
 }
 
 @Composable
-private fun ArtPlaceholder(accent: Accent) {
+fun ArtPlaceholder(accent: Accent) {
     Box(
         Modifier.fillMaxSize().drawBehind {
             drawRect(Brush.linearGradient(listOf(Color(0xFF1B1830), Color(0xFF0C1220))))
@@ -415,7 +500,7 @@ private fun ArtPlaceholder(accent: Accent) {
 }
 
 @Composable
-private fun Progress(m: MediaInfo?) {
+fun Progress(m: MediaInfo?) {
     val accent = LocalAccent.current
     // Обновляем прогресс дважды в секунду и только пока играет музыка.
     val now by produceState(android.os.SystemClock.elapsedRealtime(), m) {
@@ -449,7 +534,7 @@ private fun mmss(ms: Long): String {
 }
 
 @Composable
-private fun MediaBtn(icon: ImageVector, size: Int, onClick: () -> Unit) {
+fun MediaBtn(icon: ImageVector, size: Int, onClick: () -> Unit) {
     Box(
         Modifier.size(64.dp, 48.dp).pressable(RoundedCornerShape(24.dp), 0.86f) { onClick() },
         contentAlignment = Alignment.Center,
