@@ -33,7 +33,14 @@ jobs:
       - name: Build release APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --stacktrace --no-daemon
+          set -o pipefail
+          ./gradlew assembleRelease --no-daemon 2>&1 | tee build.log
+
+      - name: Show compile errors
+        if: failure()
+        run: |
+          echo "==== ERRORS ===="
+          grep -E "^e: |error:|What went wrong" -A3 build.log | head -80 || true
 
       - name: Rename APK
         run: cp app/build/outputs/apk/release/app-release.apk SpaLauncher.apk
