@@ -466,11 +466,23 @@ private fun ClockWeatherTile(vm: LauncherVm, modifier: Modifier, onLong: () -> U
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Колонка времени — по ширине цифр (цифры одной ширины), место уступает погода.
-        Column {
-            T(formatTime(now, tz), 62.sp, C.txt, FontWeight.Light, tabular = true)
-            T(formatDate(now, tz), 13.sp, C.dim, FontWeight.Medium)
+        // Время всегда целиком: размер цифр подбирается под ширину колонки.
+        BoxWithConstraints(Modifier.weight(1.15f)) {
+            val fit = (maxWidth.value / 3.1f).coerceIn(34f, 64f)
+            Column {
+                androidx.compose.foundation.text.BasicText(
+                    text = formatTime(now, tz),
+                    softWrap = false,
+                    maxLines = 1,
+                    style = androidx.compose.ui.text.TextStyle(
+                        color = C.txt, fontSize = fit.sp, fontFamily = Inter, fontWeight = FontWeight.Light,
+                        fontFeatureSettings = "tnum",
+                    ),
+                )
+                T(formatDate(now, tz), 13.sp, C.dim, FontWeight.Medium)
+            }
         }
-        Spacer(Modifier.width(18.dp))
+        Spacer(Modifier.width(14.dp))
         Box(Modifier.width(1.dp).fillMaxHeight().padding(vertical = 8.dp).background(C.line))
         Spacer(Modifier.width(18.dp))
         val w = weather

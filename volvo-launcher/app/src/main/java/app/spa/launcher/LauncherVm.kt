@@ -124,8 +124,10 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                     weather.value = w
                     weatherStatus.value = ""
                 } else if (weather.value == null) {
-                    weatherStatus.value = if (!net.value.internet) "Нет интернета. Подключите Wi-Fi"
-                    else "Не загрузилась: " + NetInfo.lastProblem().ifBlank { "нет ответа" }
+                    val why = NetInfo.lastProblem().ifBlank { "нет ответа" }
+                    weatherStatus.value = if (Regex("UnknownHost|Connect|NoRoute|Unreachable").containsMatchIn(why))
+                        "Нет интернета у магнитолы ($why)"
+                    else "Не загрузилась: $why"
                 }
                 withTimeoutOrNull(if (weather.value == null) 60_000L else 1_800_000L) { weatherKick.receive() }
             }
