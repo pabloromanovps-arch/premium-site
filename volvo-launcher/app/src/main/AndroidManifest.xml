@@ -59,5 +59,16 @@
                 <action android:name="android.service.notification.NotificationListenerService" />
             </intent-filter>
         </service>
+        <!-- Нажимает кнопки в Bluetooth Music (у него нет другого способа управления). -->
+        <service
+            android:name=".BtAccessService"
+            android:exported="true"
+            android:label="SPA Launcher — кнопки музыки"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/bt_access" />
+        </service>
     </application>
 </manifest>

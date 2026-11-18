@@ -108,6 +108,7 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                 (Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App)?.pkg to st.phoneOnly
             }.collect { (bt, phoneOnly) ->
                 media.fallbackPkg = bt
+                bt?.let { BtRemote.btPkg = it }
                 media.phonePkgs = setOfNotNull(bt, "com.android.bluetooth")
                 media.phoneOnly = phoneOnly
                 MediaBus.musicPkgs = setOfNotNull(bt)

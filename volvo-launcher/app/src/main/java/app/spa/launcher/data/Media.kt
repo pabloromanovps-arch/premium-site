@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import app.spa.launcher.BtRemote
 import app.spa.launcher.MediaListenerService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -326,6 +327,7 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
             else -> "системные медиа-кнопки"
         })
         appendLine("  последняя команда: ${probe.lastSent}")
+        appendLine("  пульт (специальные возможности): " + (if (BtRemote.enabled) "включён" else "ВЫКЛЮЧЕН") + " · " + BtRemote.log)
         appendLine("  проверены приложения: " + probe.scanned.joinToString())
         appendLine("  принимает (${probe.accepted.size}): " + probe.accepted.take(25).joinToString { it.substringAfterLast('.') })
         appendLine("  модуль Topway TWUtil: " + probe.twUtil)
@@ -403,6 +405,10 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         if (c != null) c.transportControls.skipToPrevious() else key(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
     }
 
+    /** Попросить включить «SPA Launcher — кнопки музыки» (один раз за запуск). */
+    var onNeedRemote: (() -> Unit)? = null
+    private var askedSetup = false
+
     /** Принимает ли Bluetooth Music кнопки плеера напрямую. */
     private fun btTakesButtons(): Boolean = fallbackPkg?.let { p ->
         runCatching {
@@ -437,7 +443,13 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
             val playing = info.value?.playing == true
             if (probe.send(if (playing) "pause" else "play")) return
         } else if (probe.send(kind)) return
-        // 2) Кнопка плеера напрямую, 3) системная медиа-кнопка.
+        // 2) Нажать кнопку в самом Bluetooth Music (служба специальных возможностей).
+        if (BtRemote.press(kind)) return
+        if (!askedSetup) {
+            askedSetup = true
+            onNeedRemote?.invoke()
+        }
+        // 3) Кнопка плеера напрямую, 4) системная медиа-кнопка.
         if (btTakesButtons() && sendToBt(code)) return
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))

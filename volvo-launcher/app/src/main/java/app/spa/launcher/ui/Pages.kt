@@ -108,7 +108,10 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.Camera, "Передняя камера", null) { a.launchSlot(Slot.FRONT_CAM, it) }
             FuncBtn(Ic.Phone, "Телефон", null) { a.launchSlot(Slot.PHONE, it) }
             FuncBtn(Ic.Bluetooth, "Bluetooth", null) { a.openSystem(Settings.ACTION_BLUETOOTH_SETTINGS, false) }
-            FuncBtn(Ic.Cloud, "Яндекс Диск", null) { a.launchSlot(Slot.DISK, it) }
+            val remote by app.spa.launcher.BtRemote.on.collectAsStateWithLifecycle()
+            FuncBtn(Ic.Headphones, "Кнопки музыки", if (remote) "Включены" else "Нажмите, чтобы включить", remote) {
+                a.openSystem(Settings.ACTION_ACCESSIBILITY_SETTINGS, false)
+            }
             FuncBtn(Ic.Weather, "Город для погоды", s.city ?: "Авто (по интернету)", null) { showCity = true }
         }
         FuncRow {

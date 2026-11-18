@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bt_access_desc">Позволяет кнопкам ⏮ ⏯ ⏭ в SPA Launcher управлять приложением Bluetooth Music: лаунчер на мгновение открывает его и нажимает нужную кнопку. Работает только с Bluetooth Music.</string>
+</resources>

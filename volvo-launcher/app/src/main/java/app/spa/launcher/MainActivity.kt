@@ -66,6 +66,20 @@ class MainActivity : ComponentActivity() {
         )
 
         vm.media.onNothingToPlay = ::startBtMusic
+        BtRemote.openBt = {
+            (Slot.BT_MUSIC.resolve(vm.apps.value, vm.prefs.settings.value.slots) as? LaunchTarget.App)?.let { openQuietly(it) }
+        }
+        BtRemote.backHome = ::bringBack
+        vm.media.onNeedRemote = {
+            runOnUiThread {
+                Toast.makeText(
+                    this,
+                    "Чтобы кнопки управляли Bluetooth Music, включите «SPA Launcher — кнопки музыки»",
+                    Toast.LENGTH_LONG,
+                ).show()
+                startSafely(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), null)
+            }
+        }
 
         setContent {
             LauncherRoot(vm, homeSignal, actions) {
@@ -124,10 +138,11 @@ class MainActivity : ComponentActivity() {
         }
         lifecycleScope.launch {
             openQuietly(bt)
-            delay(450)
+            delay(700)
+            // Окно Bluetooth Music на экране — пульт нажмёт «Плей» прямо в нём.
+            if (BtRemote.service?.tryClick("toggle") != true) vm.media.key(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+            delay(250)
             bringBack()
-            delay(600)
-            vm.media.key(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
         }
     }
 
