@@ -24,7 +24,9 @@ import app.spa.launcher.data.Prefs
 import app.spa.launcher.data.Weather
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -39,8 +41,14 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
     private val cm = app.getSystemService(ConnectivityManager::class.java)
     private val wm = app.applicationContext.getSystemService(WifiManager::class.java)
     val net = MutableStateFlow(NetState())
+    /** Пинок для погоды: появился интернет — запрашиваем сразу, не дожидаясь таймера. */
+    private val weatherKick = Channel<Unit>(Channel.CONFLATED)
+
     private val netCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) = updateNet()
+        override fun onAvailable(network: Network) {
+            updateNet()
+            weatherKick.trySend(Unit)
+        }
         override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = updateNet()
         override fun onLost(network: Network) = updateNet()
     }
@@ -116,10 +124,10 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
                     weather.value = w
                     weatherStatus.value = ""
                 } else if (weather.value == null) {
-                    weatherStatus.value = if (net.value.internet) "Сервисы погоды не ответили. Подробнее: Функции → Диагностика"
-                    else "Нет интернета. Подключите Wi-Fi"
+                    weatherStatus.value = if (!net.value.internet) "Нет интернета. Подключите Wi-Fi"
+                    else "Не загрузилась: " + NetInfo.lastProblem().ifBlank { "нет ответа" }
                 }
-                delay(if (weather.value == null) 60_000 else 1_800_000)
+                withTimeoutOrNull(if (weather.value == null) 60_000L else 1_800_000L) { weatherKick.receive() }
             }
         }
     }

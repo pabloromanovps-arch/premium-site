@@ -35,8 +35,11 @@ object NetInfo {
         private set
 
     private fun note(line: String) {
-        log = (log + line).takeLast(12)
+        log = (log + line).takeLast(14)
     }
+
+    /** Коротко, что пошло не так в последней попытке — для плитки погоды. */
+    fun lastProblem(): String = log.lastOrNull { !it.endsWith(": ок") }.orEmpty().take(70)
 
     private fun open(url: String) = (URL(url).openConnection() as HttpURLConnection).apply {
         connectTimeout = 8000
@@ -71,6 +74,12 @@ object NetInfo {
                 j.getDouble("latitude"), j.getDouble("longitude"), j.optString("city"),
                 j.optJSONObject("timezone")?.optString("id")?.ifBlank { null }, date,
             )
+        } ?: attempt("ipinfo.io") {
+            val (text, date) = fetch("http://ipinfo.io/json")
+            val j = JSONObject(text)
+            val loc = j.optString("loc").split(",")
+            if (loc.size != 2) null
+            else GeoInfo(loc[0].toDouble(), loc[1].toDouble(), j.optString("city"), j.optString("timezone").ifBlank { null }, date)
         } ?: attempt("ipapi.co") {
             val (text, date) = fetch("https://ipapi.co/json/")
             val j = JSONObject(text)
@@ -80,7 +89,7 @@ object NetInfo {
     }
 
     suspend fun weather(g: GeoInfo): Weather? = withContext(Dispatchers.IO) {
-        openMeteo(g) ?: wttr("%.3f,%.3f".format(Locale.US, g.lat, g.lon), g.city)
+        openMeteo(g) ?: wttr("%.3f,%.3f".format(Locale.US, g.lat, g.lon), g.city) ?: sevenTimer(g)
     }
 
     /** Если город не определился ни одним сервисом: wttr.in сам найдёт место по адресу подключения. */
@@ -124,6 +133,29 @@ object NetInfo {
             desc = desc.replaceFirstChar { it.uppercase() },
             city = city?.ifBlank { null } ?: area.orEmpty(),
         )
+    }
+
+    /** 7timer.info — ещё один бесплатный сервис по обычному http. */
+    private fun sevenTimer(g: GeoInfo): Weather? = attempt("7timer.info") {
+        val url = String.format(Locale.US, "http://www.7timer.info/bin/api.pl?lon=%.3f&lat=%.3f&product=civil&output=json", g.lon, g.lat)
+        val d = JSONObject(fetch(url).first).getJSONArray("dataseries").getJSONObject(0)
+        val t = d.getInt("temp2m")
+        val windIdx = d.optJSONObject("wind10m")?.optInt("speed") ?: 1
+        val wind = listOf(0, 0, 2, 5, 9, 14, 20, 28, 35).getOrElse(windIdx) { 5 }
+        val w = d.optString("weather")
+        val desc = when {
+            w.startsWith("clear") -> "Ясно"
+            w.startsWith("pcloudy") -> "Переменная облачность"
+            w.startsWith("mcloudy") -> "Облачно"
+            w.startsWith("cloudy") -> "Пасмурно"
+            w.startsWith("humid") -> "Туман"
+            w.startsWith("rainsnow") -> "Дождь со снегом"
+            w.startsWith("ts") -> "Гроза"
+            w.contains("snow") -> "Снег"
+            w.contains("rain") || w.contains("shower") -> "Дождь"
+            else -> ""
+        }
+        Weather(temp = t, feels = t, wind = wind, desc = desc, city = g.city)
     }
 
     private fun describe(code: Int) = when (code) {

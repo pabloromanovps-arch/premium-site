@@ -35,7 +35,13 @@ enum class Accent(
     ELEGANCE("Elegance", Color(0xFF1F4FD8), Color(0xFF6FB2FF)),
     ECO("Eco", Color(0xFF0B8A6A), Color(0xFF6FE0B8)),
     PERFORMANCE("Performance", Color(0xFFB3122B), Color(0xFFFF6A55)),
-    RDESIGN("R-Design", Color(0xFF0057D9), Color(0xFF4FC3FF), carbon = true, top = Color(0xFF1D2025), bottom = Color(0xFF0C0D10));
+    RDESIGN("R-Design", Color(0xFF0057D9), Color(0xFF4FC3FF), carbon = true, top = Color(0xFF1D2025), bottom = Color(0xFF0C0D10)),
+    /** Inscription: тёплая медь, как деревянные вставки и кожа. */
+    INSCRIPTION("Inscription", Color(0xFF9C5B34), Color(0xFFE6A872), top = Color(0xFF221B17), bottom = Color(0xFF14100D)),
+    /** Polestar Engineered: золотые ремни и суппорты на графите. */
+    POLESTAR("Polestar", Color(0xFFC08A1E), Color(0xFFFFD66B), carbon = true, top = Color(0xFF1C1C1E), bottom = Color(0xFF0B0B0C)),
+    /** Orrefors: холодный хрусталь селектора передач. */
+    ORREFORS("Orrefors", Color(0xFF3E9DB5), Color(0xFFD2F4FF), top = Color(0xFF16202A), bottom = Color(0xFF0C1218));
 
     val brush: Brush get() = Brush.horizontalGradient(listOf(a, b))
     val vbrush: Brush get() = Brush.verticalGradient(listOf(b, a))

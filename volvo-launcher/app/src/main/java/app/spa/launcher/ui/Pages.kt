@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -205,12 +206,12 @@ fun ThemeCard(vm: LauncherVm, modifier: Modifier) {
     Column(modifier.background(C.tile, RoundedCornerShape(4.dp)).padding(horizontal = 18.dp, vertical = 14.dp)) {
         TileHeader(Ic.Palette, "Тема — как на приборке")
         Spacer(Modifier.weight(1f))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Accent.entries.forEach { ac ->
                 val selected = ac == s.accent
                 Column(
                     Modifier
-                        .weight(1f)
+                        .width(118.dp)
                         .height(56.dp)
                         .pressable { vm.prefs.update { putString("accent", ac.name) } }
                         .background(C.tile2)
