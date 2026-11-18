@@ -79,7 +79,6 @@ class MainActivity : ComponentActivity() {
     /**
      * После включения магнитолы:
      *  • Bluetooth Music — без его запуска на этой магнитоле нет звука в AUX;
-     *  • TLink (CarPlay) — чтобы он сразу начал ждать iPhone, а не только после ручного открытия.
      * Оба открываются на пару секунд, потом возвращаемся на главный экран.
      */
     private fun bootSoundWorkaround() {
@@ -87,15 +86,13 @@ class MainActivity : ComponentActivity() {
         bootFlowDone = true
         if (SystemClock.elapsedRealtime() > 5 * 60_000L) return
         val st = vm.prefs.settings.value
-        if (!st.btOnStart && !st.carplayOnStart) return
+        if (!st.btOnStart) return
         lifecycleScope.launch {
             val apps = withContext(Dispatchers.IO) { AppRepo.load(this@MainActivity) }
             val bt = if (st.btOnStart) Slot.BT_MUSIC.resolve(apps, st.slots) as? LaunchTarget.App else null
-            val cp = if (st.carplayOnStart) Slot.CARPLAY.resolve(apps, st.slots) as? LaunchTarget.App else null
-            if (bt == null && cp == null) return@launch
+            if (bt == null) return@launch
             delay(1000)
             bt?.let { openQuietly(it); delay(2000) }
-            cp?.let { openQuietly(it); delay(2500) }
             runCatching {
                 startActivity(
                     Intent(this@MainActivity, MainActivity::class.java)

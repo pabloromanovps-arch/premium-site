@@ -80,26 +80,20 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
         startClock()
         runCatching { cm.registerDefaultNetworkCallback(netCallback) }
         updateNet()
-        ensureWifi()
-        // Сеть и Wi-Fi: раз в минуту проверяем, что Wi-Fi включён и значок актуален.
+        // Значок сети раз в минуту (Wi-Fi лаунчер не трогает — им пользуется CarPlay).
         viewModelScope.launch {
             while (true) {
                 delay(60_000)
-                ensureWifi()
                 updateNet()
             }
         }
         // Пакет Bluetooth Music: трек из его уведомлений и куда вести по нажатию на карточку.
         viewModelScope.launch {
             combine(apps, prefs.settings) { list, st ->
-                Triple(
-                    (Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App)?.pkg,
-                    (Slot.CARPLAY.resolve(list, st.slots) as? LaunchTarget.App)?.pkg,
-                    st.phoneOnly,
-                )
-            }.collect { (bt, carplay, phoneOnly) ->
+                (Slot.BT_MUSIC.resolve(list, st.slots) as? LaunchTarget.App)?.pkg to st.phoneOnly
+            }.collect { (bt, phoneOnly) ->
                 media.fallbackPkg = bt
-                media.phonePkgs = setOfNotNull(bt, carplay, "com.android.bluetooth")
+                media.phonePkgs = setOfNotNull(bt, "com.android.bluetooth")
                 media.phoneOnly = phoneOnly
                 MediaBus.musicPkgs = setOfNotNull(bt)
                 media.refresh()
@@ -164,23 +158,7 @@ class LauncherVm(private val app: Application) : AndroidViewModel(app) {
         )
     }
 
-    /** Wi-Fi всегда включён: магнитола сама подключается к сохранённой раздаче телефона. */
-    @Suppress("DEPRECATION")
-    fun ensureWifi() {
-        if (!prefs.settings.value.wifiAlways) return
-        runCatching {
-            // Беспроводной CarPlay работает на своей Wi-Fi-точке магнитолы — её не трогаем.
-            if (isHotspotOn()) return
-            if (!wm.isWifiEnabled) wm.isWifiEnabled = true
-        }
-    }
-
-    private fun isHotspotOn(): Boolean = runCatching {
-        wm.javaClass.getMethod("isWifiApEnabled").invoke(wm) as Boolean
-    }.getOrDefault(false)
-
     fun onResume() {
-        ensureWifi()
         updateNet()
         startClock()
         brightness.value = readBrightness()

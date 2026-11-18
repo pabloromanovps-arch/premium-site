@@ -106,23 +106,12 @@ fun FunctionsPage(vm: LauncherVm) {
             FuncBtn(Ic.Cloud, "Яндекс Диск", null) { a.launchSlot(Slot.DISK, it) }
         }
         FuncRow {
-            FuncBtn(
-                Ic.Wifi, "Wi-Fi всегда включён",
-                if (s.wifiAlways) "Вкл · удерживайте для настроек" else "Выключено",
-                s.wifiAlways,
-                onLong = { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) },
-            ) {
-                vm.prefs.update { putBoolean("wifi", !s.wifiAlways) }
-                vm.ensureWifi()
-            }
+            FuncBtn(Ic.Wifi, "Wi-Fi", null) { a.openSystem(Settings.ACTION_WIFI_SETTINGS, false) }
             FuncBtn(Ic.Headphones, "Bluetooth Music", if (bt != null) "Открыть" else "Удерживайте, чтобы выбрать", null, onLong = { a.pick(Slot.BT_MUSIC) }) {
                 a.launchSlot(Slot.BT_MUSIC, it)
             }
             FuncBtn(Ic.Wave, "Звук при включении", if (s.btOnStart) "Запускать Bluetooth Music" else "Выключено", s.btOnStart) {
                 vm.prefs.update { putBoolean("btboot", !s.btOnStart) }
-            }
-            FuncBtn(Ic.CarPlay, "CarPlay при включении", if (s.carplayOnStart) "Запускать TLink сразу" else "Выключено · если CarPlay не мешает", s.carplayOnStart) {
-                vm.prefs.update { putBoolean("cpboot2", !s.carplayOnStart) }
             }
             FuncBtn(Ic.Music, "Диагностика", if (access) "Трек, уведомления, погода" else "Нажмите, чтобы разрешить доступ", access) {
                 if (access) showDiag = true else a.openSystem("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS", false)
@@ -134,7 +123,7 @@ fun FunctionsPage(vm: LauncherVm) {
             }
             FuncBtn(Ic.Home, "Лаунчер по умолчанию", null) { a.openSystem(Settings.ACTION_HOME_SETTINGS, false) }
             FuncBtn(Ic.Gear, "Настройки Android", null) { a.openSystem(Settings.ACTION_SETTINGS, false) }
-            FuncBtn(Ic.Headphones, "Музыка только с телефона", if (s.phoneOnly) "Bluetooth и CarPlay" else "Все плееры, и на магнитоле", s.phoneOnly) {
+            FuncBtn(Ic.Headphones, "Музыка только с телефона", if (s.phoneOnly) "Только Bluetooth Music" else "Все плееры, и на магнитоле", s.phoneOnly) {
                 vm.prefs.update { putBoolean("phoneonly", !s.phoneOnly) }
             }
             FuncBtn(Ic.Download, "Обновления", "Скачать новую версию", null) { a.openUrl(RELEASES_URL) }

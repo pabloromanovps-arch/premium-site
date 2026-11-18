@@ -134,10 +134,7 @@ fun NowPlaying(vm: LauncherVm, onClose: () -> Unit) {
                 Spacer(Modifier.weight(1f))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf(
-                        Triple(Slot.BT_MUSIC, "Bluetooth", Ic.Bluetooth),
-                        Triple(Slot.YMUSIC, "Яндекс Музыка", Ic.Music),
-                        Triple(Slot.ZVUK, "СберЗвук", Ic.Wave),
-                        Triple(Slot.CARPLAY, "CarPlay", Ic.CarPlay),
+                        Triple(Slot.BT_MUSIC, "Открыть Bluetooth Music", Ic.Bluetooth),
                     ).forEach { (slot, label, icon) ->
                         val pkg = (slot.resolve(apps, s.slots) as? LaunchTarget.App)?.pkg
                         SourceChip(icon, label, selected = pkg != null && pkg == m?.pkg, available = pkg != null) {

@@ -107,6 +107,40 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
 
     /** Пакет Bluetooth Music: его открываем по нажатию, если трек пришёл не из сессии. */
     @Volatile var fallbackPkg: String? = null
+        set(value) {
+            val changed = field != value
+            field = value
+            if (changed && value != null) startProbe(value)
+        }
+
+    /** Читает Bluetooth Music прямо на магнитоле и слушает его рассылки о треке. */
+    val probe = BtProbe(ctx) { t ->
+        handler.post {
+            broadcast = t
+            publish()
+        }
+    }
+
+    private fun startProbe(pkg: String) {
+        scope.launch {
+            val actions = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { probe.scan(pkg) }
+            probe.listen(actions)
+            publish()
+        }
+    }
+
+    /** Кнопки ▶ ⏭ ⏮ напрямую в Bluetooth Music (если у него нет своей сессии плеера). */
+    private fun sendToBt(code: Int): Boolean {
+        val pkg = fallbackPkg ?: return false
+        for (action in listOf(KeyEvent.ACTION_DOWN, KeyEvent.ACTION_UP)) {
+            runCatching {
+                ctx.sendBroadcast(
+                    Intent(Intent.ACTION_MEDIA_BUTTON).setPackage(pkg).putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(action, code))
+                )
+            }
+        }
+        return true
+    }
 
     private var controller: MediaController? = null
     private var sessions: List<MediaController> = emptyList()
@@ -284,6 +318,16 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
             else -> "не найдена"
         })
         appendLine()
+        appendLine("Bluetooth Music изнутри (${probe.pkg ?: "ещё не прочитан"}):")
+        appendLine("  рассылок найдено: ${probe.actions.size}, слушаем все")
+        appendLine("  кнопки плеера: " + if (btTakesButtons()) "напрямую в Bluetooth Music" else "системные медиа-кнопки")
+        if (probe.providers.isNotEmpty()) appendLine("  провайдеры: " + probe.providers.joinToString())
+        if (probe.commands.isNotEmpty()) appendLine("  команды: " + probe.commands.take(12).joinToString { it.substringAfterLast('.') })
+        appendLine("  пойманные рассылки:")
+        if (probe.heard.isEmpty()) appendLine("    — пока ничего (переключите трек на телефоне)")
+        probe.heard.forEach { appendLine("    • $it") }
+        appendLine("  примеры найденных: " + probe.actions.take(15).joinToString { it.substringAfterLast('.') })
+        appendLine()
         appendLine("Последние уведомления на магнитоле:")
         if (MediaBus.recent.isEmpty()) appendLine("  — нет")
         MediaBus.recent.forEach { appendLine("  • $it") }
@@ -325,7 +369,12 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         val c = controller
         if (c == null) {
             val start = onNothingToPlay
-            if (info.value == null && start != null) start() else key(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+            val cur = info.value
+            when {
+                cur == null && start != null -> start()
+                cur?.playing == true -> key(KeyEvent.KEYCODE_MEDIA_PAUSE)
+                else -> key(KeyEvent.KEYCODE_MEDIA_PLAY)
+            }
             return
         }
         if (c.playbackState?.state == PlaybackState.STATE_PLAYING) c.transportControls.pause()
@@ -342,12 +391,22 @@ class MediaRepo(private val ctx: Context, private val scope: CoroutineScope) {
         if (c != null) c.transportControls.skipToPrevious() else key(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
     }
 
+    /** Принимает ли Bluetooth Music кнопки плеера напрямую. */
+    private fun btTakesButtons(): Boolean = fallbackPkg?.let { p ->
+        runCatching {
+            ctx.packageManager.queryBroadcastReceivers(Intent(Intent.ACTION_MEDIA_BUTTON).setPackage(p), 0).isNotEmpty()
+        }.getOrDefault(false)
+    } ?: false
+
+    /** Одна кнопка — один путь, чтобы «следующий трек» не срабатывал дважды. */
     fun key(code: Int) {
+        if (btTakesButtons() && sendToBt(code)) return
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
         am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
     }
 
     fun close() {
+        probe.close()
         runCatching { ctx.unregisterReceiver(receiver) }
         MediaBus.onNotification = null
     }
