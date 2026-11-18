@@ -1,0 +1,57 @@
+name: SPA Launcher APK
+
+on:
+  push:
+    paths:
+      - "volvo-launcher/**"
+      - ".github/workflows/volvo-launcher.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: spa-launcher-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: volvo-launcher
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build release APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --stacktrace --no-daemon
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/release/app-release.apk SpaLauncher.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SpaLauncher-apk
+          path: volvo-launcher/SpaLauncher.apk
+
+      - name: Publish to release "launcher-latest"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: launcher-latest
+          target_commitish: ${{ github.sha }}
+          name: SPA Launcher — последняя сборка
+          body: |
+            Сборка №${{ github.run_number }} из ${{ github.ref_name }} (${{ github.sha }}).
+            Скачайте SpaLauncher.apk на магнитолу и установите поверх прежней версии.
+          prerelease: true
+          make_latest: false
+          files: volvo-launcher/SpaLauncher.apk
